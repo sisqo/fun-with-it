@@ -40,19 +40,19 @@ test("giocatore nuovo: gli oggetti gratuiti sono suoi e in uso, il resto no", ()
 
 test("stati della scheda: troppo cara (con quanto manca), da comprare, tua, in uso", () => {
   const poor = me(newStore(150));
-  assert.deepEqual(S.itemState(S.itemById("skin:notte"), poor), { state: "locked", gap: 250, percent: 37 });
-  assert.deepEqual(S.itemState(S.itemById("skin:oro"), poor), { state: "locked", gap: 3850, percent: 3 });
+  assert.deepEqual(S.itemState(S.itemById("skin:notte"), poor), { state: "locked", reason: "cash", gap: 250, percent: 37 });
+  assert.deepEqual(S.itemState(S.itemById("skin:oro"), poor, { chapters: 4 }), { state: "locked", reason: "cash", gap: 3850, percent: 3 });
   assert.equal(S.itemState(S.itemById("bg:molo"), me(newStore(300))).state, "buy", "con i soldi esatti si può comprare");
   assert.equal(S.itemState(S.itemById("bg:molo"), me(newStore(299))).state, "locked");
   assert.equal(S.itemState(S.itemById("bg:molo"), me(newStore(299))).gap, 1);
   const rich = me(newStore(1000));
   assert.equal(S.itemState(S.itemById("skin:menta"), rich).state, "buy");
   assert.equal(S.itemState(S.itemById("skin:tramonto"), rich).state, "buy");
-  assert.equal(S.itemState(S.itemById("skin:terminale"), rich).state, "locked");
+  assert.equal(S.itemState(S.itemById("skin:terminale"), rich).state, "locked", "1000 non bastano per 1500 (e servono 2 capitoli)");
 });
 
 test("acquisto: scala il prezzo, l'oggetto diventa tuo ma non in uso finché non lo scegli", () => {
-  const r = S.buy(newStore(1000), "neri", "skin:menta", 5);
+  const r = S.buy(newStore(1000), "neri", "skin:menta", {}, 5);
   assert.equal(r.ok, true);
   const p = me(r.store);
   assert.equal(p.cash, 600);
@@ -135,4 +135,123 @@ test("economia: un caveau vale più di qualunque oggetto tranne i due più cari"
 
 test("i nomi dei caveau non si confondono con gli oggetti (id diversi)", () => {
   for (const id of Object.keys(B.BOSS_NAME)) assert.ok(!S.itemById(id));
+});
+
+// ---------- capitoli richiesti e ritmo del negozio (controlli di Rebecca) ----------
+
+import * as G from "../js/progress.mjs";
+import * as Eco from "../js/economy.mjs";
+
+test("gli oggetti più cari richiedono capitoli superati, non solo contanti", () => {
+  const expensive = S.CATALOG.filter((i) => i.price >= 1500);
+  assert.ok(expensive.length >= 4);
+  for (const i of expensive) assert.ok(S.chaptersNeeded(i) >= 2, `${i.id} senza requisito di capitoli`);
+  assert.equal(S.chaptersNeeded(S.itemById("skin:oro")), 4, "l'oggetto più caro richiede più capitoli di tutti");
+  for (const i of S.CATALOG) assert.ok(S.chaptersNeeded(i) <= S.chaptersNeeded(S.itemById("skin:oro")));
+  for (const i of S.CATALOG.filter((x) => x.price > 0 && x.price < 1500)) assert.equal(S.chaptersNeeded(i), 0, `${i.id}: gli oggetti economici sono per tutti`);
+  assert.ok(S.chaptersNeeded(S.itemById("skin:oro")) <= 6, "raggiungibile: ci sono 7 capitoli");
+});
+
+test("stato 'bloccato' per capitoli: prima i capitoli, poi i contanti", () => {
+  const rich = me(newStore(10000));
+  const gold = S.itemById("skin:oro");
+  assert.deepEqual(S.itemState(gold, rich, { chapters: 1 }), { state: "locked", reason: "chapters", need: 4, have: 1, percent: 25 });
+  assert.deepEqual(S.itemState(gold, rich, { chapters: 3 }), { state: "locked", reason: "chapters", need: 4, have: 3, percent: 75 });
+  assert.equal(S.itemState(gold, rich, { chapters: 4 }).state, "buy");
+  assert.equal(S.itemState(gold, rich).state, "locked", "senza il contesto si assumono 0 capitoli");
+  const poor = me(newStore(100));
+  assert.equal(S.itemState(gold, poor, { chapters: 4 }).reason, "cash");
+});
+
+test("acquisto: con i soldi ma senza i capitoli viene rifiutato", () => {
+  const st = newStore(10000);
+  const no = S.buy(st, "neri", "skin:oro", { chapters: 3 });
+  assert.deepEqual([no.ok, no.error, no.store], [false, "capitoli insufficienti", st]);
+  const ok = S.buy(st, "neri", "skin:oro", { chapters: 4 });
+  assert.equal(ok.ok, true);
+  assert.equal(me(ok.store).cash, 6000);
+  assert.equal(S.buy(newStore(1500), "neri", "skin:terminale", { chapters: 1 }).ok, false);
+  assert.equal(S.buy(newStore(1500), "neri", "skin:terminale", { chapters: 2 }).ok, true);
+});
+
+test("nessun oggetto richiede di vincere un caveau: bastano i contanti delle partite e i capitoli superati", () => {
+  for (const i of S.CATALOG) {
+    assert.ok(!("vault" in i) && !("trophy" in i) && !("vaults" in i), i.id);
+    assert.ok(i.price <= 4000);
+  }
+  // senza nemmeno un trofeo si arriva a tutto: con 6 capitoli superati e abbastanza contanti si compra l'oro
+  const st = newStore(4000);
+  assert.equal(S.buy(st, "neri", "skin:oro", { chapters: 6 }).ok, true);
+});
+
+// Simula una partita di 10 domande in un capitolo con la probabilità `skill` di azzeccare ogni passaggio; restituisce i dollari.
+function mulberry(seed) {
+  return () => {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function playGame(chapter, skill, seed, player = { topics: {} }) {
+  const rng = mulberry(seed), dice = mulberry(seed + 7);
+  let cash = 0, last = null, p = player;
+  for (let i = 0; i < 10; i++) {
+    const q = G.nextQuestion(p, rng, { chapter, last });
+    const guided = q.kind === "guided";
+    const units = guided ? q.steps.length : 1;
+    let right = 0;
+    for (let u = 0; u < units; u++) if (dice() < skill) right++;
+    cash += right * Eco.rewardFor(guided);
+    p = { topics: { ...p.topics, [q.topic]: P.nextStats(p.topics[q.topic], right / units) } };
+    last = q.topic;
+  }
+  return { cash, p };
+}
+const avgGame = (chapter, skill, n = 40) => { let sum = 0; for (let s = 1; s <= n; s++) sum += playGame(chapter, skill, s).cash; return sum / n; };
+
+test("economia: un passaggio guidato vale la metà di una risposta semplice", () => {
+  assert.equal(Eco.CASH_PER_RIGHT, 100);
+  assert.equal(Eco.CASH_PER_STEP, 50);
+  assert.equal(Eco.rewardFor(false), 100);
+  assert.equal(Eco.rewardFor(true), 50);
+});
+
+test("ritmo (1): il primo acquisto arriva entro 1-2 partite, anche per chi sbaglia spesso, in qualunque capitolo", () => {
+  const cheapest = Math.min(...S.CATALOG.filter((i) => i.price > 0).map((i) => i.price));
+  for (const ch of G.CHAPTERS) {
+    const weak = avgGame(ch.id, 0.3);
+    assert.ok(weak * 2 >= cheapest, `${ch.id}: ${Math.round(weak)} a partita, 2 partite = ${Math.round(weak * 2)} < ${cheapest}`);
+    const ok = avgGame(ch.id, 0.5);
+    assert.ok(ok >= cheapest, `${ch.id}: già alla prima partita con il 50% (${Math.round(ok)})`);
+  }
+});
+
+test("ritmo: le partite sulle operazioni non pagano da 4 a 8 volte le altre (al massimo circa il doppio)", () => {
+  for (const skill of [0.3, 0.5, 0.7, 0.9]) {
+    const ops = avgGame("ops", skill), theory = avgGame("c1", skill);
+    assert.ok(ops / theory <= 2.4, `abilità ${skill}: operazioni ${Math.round(ops)} / teoria ${Math.round(theory)} = ${(ops / theory).toFixed(1)}`);
+    assert.ok(ops >= theory, "ma fare gli esercizi guidati rende di più");
+  }
+});
+
+test("ritmo (2): l'oggetto più caro non si compra giocando tante volte un solo capitolo: serve aver superato 4 capitoli", () => {
+  const gold = S.itemById("skin:oro");
+  // anche chi fa solo il capitolo più ricco (operazioni) a livello alto, dopo molte partite ha i contanti ma non i capitoli
+  let cash = 0, p = { topics: {} };
+  for (let n = 0; n < 25; n++) { const r = playGame("ops", 0.9, 100 + n, p); cash += r.cash; p = r.p; }
+  assert.ok(cash >= gold.price, "con tante partite i contanti arrivano");
+  const player = { ...me(newStore(cash)), cash };
+  const chaptersDone = G.summarize({ topics: p.topics, trophies: {}, vaultsOpened: {} }).chapters.filter((c) => c.complete).length;
+  assert.ok(chaptersDone <= 1, `con le sole operazioni si superano ${chaptersDone} capitoli`);
+  assert.equal(S.itemState(gold, player, { chapters: chaptersDone }).state, "locked");
+  assert.equal(S.itemState(gold, player, { chapters: chaptersDone }).reason, "chapters");
+});
+
+test("ritmo (3): giocando anche solo un capitolo di teoria, senza caveau, si compra tutto ciò che non richiede capitoli", () => {
+  let cash = 0, p = { topics: {} };
+  let games = 0;
+  while (cash < 1000 && games < 40) { const r = playGame("c1", 0.5, 500 + games, p); cash += r.cash; p = r.p; games++; }
+  assert.ok(games <= 3, `1.000 dollari in ${games} partite al 50% nel capitolo più povero`);
+  for (const i of S.CATALOG.filter((x) => x.price > 0 && x.price <= 1000)) assert.equal(S.chaptersNeeded(i), 0, i.id);
 });

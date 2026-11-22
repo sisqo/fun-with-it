@@ -9,15 +9,15 @@ export const CATALOG = [
   { id: "skin:notte", slot: "skin", value: "notte", name: "Notte al neon", price: 400 },
   { id: "skin:menta", slot: "skin", value: "menta", name: "Menta", price: 400 },
   { id: "skin:tramonto", slot: "skin", value: "tramonto", name: "Tramonto", price: 800 },
-  { id: "skin:terminale", slot: "skin", value: "terminale", name: "Terminale", price: 1500 },
-  { id: "skin:oro", slot: "skin", value: "oro", name: "Oro 24 carati", price: 4000 },
+  { id: "skin:terminale", slot: "skin", value: "terminale", name: "Terminale", price: 1500, chapters: 2 },
+  { id: "skin:oro", slot: "skin", value: "oro", name: "Oro 24 carati", price: 4000, chapters: 4 },
   // Sfondi: data-bg="<valore>" su <html>. "tramonto" è lo sfondo di partenza (nessun data-bg).
   { id: "bg:tramonto", slot: "bg", value: "tramonto", name: "Tramonto sulla baia", price: 0 },
   { id: "bg:molo", slot: "bg", value: "molo", name: "Molo di notte", price: 300 },
   { id: "bg:aurora", slot: "bg", value: "aurora", name: "Aurora", price: 600 },
   { id: "bg:griglia", slot: "bg", value: "griglia", name: "Griglia", price: 600 },
-  { id: "bg:codice", slot: "bg", value: "codice", name: "Pioggia di bit", price: 1500 },
-  { id: "bg:oro", slot: "bg", value: "oro", name: "Caveau d'oro", price: 3000 },
+  { id: "bg:codice", slot: "bg", value: "codice", name: "Pioggia di bit", price: 1500, chapters: 2 },
+  { id: "bg:oro", slot: "bg", value: "oro", name: "Caveau d'oro", price: 3000, chapters: 3 },
 ];
 
 export const SLOTS = { skin: "R0b", bg: "Sfondi" };
@@ -39,19 +39,27 @@ export function lookOf(player) {
   return out;
 }
 
-// Stato di una scheda: in uso, tua, da comprare (te la puoi permettere) o troppo cara (con quanto manca e a che punto sei).
-export function itemState(item, player) {
+// Gli oggetti più cari richiedono anche dei capitoli superati (non solo tante partite): ctx.chapters = quanti ne hai superati.
+// Niente si compra solo vincendo i caveau: i contanti delle partite bastano a tutto.
+export const chaptersNeeded = (item) => item.chapters ?? 0;
+
+// Stato di una scheda: in uso, tua, da comprare (te la puoi permettere) o bloccata:
+//   reason "chapters" = mancano capitoli superati; reason "cash" = mancano contanti (con quanto manca e a che punto sei).
+export function itemState(item, player, ctx = {}) {
   const look = lookOf(player);
   if (look[item.slot] === item.value) return { state: "equipped" };
   if (isOwned(item, player)) return { state: "owned" };
+  const have = ctx.chapters ?? 0, need = chaptersNeeded(item);
+  if (have < need) return { state: "locked", reason: "chapters", need, have, percent: Math.floor((have / need) * 100) };
   const cash = player?.cash ?? 0;
   if (cash >= item.price) return { state: "buy" };
-  return { state: "locked", gap: item.price - cash, percent: Math.floor((cash / item.price) * 100) };
+  return { state: "locked", reason: "cash", gap: item.price - cash, percent: Math.floor((cash / item.price) * 100) };
 }
 
-export function buy(store, key, itemId, now = Date.now()) {
+export function buy(store, key, itemId, ctx = {}, now = Date.now()) {
   const item = itemById(itemId);
   if (!item || item.price === 0) return { ok: false, error: "oggetto non in vendita", store };
+  if ((ctx.chapters ?? 0) < chaptersNeeded(item)) return { ok: false, error: "capitoli insufficienti", store };
   return P.buyItem(store, key, item.id, item.price, now);
 }
 

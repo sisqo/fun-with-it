@@ -4,6 +4,8 @@ import { judgeStep } from "./operations.mjs";
 import * as G from "./progress.mjs";
 import * as T from "./teach.mjs";
 import * as Boss from "./boss.mjs";
+import * as S from "./shop.mjs";
+import * as Economy from "./economy.mjs";
 import * as FX from "./fx.mjs";
 import * as P from "./profiles.mjs";
 import { WEIGHTS, bits8, nibbles, onWeights } from "./vault.mjs";
@@ -12,16 +14,26 @@ window.__fx = FX; // utile per provare gli effetti dal browser
 import { colopHTML, starsHTML, progressHTML, baseBadge, nTag } from "./colop.mjs";
 
 const MAX_STARS = 5;
-const CASH_PER_RIGHT = 100;
+const { CASH_PER_RIGHT, CASH_PER_STEP, rewardFor } = Economy;
 const OP_STEP = 2; // nei passaggi guidati, il terzo è l'operazione in binario (con la colonna)
 const app = document.getElementById("app");
 const MASCOT = (name) => `design/mascot/r0b-${name}.svg`;
 
 // La porta del caveau e la coppa vanno messe INLINE (la CSS deve raggiungere volantino, bulloni e coppa): si caricano una volta.
-const ASSETS = { door: "", cup: "" };
+const ASSETS = { door: "", cup: "", mascots: {} };
+const MASCOT_NAMES = ["neutro", "esulta", "triste", "perplesso", "sete", "podio"];
 async function loadAssets() {
   const get = async (url) => { try { const r = await fetch(url); return r.ok ? await r.text() : ""; } catch { return ""; } };
-  [ASSETS.door, ASSETS.cup] = await Promise.all([get("design/vault-door.svg"), get("design/trophy.svg")]);
+  const [door, cup, ...faces] = await Promise.all([get("design/vault-door.svg"), get("design/trophy.svg"), ...MASCOT_NAMES.map((n) => get(MASCOT(n)))]);
+  ASSETS.door = door; ASSETS.cup = cup;
+  MASCOT_NAMES.forEach((n, i) => { ASSETS.mascots[n] = faces[i]; });
+}
+
+// R0b INLINE: le skin del negozio sono variabili CSS (--mascot-*) e funzionano solo così. Se l'SVG non è ancora arrivato, ripiega sull'immagine.
+function mascot(name, cls = "", style = "") {
+  const svg = ASSETS.mascots[name];
+  if (!svg) return `<img${cls ? ` class="${cls}"` : ""} src="${MASCOT(name)}" alt=""${style ? ` style="${style}"` : ""}>`;
+  return svg.replace('role="img" class="mascot"', `aria-hidden="true" class="mascot${cls ? ` ${cls}` : ""}"${style ? ` style="${style}"` : ""}`);
 }
 const ICON_KEY = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M12.5 12H21M18 12v3.5M21 12v2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
 const ICON_CUP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -73,8 +85,17 @@ const radioCompact = (line) => `<p class="radio radio--compact">${EQ}<span class
 // Schermata che usa le immagini del caveau (home, capitolo): si ridisegna quando le immagini sono arrivate.
 let refreshScreen = null;
 
+// Skin di R0b (classe sul body) e sfondo (data-bg su <html>) scelti nel negozio.
+function applyLook() {
+  const look = S.lookOf(P.currentPlayer(store));
+  document.body.classList.forEach((c) => { if (c.startsWith("skin--")) document.body.classList.remove(c); });
+  if (look.skin !== S.FREE.skin) document.body.classList.add(`skin--${look.skin}`);
+  if (look.bg === S.FREE.bg) delete document.documentElement.dataset.bg; else document.documentElement.dataset.bg = look.bg;
+}
+
 function render(node) {
   refreshScreen = null;
+  applyLook();
   app.replaceChildren(node);
   window.scrollTo({ top: 0 });
   node.querySelector("input.answer__input, input.ruler__cell, .choice, .dial, .btn")?.focus?.({ preventScroll: true });
@@ -103,7 +124,7 @@ function nameScreen(message = "") {
   const others = store.players;
   render(el(`
     <section class="home">
-      <img class="home__mascot" src="${MASCOT("neutro")}" alt="">
+      ${mascot("neutro", "home__mascot")}
       <h1 class="home__title">Neon <span>Bay</span></h1>
       <p class="home__line"><b>Come ti chiami?</b></p>
       <p class="home__rules">Scrivi un nome: ci salviamo partita e progressi. Restano solo su questo dispositivo.</p>
@@ -150,7 +171,7 @@ function home(greeting = "") {
   const next = sum.chapters.find((ch) => !ch.complete);
   render(el(`
     <section class="home">
-      <img class="home__mascot" src="${MASCOT("neutro")}" alt="">
+      ${mascot("neutro", "home__mascot")}
       <h1 class="home__title">Neon <span>Bay</span></h1>
       <p class="home__hello" role="status">${esc(greeting || `Ciao, ${player.name}!`)}</p>
       <p class="home__line">Il tuo conto: <b>${money(player.cash)}</b> · Partite completate: <b>${player.missionsDone}</b></p>
@@ -158,6 +179,7 @@ function home(greeting = "") {
       <h2 class="board__sub">Scegli un capitolo</h2>
       <p class="home__rules">${started ? (next ? `Consigliato: <b>${esc(chapterTitle(next))}</b>.` : "Hai superato tutti i capitoli!") : "Ogni capitolo comincia con una breve teoria, poi arrivano le domande. Si parte dal riscaldamento con le casseforti."}</p>
       ${coursesHTML(sum, next?.id)}
+      <button class="btn btn--ghost btn--block" id="shop-open" type="button">Negozio · ${money(player.cash)}</button>
       <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi, argomento per argomento</button>
       <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la partita è finita. Tre risposte giuste di fila ne spengono una.</p>
       ${radioFull(DJ_LINES[0])}
@@ -173,6 +195,7 @@ function home(greeting = "") {
       </details>
     </section>`));
   refreshScreen = () => home(greeting);
+  document.getElementById("shop-open").onclick = () => shopScreen();
   document.getElementById("progress").onclick = () => progressScreen();
   app.querySelectorAll("[data-chapter]").forEach((b) => (b.onclick = () => chapterScreen(b.dataset.chapter)));
   document.getElementById("switch").onclick = () => { commit(P.signOut(store)); nameScreen(); };
@@ -245,7 +268,7 @@ function lessonHTML(topicId, i, skipLabel = "Salta la lezione", from = 0, until 
   const pager = shownPages.map((_, k) => `<i class="${k + from < i ? "is-done" : k + from === i ? "is-current" : ""}"></i>`).join("");
   return `<div class="lesson-wrap" data-lesson-topic="${esc(topicId)}"><article class="lesson">
     <header class="lesson__head"><p class="lesson__kicker">Lezione · ${esc(chapter.title)}</p><h1 class="lesson__title">${esc(topic.title)}</h1></header>
-    <div class="lesson__scene"><img class="lesson__mascot" src="${MASCOT(pg.mascot ?? "neutro")}" alt=""><p class="bubble">${esc(pg.bubble)}</p></div>
+    <div class="lesson__scene">${mascot(pg.mascot ?? "neutro", "lesson__mascot")}<p class="bubble">${esc(pg.bubble)}</p></div>
     <div class="lesson__body">${paras}${key}${algo}</div>
     <footer class="lesson__foot"><span class="pager" aria-label="Pagina ${i - from + 1} di ${shownPages.length}">${pager}</span>
       ${i > from ? '<button class="btn btn--ghost" id="lesson-back" type="button">Indietro</button>' : ""}
@@ -549,12 +572,12 @@ function feedbackHTML({ q, unit, isStep, verdict, moreSteps, failed, last }) {
   const ok = verdict.ok;
   const found = Boolean(verdict.discovered && !verdict.star); // la verifica ha scoperto un errore: indizio, non festa
   const variant = found ? "hint" : ok ? "ok" : "ko";
-  const mascot = found ? "perplesso" : ok ? "esulta" : failed ? "triste" : "perplesso";
+  const face = found ? "perplesso" : ok ? "esulta" : failed ? "triste" : "perplesso";
   const icon = found ? ICON_HINT : ok ? ICON_OK : ICON_KO;
   const gaveAnswer = verdict.headline.startsWith("Risposta giusta");
   const title = ok ? verdict.headline || "Esatto!" : gaveAnswer ? "Non è questa" : verdict.headline;
   const text = ok || found
-    ? (verdict.note ? esc(verdict.note) : `Pulito. <span class="num">+${CASH_PER_RIGHT} $</span> sul conto.`)
+    ? (verdict.note ? esc(verdict.note) : `Pulito. <span class="num">+${isStep ? CASH_PER_STEP : CASH_PER_RIGHT} $</span> sul conto.`)
     : gaveAnswer ? esc(verdict.headline).replace(/: (.*)$/, (_, v) => `: ${num(v)}`) : esc(verdict.note);
 
   const hasColumn = isStep ? q.column && q.column.op !== ":" : false;
@@ -574,7 +597,7 @@ function feedbackHTML({ q, unit, isStep, verdict, moreSteps, failed, last }) {
   const radio = radioCompact(!moreSteps && q.radio ? q.radio : djLine());
   const next = failed ? "Vedi come è andata" : moreSteps ? "Prossimo passaggio" : last ? "Fine missione" : "Avanti";
   return `<div class="feedback feedback--inline feedback--${variant}" role="status">
-    <img class="feedback__mascot" src="${MASCOT(mascot)}" alt="">
+    ${mascot(face, "feedback__mascot")}
     <p class="feedback__title">${icon}${esc(title)}</p>
     <p class="feedback__text">${text}</p>
     ${extra}${tip}${radio}
@@ -602,8 +625,9 @@ function submit(unit, given, clicked, afterJudge) {
   if (isStep) game.marks[game.step] = { wrong: !verdict.ok && !verdict.discovered, correct: unit.answer };
 
   if (verdict.reward) {
-    game.earned += CASH_PER_RIGHT;
-    game.delta = CASH_PER_RIGHT;
+    const amount = rewardFor(isStep);
+    game.earned += amount;
+    game.delta = amount;
     game.rightCount += 1;
     game.streak += 1;
     if (game.streak % 3 === 0 && game.stars > 0) game.stars -= 1;
@@ -615,7 +639,7 @@ function submit(unit, given, clicked, afterJudge) {
   afterJudge?.();
   revealVault(q, verdict.ok);
   if (q.view?.kind === "order") revealOrder(app.firstElementChild);
-  const cashBefore = me().cash + game.earned - (verdict.reward ? CASH_PER_RIGHT : 0);
+  const cashBefore = me().cash + game.earned - (verdict.reward ? game.delta : 0);
   const starOff = verdict.reward && game.streak % 3 === 0 && game.stars < starsBefore;
   if (verdict.reward) FX.celebrate({ streak: game.streak, starOff });
   else if (verdict.star) FX.alarm(true);
@@ -728,7 +752,7 @@ function finish(failed) {
   }).join("");
   render(el(`
     <section class="home">
-      <img class="home__mascot" src="${MASCOT(failed ? "triste" : "podio")}" alt="">
+      ${mascot(failed ? "triste" : "podio", "home__mascot")}
       <h1 class="home__title">${failed ? "Beccato!" : "Partita <span>finita</span>"}</h1>
       <p class="home__line">${failed ? "Cinque stelle: la polizia ti ha preso. Il bottino resta sul banco." : `Hai incassato <b>${money(game.earned)}</b>.`}</p>
       <p class="home__rules">Risposte giuste: ${game.rightCount} su ${game.totalUnits}${failed ? "" : ` · Il tuo conto: ${money(me().cash)}`}</p>
@@ -959,7 +983,7 @@ function bossAnswer(q, given, clicked) {
   if (ok) {
     FX.play("ok");
     if (last) return bossWin();
-    task.insertAdjacentHTML("beforeend", `<div class="feedback feedback--inline feedback--ok" role="status"><img class="feedback__mascot" src="${MASCOT("esulta")}" alt=""><p class="feedback__title">${ICON_OK}Passaggio superato</p><p class="feedback__text">Il volantino gira. Ne mancano ${boss.steps.length - boss.i - 1}.</p><button class="btn btn--block" type="button" id="boss-next">Passaggio ${boss.i + 2}</button></div>`);
+    task.insertAdjacentHTML("beforeend", `<div class="feedback feedback--inline feedback--ok" role="status">${mascot("esulta", "feedback__mascot")}<p class="feedback__title">${ICON_OK}Passaggio superato</p><p class="feedback__text">Il volantino gira. Ne mancano ${boss.steps.length - boss.i - 1}.</p><button class="btn btn--block" type="button" id="boss-next">Passaggio ${boss.i + 2}</button></div>`);
     const nb = root.querySelector("#boss-next");
     nb.onclick = () => { boss.i += 1; showBossStep(); };
     nb.focus({ preventScroll: true });
@@ -972,13 +996,13 @@ function bossAnswer(q, given, clicked) {
   const note = root.querySelector("#boss-note");
   if (boss.left > 0) {
     if (note) note.textContent = bossNote();
-    task.insertAdjacentHTML("beforeend", `<div class="feedback feedback--inline feedback--hint" role="status"><img class="feedback__mascot" src="${MASCOT("perplesso")}" alt=""><p class="feedback__title">${ICON_HINT}Non è questa</p><p class="feedback__text">${shown} Tentativi rimasti: <b>${boss.left}</b>. Ripeti questo passaggio con una domanda nuova.</p>${explain}<button class="btn btn--block" type="button" id="boss-again">Riprova questo passaggio</button><button class="btn btn--ghost btn--block" type="button" id="boss-back">Torna al capitolo</button></div>`);
+    task.insertAdjacentHTML("beforeend", `<div class="feedback feedback--inline feedback--hint" role="status">${mascot("perplesso", "feedback__mascot")}<p class="feedback__title">${ICON_HINT}Non è questa</p><p class="feedback__text">${shown} Tentativi rimasti: <b>${boss.left}</b>. Ripeti questo passaggio con una domanda nuova.</p>${explain}<button class="btn btn--block" type="button" id="boss-again">Riprova questo passaggio</button><button class="btn btn--ghost btn--block" type="button" id="boss-back">Torna al capitolo</button></div>`);
     root.querySelector("#boss-again").onclick = () => { boss.steps[boss.i] = { ...boss.steps[boss.i], q: Boss.stepQuestion(Math.random, boss.chapter, boss.i) }; showBossStep(); };
     root.querySelector("#boss-back").onclick = () => chapterScreen(boss.chapter);
     root.querySelector("#boss-again").focus({ preventScroll: true });
   } else {
     if (note) note.textContent = "Tentativi finiti. Nessuna stella persa e nessun danno: il caveau resta lì.";
-    task.insertAdjacentHTML("beforeend", `<div class="feedback feedback--inline feedback--hint" role="status"><img class="feedback__mascot" src="${MASCOT("perplesso")}" alt=""><p class="feedback__title">${ICON_HINT}Il caveau resta lì</p><p class="feedback__text">${shown} Hai finito i tentativi, ma non hai perso niente: riprovi quando vuoi.</p>${explain}<button class="btn btn--block" type="button" id="boss-retry">Riprova il caveau</button><button class="btn btn--ghost btn--block" type="button" id="boss-back">Torna al capitolo</button></div>`);
+    task.insertAdjacentHTML("beforeend", `<div class="feedback feedback--inline feedback--hint" role="status">${mascot("perplesso", "feedback__mascot")}<p class="feedback__title">${ICON_HINT}Il caveau resta lì</p><p class="feedback__text">${shown} Hai finito i tentativi, ma non hai perso niente: riprovi quando vuoi.</p>${explain}<button class="btn btn--block" type="button" id="boss-retry">Riprova il caveau</button><button class="btn btn--ghost btn--block" type="button" id="boss-back">Torna al capitolo</button></div>`);
     root.querySelector("#boss-retry").onclick = () => startBoss(boss.chapter);
     root.querySelector("#boss-back").onclick = () => chapterScreen(boss.chapter);
     root.querySelector("#boss-retry").focus({ preventScroll: true });
@@ -994,12 +1018,74 @@ function bossWin() {
   const ch = G.CHAPTERS.find((c) => c.id === chapterId);
   const task = `<div style="display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center">
     <figure class="trophy trophy--big">${ASSETS.cup}<figcaption><b>Trofeo del caveau</b>${ch.n > 0 ? `Capitolo ${ch.n}` : "Riscaldamento"}</figcaption></figure>
-    <div><p style="margin:0;font-weight:700">+ ${money(reward)} e un trofeo nel profilo.</p><img src="${MASCOT("podio")}" alt="" style="width:72px;margin-top:8px"></div></div>
+    <div><p style="margin:0;font-weight:700">+ ${money(reward)} e un trofeo nel profilo.</p>${mascot("podio", "", "width:72px;margin-top:8px")}</div></div>
     <button class="btn btn--primary btn--block" id="boss-done" type="button">Torna al capitolo</button>
     <button class="btn btn--ghost btn--block" id="boss-home" type="button">Tutti i capitoli</button>`;
   render(el(`<div>${bossShell({ step: 3, open: true, title: "Aperto!", task, note: false })}</div>`));
   document.getElementById("boss-done").onclick = () => chapterScreen(chapterId);
   document.getElementById("boss-home").onclick = () => home();
+}
+
+// ---------- Negozio: skin di R0b e sfondi ----------
+
+let shopTab = "skin";
+
+// Il Classico non ha una classe: eredita la skin attiva del body. Per mostrarlo davvero classico nell'anteprima si azzerano le variabili della skin
+// (con "initial" l'SVG ripiega sui colori di partenza, che stanno nei suoi var(--mascot-…, fallback)).
+const CLASSIC_RESET = ["body", "shade", "screen", "face", "led", "led-off", "ink"].map((v) => `--mascot-${v}:initial`).join(";");
+
+function shopItemHTML(it, player, ctx, boughtId) {
+  const st = S.itemState(it, player, ctx);
+  const preview = shopTab === "skin"
+    ? `<span class="${it.value === S.FREE.skin ? "" : `skin--${it.value}`}" style="display:contents${it.value === S.FREE.skin ? `;${CLASSIC_RESET}` : ""}">${mascot("neutro")}</span>`
+    : `<span class="bg-swatch"${it.value === S.FREE.bg ? "" : ` data-bg="${it.value}"`}></span>`;
+  const tag = st.state === "equipped" ? '<span class="item__tag">In uso</span>' : st.state === "owned" ? '<span class="item__tag">Tuo</span>' : "";
+  const price = it.price > 0 && (st.state === "buy" || st.state === "locked") ? `<span class="item__price">${money(it.price)}</span>` : "";
+  let action = "";
+  if (st.state === "equipped") action = '<button class="btn btn--ghost" type="button" disabled aria-disabled="true">In uso</button>';
+  else if (st.state === "owned") action = `<button class="btn btn--ghost" type="button" data-equip="${it.id}" aria-label="Usa ${esc(it.name)}">Usa</button>`;
+  else if (st.state === "buy") action = `<button class="btn" type="button" data-buy="${it.id}" aria-label="Compra ${esc(it.name)} per ${money(it.price)}">Compra</button>`;
+  else if (st.reason === "chapters") {
+    action = `<div class="item__bar" role="img" aria-label="Hai ${st.have} capitoli superati su ${st.need}"><i style="width:${st.percent}%"></i></div><p class="item__gap">Servono <b>${st.need} capitoli superati</b> (ne hai ${st.have})</p>`;
+  } else {
+    action = `<div class="item__bar" role="img" aria-label="Hai il ${st.percent}% del prezzo"><i style="width:${st.percent}%"></i></div><p class="item__gap">Ti mancano <b>${money(st.gap)}</b></p>`;
+  }
+  return `<li class="item item--${st.state}${boughtId === it.id ? " is-bought" : ""}" data-item="${it.id}">${tag}<div class="item__preview">${preview}</div><p class="item__name">${esc(it.name)}</p>${price}${action}</li>`;
+}
+
+function shopScreen(boughtId = null, walletFrom = null) {
+  const player = P.currentPlayer(store);
+  if (!player) return nameScreen();
+  const ctx = { chapters: G.summarize(player).chapters.filter((c) => c.complete).length };
+  render(el(`
+    <section class="shop">
+      <header class="shop__head"><h1 class="shop__title">Negozio</h1><span class="cash shop__wallet" aria-label="Contanti: ${player.cash} dollari"><span class="cash__n">${money(walletFrom ?? player.cash)}</span></span></header>
+      <p class="shop__hint">${money(Economy.CASH_PER_RIGHT)} a risposta giusta, ${money(Economy.CASH_PER_STEP)} a passaggio di un esercizio, un premio a caveau aperto. Gli oggetti più cari richiedono anche capitoli superati.</p>
+      <div class="tabs" role="tablist" aria-label="Reparti">${Object.entries(S.SLOTS).map(([slot, label]) => `<button class="tabs__tab" role="tab" type="button" data-tab="${slot}" aria-selected="${slot === shopTab}">${esc(label)}</button>`).join("")}</div>
+      <ul class="shop__grid" role="tabpanel">${S.itemsIn(shopTab).map((it) => shopItemHTML(it, player, ctx, boughtId)).join("")}</ul>
+      <button class="btn btn--ghost btn--block" id="back" type="button">Torna ai capitoli</button>
+    </section>`));
+  if (walletFrom !== null) FX.countUp(app.querySelector(".shop__wallet .cash__n"), walletFrom, player.cash, money);
+  app.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => { shopTab = b.dataset.tab; shopScreen(); }));
+  document.getElementById("back").onclick = () => home();
+  app.querySelectorAll("[data-equip]").forEach((b) => (b.onclick = () => {
+    commit(S.equip(store, store.current, b.dataset.equip));
+    FX.play("ok");
+    shopScreen();
+  }));
+  app.querySelectorAll("[data-buy]").forEach((b) => (b.onclick = async () => {
+    const it = S.itemById(b.dataset.buy);
+    const yes = await confirmDialog({ title: `Comprare ${it.name} per ${money(it.price)}?`, text: "I contanti si scalano subito. Potrai metterlo quando vuoi.", ok: "Sì, compra" });
+    if (!yes) return;
+    const before = P.currentPlayer(store).cash;
+    const r = S.buy(store, store.current, it.id, ctx);
+    if (!r.ok) { FX.toast(r.error === "capitoli insufficienti" ? "Servono più capitoli superati." : "Non hai abbastanza contanti."); return; }
+    commit(r.store);
+    FX.play("coin");
+    FX.rain(10);
+    FX.toast(`${it.name} è tuo: tocca «Usa» per metterlo.`);
+    shopScreen(it.id, before);
+  }));
 }
 
 // Scaffale dei trofei per il profilo: uno per capitolo, la sagoma tratteggiata se ancora da aprire.
