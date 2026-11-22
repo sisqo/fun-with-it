@@ -1,9 +1,9 @@
-import { buildMission, checkAnswer } from "./questions.mjs";
-import { buildOperationsMission, judgeStep } from "./operations.mjs";
-import { LESSONS, buildLessonMission } from "./lessons.mjs";
+import { checkAnswer } from "./questions.mjs";
+import { judgeStep } from "./operations.mjs";
+import * as G from "./progress.mjs";
 import * as FX from "./fx.mjs";
 import * as P from "./profiles.mjs";
-import { WEIGHTS, bits8, nibbles, onWeights, buildWarmupMission } from "./vault.mjs";
+import { WEIGHTS, bits8, nibbles, onWeights } from "./vault.mjs";
 
 window.__fx = FX; // utile per provare gli effetti dal browser
 import { colopHTML, starsHTML, progressHTML, baseBadge, nTag } from "./colop.mjs";
@@ -13,13 +13,6 @@ const CASH_PER_RIGHT = 100;
 const OP_STEP = 2; // nei passaggi guidati, il terzo è l'operazione in binario (con la colonna)
 const app = document.getElementById("app");
 const MASCOT = (name) => `design/mascot/r0b-${name}.svg`;
-
-const MISSIONS = {
-  warm: { title: "0 · Riscaldamento: la cassaforte", sub: "Parti da qui: gira le ruote e capisci il binario, da 1 a 255", build: () => buildWarmupMission(Math.random) },
-  ops: { title: "5 · Operazioni", sub: "Somme, differenze, prodotti e divisioni nelle varie basi", build: () => buildOperationsMission(Math.random) },
-  ...Object.fromEntries(Object.entries(LESSONS).map(([k, l]) => [`lez${k}`, { title: `${k} · ${l.title}`, sub: l.sub, build: () => buildLessonMission(Math.random, Number(k)) }])),
-  conv: { title: "4 · Decimale ⇄ Binario", sub: "Pesi, divisioni per 2 e cassaforte a 8 ruote", build: () => buildMission(Math.random, 8) },
-};
 
 const save = {
   read() {
@@ -97,7 +90,7 @@ function nameScreen(message = "") {
       <p class="home__rules">Scrivi un nome: ci salviamo partita e progressi. Restano solo su questo dispositivo.</p>
       <form class="answer name-form" id="name-form" novalidate>
         <label class="sr-only" for="name">Il tuo nome</label>
-        <input class="answer__input" id="name" name="name" maxlength="20" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="es. Neri" aria-describedby="name-error">
+        <input class="answer__input answer__input--text" id="name" name="name" maxlength="20" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="es. Neri" aria-describedby="name-error">
         <button class="btn btn--primary" type="submit" id="name-go">Inizia</button>
       </form>
       <p class="name-error" id="name-error" role="alert"${message ? "" : " hidden"}>${esc(message)}</p>
@@ -129,21 +122,27 @@ function nameScreen(message = "") {
 function home(greeting = "") {
   const player = P.currentPlayer(store);
   if (!player) return nameScreen();
-  const done = (k) => player.done[k] ?? 0;
+  const sum = G.summarize(player);
+  const c = sum.counts;
+  const started = c.touched > 0;
+  const toReview = sum.rows.find((r) => r.status === G.STATUS.FAILED);
   render(el(`
     <section class="home">
       <img class="home__mascot" src="${MASCOT("neutro")}" alt="">
       <h1 class="home__title">Neon <span>Bay</span></h1>
       <p class="home__hello" role="status">${esc(greeting || `Ciao, ${player.name}!`)}</p>
-      <p class="home__line">Il tuo conto: <b>${money(player.cash)}</b> · Missioni completate: <b>${player.missionsDone}</b></p>
-      <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la missione è fallita. Tre risposte giuste di fila ne spengono una.</p>
+      <p class="home__line">Il tuo conto: <b>${money(player.cash)}</b> · Partite completate: <b>${player.missionsDone}</b></p>
+      <button class="btn btn--primary btn--block home__play" id="play" type="button">${started ? "Gioca" : "Inizia a giocare"}</button>
+      <p class="home__rules">${started
+        ? `Argomenti: <b>${c.passed}</b> superati · <b>${c.inProgress}</b> in corso · <b>${c.failed}</b> da ripassare · <b>${c.untouched}</b> ancora da toccare.`
+        : "Si parte con una serie di casseforti per capire come funziona il binario. Poi il gioco sceglie le domande per te."}</p>
+      ${toReview ? `<button class="btn btn--ghost btn--block" id="review" type="button">Ripassa: ${esc(toReview.title)}</button>` : ""}
+      <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi</button>
+      <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la partita è finita. Tre risposte giuste di fila ne spengono una.</p>
       ${radioFull(DJ_LINES[0])}
-      <ul class="choices choices--stack home__missions">
-        ${Object.entries(MISSIONS).map(([k, m]) => `<li><button class="choice" type="button" data-m="${k}"><span><b>${esc(m.title)}</b>${done(k) ? ` <span class="home__done">completata ×${done(k)}</span>` : ""}<br><span class="home__sub">${esc(m.sub)}</span></span></button></li>`).join("")}
-      </ul>
       <details class="profile">
-        <summary>Profilo e progressi</summary>
-        <p class="profile__text">Giocatore: <b>${esc(player.name)}</b>. Conto ${money(player.cash)}, ${player.missionsDone} ${player.missionsDone === 1 ? "missione completata" : "missioni completate"}. Partita e progressi sono salvati su questo dispositivo.</p>
+        <summary>Profilo e salvataggio</summary>
+        <p class="profile__text">Giocatore: <b>${esc(player.name)}</b>. Conto ${money(player.cash)}, ${player.missionsDone} ${player.missionsDone === 1 ? "partita completata" : "partite completate"}. Partita e progressi sono salvati su questo dispositivo.</p>
         <div class="profile__actions">
           <button class="btn btn--ghost" type="button" id="switch">Cambia giocatore</button>
           <button class="btn btn--ghost" type="button" id="reset">Azzera i progressi</button>
@@ -151,12 +150,14 @@ function home(greeting = "") {
         </div>
       </details>
     </section>`));
-  app.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => startMission(b.dataset.m)));
+  document.getElementById("play").onclick = () => startGame();
+  document.getElementById("progress").onclick = progressScreen;
+  document.getElementById("review")?.addEventListener("click", () => startGame({ force: toReview.id }));
   document.getElementById("switch").onclick = () => { commit(P.signOut(store)); nameScreen(); };
   document.getElementById("reset").onclick = async () => {
     const yes = await confirmDialog({
       title: `Azzerare i progressi di ${player.name}?`,
-      text: `Conto (${money(player.cash)}) e missioni completate tornano a zero. Il nome resta. Non si può annullare.`,
+      text: `Conto (${money(player.cash)}), partite completate e risultati di tutti gli argomenti tornano a zero. Il nome resta. Non si può annullare.`,
       ok: "Sì, azzera", danger: true,
     });
     if (!yes) return;
@@ -175,9 +176,31 @@ function home(greeting = "") {
   };
 }
 
-function startMission(key) {
-  game = { key, questions: MISSIONS[key].build(), index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [], delta: 0, lit: false };
+// Una partita = 10 domande scelte dal gioco in base ai risultati (o 8 su un solo argomento, per allenarsi).
+function startGame({ force = null } = {}) {
+  game = { force, count: force ? 8 : 10, q: null, last: null, seen: new Set(), touched: new Map(), qWrong: false, recorded: false, index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [], delta: 0, lit: false };
+  nextQ();
   showQuestion();
+}
+
+function nextQ() {
+  const q = G.nextQuestion(P.currentPlayer(store), Math.random, { last: game.last, force: game.force, exclude: game.seen });
+  game.seen.add(q.prompt);
+  game.last = q.topic;
+  game.q = q;
+}
+
+// Registra l'esito della domanda sull'argomento (una sola volta): tutta giusta, oppure con almeno un errore.
+function recordQuestion() {
+  const topic = game.q.topic;
+  if (!topic || game.recorded) return;
+  game.recorded = true;
+  const before = G.statusOf(P.currentPlayer(store).topics[topic]);
+  const t = game.touched.get(topic) ?? { before, n: 0, ok: 0 };
+  t.n += 1;
+  if (!game.qWrong) t.ok += 1;
+  game.touched.set(topic, t);
+  commit(P.recordResult(store, store.current, topic, !game.qWrong));
 }
 
 const SPEAKER = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/>${on ? '<path d="M15.5 9a4 4 0 010 6M18 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
@@ -238,29 +261,29 @@ function vaultHTML({ bits = null, lcd = "0", sum = true, code = true } = {}) {
 // Dopo la risposta, nelle domande con cassaforte bloccata, mostra display e somma.
 function revealVault(q, ok) {
   const vault = document.getElementById("vault");
-  if (!vault || !q.vault) return;
+  if (!vault || !q.vault || q.vault.show !== "read") return;
   const value = WEIGHTS.reduce((a, w, i) => a + (q.vault.bits[i] === "1" ? w : 0), 0);
   vault.querySelector("#lcd").textContent = value;
   vault.querySelector("#sum").textContent = `${onWeights(value).join(" + ")} = ${value}`;
   vault.classList.toggle("is-open", ok);
 }
 
-// Ricomincia la missione o torna al menu. Se è già iniziata chiede conferma: i progressi salvati non cambiano.
+// Ricomincia la partita o torna al menu. Se è già iniziata chiede conferma: i progressi salvati non cambiano.
 function wireMissionTools(root) {
   const started = game.totalUnits > 0;
   const ask = async (title, text, ok) => !started || (await confirmDialog({ title, text, ok }));
   root.querySelector("#restart").onclick = async () => {
-    if (await ask("Ricominciare la missione?", "Le risposte di questa missione si azzerano e si riparte dalla prima domanda. I progressi già salvati restano.", "Sì, ricomincia")) startMission(game.key);
+    if (await ask("Ricominciare la partita?", "Contanti e stelle di questa partita si azzerano e si riparte dalla prima domanda. I risultati già registrati sugli argomenti restano.", "Sì, ricomincia")) startGame({ force: game.force });
   };
   root.querySelector("#quit").onclick = async () => {
-    if (await ask("Uscire dalla missione?", "Le risposte di questa missione andranno perse. I progressi già salvati restano.", "Sì, esci")) home();
+    if (await ask("Uscire dalla partita?", "I contanti di questa partita andranno persi. I risultati già registrati sugli argomenti restano.", "Sì, esci")) home();
   };
 }
 
 function showQuestion() {
-  const q = game.questions[game.index];
+  const q = game.q;
   game.answered = false;
-  const kicker = `${esc(MISSIONS[game.key].title)} · domanda ${game.index + 1} di ${game.questions.length}`;
+  const kicker = `${esc(G.topicById[q.topic]?.title ?? "")} · domanda ${game.index + 1} di ${game.count}`;
   let body = "";
   let unit = q;
 
@@ -292,12 +315,14 @@ function showQuestion() {
       ${vaultHTML()}
       <button class="btn btn--primary btn--block" type="button" id="submit">Apri</button></section><div id="fb"></div>`;
   } else {
-    const locked = q.vault ? vaultHTML({ bits: q.vault.bits, lcd: q.vault.show === "code" ? WEIGHTS.reduce((a, w, i) => a + (q.vault.bits[i] === "1" ? w : 0), 0) : "?", sum: false, code: false }) : "";
+    const locked = !q.vault ? "" : q.vault.show === "ruler"
+      ? `<div class="q__code">${q.vault.value}<sub>10</sub></div><div class="ruler" role="group" aria-label="Pesi delle ruote, da sinistra a destra">${WEIGHTS.map((w) => `<span class="ruler__w">${w}</span>`).join("")}</div>`
+      : vaultHTML({ bits: q.vault.bits, lcd: "?", sum: false, code: false });
     body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>${locked}${answerForm(q, "La tua risposta")}</section><div id="fb"></div>`;
   }
 
-  const tools = `<div class="mission-tools"><button class="btn btn--ghost" type="button" id="restart">Ricomincia la missione</button><button class="btn btn--ghost" type="button" id="quit">Esci al menu</button></div>`;
-  const node = el(`<div data-prompt="${esc(q.prompt)}">${hudHTML()}${progressHTML(game.index, game.questions.length)}${body}${tools}</div>`);
+  const tools = `<div class="mission-tools"><button class="btn btn--ghost" type="button" id="restart">Ricomincia la partita</button><button class="btn btn--ghost" type="button" id="quit">Esci al menu</button></div>`;
+  const node = el(`<div data-prompt="${esc(q.prompt)}">${hudHTML()}${progressHTML(game.index, game.count)}${body}${tools}</div>`);
   game.delta = 0; game.lit = false;
   render(node);
   wireSoundToggle(node);
@@ -372,7 +397,7 @@ function submit(unit, given, clicked, afterJudge) {
   if (game.answered) return;
   if ((unit.kind === "text" || unit.kind === undefined) && String(given).trim() === "") return;
   game.answered = true;
-  const q = game.questions[game.index];
+  const q = game.q;
   const isStep = q.kind === "guided";
 
   let verdict;
@@ -419,7 +444,9 @@ function submit(unit, given, clicked, afterJudge) {
 
   const failed = game.stars >= MAX_STARS;
   const moreSteps = isStep && game.step < q.steps.length - 1;
-  const last = game.index === game.questions.length - 1;
+  const last = game.index === game.count - 1;
+  if (!verdict.ok || verdict.star) game.qWrong = true;
+  if (!moreSteps || failed) recordQuestion();
 
   root.querySelector(".hud").outerHTML = hudHTML();
   wireSoundToggle(root);
@@ -431,26 +458,72 @@ function submit(unit, given, clicked, afterJudge) {
     if (failed) return finish(true);
     if (moreSteps) { game.step += 1; return showQuestion(); }
     if (last) return finish(false);
-    game.index += 1; game.step = 0; game.givens = []; game.marks = []; showQuestion();
+    game.index += 1; game.step = 0; game.givens = []; game.marks = []; game.qWrong = false; game.recorded = false;
+    nextQ(); showQuestion();
   };
   nb.focus({ preventScroll: true });
   root.querySelector(".feedback").scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
+const CHIP = { "non-toccato": "○ Non toccato", toccato: "◐ Toccato", superato: "✓ Superato", bocciato: "✕ Bocciato" };
+const chip = (status) => `<span class="chip chip--${status}">${CHIP[status]}</span>`;
+
 function finish(failed) {
-  if (!failed) { commit(P.recordMission(store, store.current, game.key, game.earned)); FX.bigWin(); } else FX.play("ko");
+  if (!failed) { commit(P.recordMission(store, store.current, "gioca", game.earned)); FX.bigWin(); } else FX.play("ko");
+  const player = P.currentPlayer(store);
+  const rows = [...game.touched.entries()].map(([id, t]) => {
+    const after = G.statusOf(player.topics[id]);
+    const moved = after !== t.before;
+    return `<li class="topic topic--${after}"><div><span class="topic__name">${esc(G.topicById[id]?.title ?? id)}</span><span class="topic__score">${t.ok} su ${t.n} ${t.n === 1 ? "giusta" : "giuste"} in questa partita</span></div><span>${moved && t.before !== G.STATUS.NEW ? `${CHIP[t.before].slice(2)} → ` : ""}${chip(after)}</span></li>`;
+  }).join("");
   render(el(`
     <section class="home">
       <img class="home__mascot" src="${MASCOT(failed ? "triste" : "podio")}" alt="">
-      <h1 class="home__title">${failed ? "Beccato!" : "Missione <span>compiuta</span>"}</h1>
+      <h1 class="home__title">${failed ? "Beccato!" : "Partita <span>finita</span>"}</h1>
       <p class="home__line">${failed ? "Cinque stelle: la polizia ti ha preso. Il bottino resta sul banco." : `Hai incassato <b>${money(game.earned)}</b>.`}</p>
       <p class="home__rules">Risposte giuste: ${game.rightCount} su ${game.totalUnits}${failed ? "" : ` · Il tuo conto: ${money(me().cash)}`}</p>
+      ${rows ? `<h2 class="board__sub">Argomenti toccati in questa partita</h2><ul class="topics topics--summary">${rows}</ul>` : ""}
       ${radioFull()}
-      <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : "Un'altra missione"}</button>
+      <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : "Gioca ancora"}</button>
+      <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi</button>
       <button class="btn btn--ghost btn--block" id="menu" type="button">Menu</button>
     </section>`));
-  document.getElementById("again").onclick = () => startMission(game.key);
-  document.getElementById("menu").onclick = home;
+  document.getElementById("again").onclick = () => startGame({ force: game.force });
+  document.getElementById("progress").onclick = progressScreen;
+  document.getElementById("menu").onclick = () => home();
+}
+
+// ---------- I miei progressi: capitoli coperti e argomenti toccati, superati, bocciati ----------
+
+function progressScreen() {
+  const player = P.currentPlayer(store);
+  if (!player) return nameScreen();
+  const sum = G.summarize(player);
+  const c = sum.counts;
+  const title = (id) => G.topicById[id]?.title ?? id;
+  const chapters = sum.chapters.map((ch) => {
+    const pct = (n) => Math.round((n / ch.total) * 100);
+    const badge = ch.complete ? "Capitolo superato" : ch.covered ? "Capitolo coperto" : ch.touched ? `${ch.touched} su ${ch.total} toccati` : "Da iniziare";
+    const items = ch.topics.map((r) => {
+      const needs = G.topicById[r.id].needs.filter((n) => (player.topics[n]?.attempts ?? 0) < 3 || G.statusOf(player.topics[n]) === G.STATUS.FAILED).map(title);
+      const can = r.unlocked || r.attempts > 0;
+      return `<li class="topic topic--${r.status}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${r.attempts ? `${r.correct} su ${r.attempts} ${r.attempts === 1 ? "giusta" : "giuste"}` : can ? "Mai provato" : `Si apre dopo: ${esc(needs.join(", "))}`}</span></div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}</li>`;
+    }).join("");
+    return `<article class="chapter"><header class="chapter__head"><h2 class="chapter__title">${esc(ch.title)}</h2><span class="chapter__badge${ch.complete ? " is-complete" : ch.covered ? " is-covered" : ""}">${badge}</span></header>
+      <p class="chapter__src">${esc(ch.source)}</p>
+      <div class="chapter__bar" role="img" aria-label="${ch.passed} argomenti superati e ${ch.touched - ch.passed} in corso su ${ch.total}"><i class="is-passed" style="width:${pct(ch.passed)}%"></i><i class="is-touched" style="width:${pct(ch.touched - ch.passed)}%"></i></div>
+      <ul class="topics">${items}</ul></article>`;
+  }).join("");
+  render(el(`
+    <section class="board">
+      <h1 class="board__title">I miei progressi</h1>
+      <p class="board__sum"><b>${c.passed}</b> superati · <b>${c.inProgress}</b> in corso · <b>${c.failed}</b> da ripassare · <b>${c.untouched}</b> ancora da toccare, su ${c.total} argomenti.</p>
+      <p class="home__rules">Superato: almeno 4 domande e 4 giuste su 5 (le ultime). Bocciato: meno della metà giuste nelle ultime 5. Un argomento può cambiare stato quando ci si riprova.</p>
+      ${chapters}
+      <button class="btn btn--primary btn--block" id="back" type="button">Torna a giocare</button>
+    </section>`));
+  document.getElementById("back").onclick = () => home();
+  app.querySelectorAll("[data-train]").forEach((b) => (b.onclick = () => startGame({ force: b.dataset.train })));
 }
 
 home();

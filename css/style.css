@@ -68,10 +68,6 @@
   .fx-toast { animation: none; }
 }
 
-/* codice binario sotto il display della cassaforte */
-.vault__code { margin: 0; font-family: var(--font-mono); font-feature-settings: var(--num-features); font-size: var(--fs-sm); letter-spacing: .04em; color: var(--c-lcd-text, var(--c-digit)); }
-.vault__code b { font-size: var(--fs-md); letter-spacing: .16em; }
-.vault .dial:disabled { opacity: 1; cursor: default; }
 
 /* ---------- Nome, profilo, conferme, strumenti della missione ---------- */
 .name-form { width: 100%; max-width: 28rem; }
@@ -85,15 +81,48 @@
 .profile[open] > summary { border-bottom: var(--border-w, 1.5px) solid var(--c-border); }
 .profile__text { color: var(--c-text-muted); font-size: var(--fs-sm); margin: var(--sp-3) 0; }
 .profile__actions { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: var(--sp-3); }
-.btn--danger { background: var(--c-danger); color: var(--c-surface); }
-.btn--danger-outline { color: var(--c-danger); border-color: var(--c-danger); }
 
 .mission-tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); justify-content: center; margin-top: var(--sp-4); }
 .mission-tools .btn { min-height: var(--tap); font-size: var(--fs-sm); padding-inline: var(--sp-4); }
 
-dialog.confirm { border: var(--border-w, 1.5px) solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface); color: var(--c-text); padding: var(--sp-5); width: min(92vw, 26rem); box-shadow: 0 12px 40px rgb(0 0 0 / .4); }
-dialog.confirm::backdrop { background: rgb(10 5 30 / .6); }
-.confirm__title { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); line-height: var(--lh-tight); }
-.confirm__text { margin: 0 0 var(--sp-4); color: var(--c-text-muted); }
-.confirm__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: flex-end; }
-.confirm__actions .btn { flex: 1 1 8rem; }
+
+/* righe dei pesi (domanda "scrivi la combinazione"): si vedono i pesi, non le ruote */
+.ruler { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.ruler__w { text-align: center; padding: var(--sp-2) 0; border-radius: var(--r-sm); background: var(--c-surface-2); border: var(--border-w, 1.5px) solid var(--c-border); font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 700; font-size: var(--fs-sm); color: var(--c-text); }
+
+/* ---------- Gioca e basta + I miei progressi ---------- */
+.home__play { max-width: 28rem; min-height: 64px; font-size: var(--fs-lg); }
+
+.board { display: flex; flex-direction: column; gap: var(--sp-3); }
+.board__title { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: var(--fs-xl); line-height: 1; color: var(--c-primary); text-shadow: var(--glow); }
+.board__sum { margin: 0; }
+.board__sub { margin: var(--sp-3) 0 0; font-size: var(--fs-md); text-align: left; width: 100%; max-width: 28rem; }
+
+.chapter { background: var(--c-surface); border: var(--border-w, 1.5px) solid var(--c-border); border-radius: var(--r-lg); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
+.chapter__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.chapter__title { margin: 0; font-size: var(--fs-md); line-height: var(--lh-tight); }
+.chapter__badge { font-size: var(--fs-xs); font-weight: 700; padding: 2px var(--sp-3); border-radius: var(--r-pill); border: var(--border-w, 1.5px) solid var(--c-border); color: var(--c-text-muted); white-space: nowrap; }
+.chapter__badge.is-covered { color: var(--c-secondary); border-color: var(--c-secondary); }
+.chapter__badge.is-complete { color: var(--c-success); border-color: var(--c-success); background: var(--c-success-bg); }
+.chapter__src { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); }
+.chapter__bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--c-surface-2); border: 1px solid var(--c-border); }
+.chapter__bar .is-passed { background: var(--c-success); }
+.chapter__bar .is-touched { background: var(--c-secondary); }
+
+.topics { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); width: 100%; }
+.topic { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-3); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); background: var(--c-surface-2); border: var(--border-w, 1.5px) solid transparent; text-align: left; }
+.topic__main, .topic > div:first-child { display: flex; flex-direction: column; min-width: 0; flex: 1 1 12rem; }
+.topic__name { font-weight: 700; }
+.topic__score { font-size: var(--fs-xs); color: var(--c-text-muted); }
+.topic--superato { background: var(--c-success-bg); }
+.topic--bocciato { background: var(--c-danger-bg); border-color: var(--c-danger); }
+.topic--toccato { border-color: var(--c-secondary); }
+.topic--non-toccato { border-style: dashed; border-color: var(--c-border); }
+.topic__train { min-height: var(--tap); padding-inline: var(--sp-4); font-size: var(--fs-sm); }
+.topics--summary { max-width: 28rem; }
+
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 800; padding: 2px var(--sp-3); border-radius: var(--r-pill); border: var(--border-w, 1.5px) solid currentColor; white-space: nowrap; background: var(--c-surface); }
+.chip--superato { color: var(--c-success); }
+.chip--bocciato { color: var(--c-danger); }
+.chip--toccato { color: var(--c-secondary); }
+.chip--non-toccato { color: var(--c-text-muted); }

@@ -4,7 +4,8 @@
 // Tre tipi di domanda:
 //   build: l'utente gira le ruote finché il display segna N            (kind "safe")
 //   read:  le ruote sono già impostate, l'utente somma i pesi → N      (kind "text", vault.show = "read")
-//   code:  le ruote sono già impostate, l'utente scrive il codice 0/1  (kind "text", vault.show = "code")
+//   code:  si vede solo il numero del display e i pesi: l'utente decide, peso per peso, 1 (serve) o 0 (non serve)
+//          e scrive la combinazione in binario (kind "text", vault.show = "ruler"). Nessuna ruota mostrata: niente da ricopiare.
 
 import * as E from "./engine.mjs";
 import { rint } from "./questions.mjs";
@@ -59,8 +60,8 @@ export function vaultCode(rng, n) {
   return {
     kind: "text",
     base: 2,
-    vault: { bits: bits8(n), show: "code" },
-    prompt: "Scrivi il codice binario della combinazione: 1 per ogni ruota accesa, 0 per ogni ruota spenta, da sinistra (128) a destra (1). Gli zeri iniziali puoi ometterli.",
+    vault: { show: "ruler", value: n },
+    prompt: `Il display della cassaforte segna ${n}. Scrivi la combinazione in binario: per ogni peso metti 1 se serve per fare ${n}, 0 se non serve. Gli zeri iniziali puoi ometterli.`,
     answer: E.toBin(n),
     explain: [`Ruote da 128 a 1: ${nibbles(bits8(n))}`, `Senza zeri iniziali: ${E.toBin(n)}`, `Valore: ${onWeights(n).join(" + ")} = ${n}`],
     radio: pick(rng, RADIO_CODE),

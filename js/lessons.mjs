@@ -257,6 +257,48 @@ export const LESSONS = {
   },
 };
 
+// Ogni domanda appartiene a un argomento (serve a tenere traccia di cosa è stato toccato, superato o bocciato).
+// Quartiere 1: elenco esplicito per inizio del testo. Quartiere 2: bit-byte, salvo le domande sul numero di valori. Quartiere 3: sistemi-posizionali.
+const TOPIC_BY_PROMPT = [
+  ["Quali caratteristiche devono avere le istruzioni", "istruzioni-robot"],
+  ["Perché al robot non basta", "istruzioni-robot"],
+  ["Istruzioni corrette bastano", "istruzioni-robot"],
+  ["Che cos'è un algoritmo", "algoritmo-pensiero"],
+  ["«2010» e «Paola»", "dati-informazioni"],
+  ["«Paola è nata nel 2010", "dati-informazioni"],
+  ["Qual è l'ordine delle quattro fasi", "algoritmo-pensiero"],
+  ["Che cos'è l'astrazione", "algoritmo-pensiero"],
+  ["Che cos'è la scomposizione", "algoritmo-pensiero"],
+  ["Dopo aver formulato un algoritmo", "algoritmo-pensiero"],
+  ["Da che cosa deriva la parola", "informatica-termini"],
+  ["L'informatica è", "informatica-termini"],
+  ["Quale di questi è una TECNOLOGIA", "informatica-termini"],
+  ["Quale di questi è un'APPLICAZIONE", "informatica-termini"],
+  ["Perché in italiano «computer»", "informatica-termini"],
+  ["Che cosa indica la sigla ICT", "informatica-termini"],
+  ["Che cosa indicava un tempo", "informatica-termini"],
+  ["Quanti valori diversi si possono rappresentare con 2 bit", "bit-valori"],
+  ["Quanti valori diversi si possono rappresentare con 8 bit", "bit-valori"],
+  ["Qual è il numero intero più grande che sta in un byte", "bit-valori"],
+  ["Se a un numero di bit ne aggiungi uno", "bit-valori"],
+];
+for (const [key, lesson] of Object.entries(LESSONS)) {
+  for (const q of lesson.questions) {
+    const hit = TOPIC_BY_PROMPT.find(([start]) => q.prompt.startsWith(start));
+    q.topic = hit ? hit[1] : key === "2" ? "bit-byte" : key === "3" ? "sistemi-posizionali" : undefined;
+  }
+}
+
+// Domande di un argomento, già nel formato delle domande a scelta multipla (opzioni mescolate).
+export function lessonQuestionsFor(rng, topic, exclude = new Set()) {
+  const all = Object.values(LESSONS).flatMap((l) => l.questions).filter((q) => q.topic === topic);
+  const fresh = all.filter((q) => !exclude.has(q.prompt));
+  const pool = fresh.length ? fresh : all;
+  if (!pool.length) return null;
+  const t = pool[Math.floor(rng() * pool.length)];
+  return { kind: "choice", prompt: t.prompt, options: shuffle(rng, t.options), answer: t.options[0], explain: t.explain, radio: t.radio, topic };
+}
+
 // Missione di teoria su un quartiere: tutte le domande del pool (max `count`), con le opzioni mescolate.
 export function buildLessonMission(rng, key, count = 8) {
   const lesson = LESSONS[key];

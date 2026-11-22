@@ -42,7 +42,7 @@ test("tipi di domanda: build, read e code, tutti con risposta corretta", () => {
   for (let s = 1; s <= 500; s++) {
     const m = V.buildWarmupMission(mulberry(s));
     const kinds = m.map((q) => (q.kind === "safe" ? "build" : q.vault.show));
-    assert.deepEqual(kinds, ["build", "build", "build", "read", "build", "code", "build", "read", "build", "code"]);
+    assert.deepEqual(kinds, ["build", "build", "build", "read", "build", "ruler", "build", "read", "build", "ruler"]);
     for (const q of m) {
       if (q.kind === "safe") {
         assert.ok(Q.checkAnswer(q, q.value));
@@ -53,10 +53,12 @@ test("tipi di domanda: build, read e code, tutti con risposta corretta", () => {
         assert.ok(Q.checkAnswer(q, q.answer));
         assert.ok(Q.checkAnswer(q, ` ${q.answer} `));
       } else {
-        assert.equal(valueOf(q.vault.bits), E.fromBin(q.answer));
-        assert.ok(Q.checkAnswer(q, q.vault.bits), "il codice completo con zeri iniziali è accettato");
+        assert.equal(q.vault.bits, undefined, "nessuna ruota mostrata: niente da ricopiare");
+        assert.equal(q.vault.value, E.fromBin(q.answer));
+        assert.ok(Q.checkAnswer(q, V.bits8(q.vault.value)), "il codice completo con zeri iniziali è accettato");
         assert.ok(Q.checkAnswer(q, q.answer));
-        assert.ok(Q.checkAnswer(q, V.nibbles(q.vault.bits)), "anche con lo spazio tra i due gruppi da 4");
+        assert.ok(Q.checkAnswer(q, V.nibbles(V.bits8(q.vault.value))), "anche con lo spazio tra i due gruppi da 4");
+        assert.match(q.prompt, new RegExp(`segna ${q.vault.value}\\b`));
         assert.ok(!Q.checkAnswer(q, E.toBin(E.fromBin(q.answer) ^ 1)), "un solo bit sbagliato non va accettato");
       }
     }
@@ -68,7 +70,8 @@ test("le domande read/code non rivelano la risposta nel testo", () => {
     for (const q of V.buildWarmupMission(mulberry(s))) {
       if (q.kind === "safe") continue;
       assert.ok(!q.prompt.includes(q.answer) || q.answer.length < 2, q.prompt);
-      assert.doesNotMatch(q.prompt, /segna \d+/);
+      if (q.vault.show === "read") assert.doesNotMatch(q.prompt, /segna \d+/);
+      if (q.vault.show === "ruler") assert.ok(!q.prompt.includes(V.bits8(q.vault.value)), "il codice non è scritto nel testo");
     }
   }
 });

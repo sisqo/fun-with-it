@@ -9,6 +9,7 @@ e come integrarle. I file veri sono qui accanto:
 | `components.css` | Componenti (richiede `tokens.css`) |
 | `mascot/r0b-*.svg` | La mascotte R0b in 6 espressioni |
 | `mascot/_build.py` | Generatore della mascotte (modifica qui, non a mano negli SVG) |
+| `map-sky.svg` | Skyline di Neon Bay per la testata della mappa (da mettere inline) |
 | `preview.html` | Anteprima di tutto, interattiva. Con il server di David: `http://localhost:8765/design/preview.html` |
 
 ## 1. Direzione
@@ -333,6 +334,64 @@ testo va a capo sotto la frequenza. I due puntini dopo il nome del DJ li mette l
 computer, sulla città e sul DJ stesso. Per esempio: "Anche i computer sbagliano. Solo, molto
 più in fretta."
 
+### Mappa dei quartieri (`.map`)
+
+È la schermata di scelta, disegnata come una linea della metro al neon. Ogni quartiere è una
+fermata con la sua card. Funziona in una colonna sola, la stessa su telefono e computer, e si
+legge dall'alto verso il basso come un percorso.
+
+```html
+<svg class="map-sky" …>…contenuto di map-sky.svg, inline…</svg>
+<ol class="map">
+  <li class="stop stop--start is-done">…</li>
+  <li class="stop is-open is-here">
+    <span class="stop__node" aria-hidden="true">3</span>          <!-- numero, ✓ o lucchetto -->
+    <button class="stop__card" type="button" aria-label="Quartiere 3: Piazza delle Posizioni, … 2 missioni su 4">
+      <span class="stop__kicker">Quartiere 3</span>
+      <span class="stop__name">Piazza delle Posizioni</span>
+      <span class="stop__topic">Sistemi posizionali</span>
+      <span class="stop__dots" aria-hidden="true"><i class="dot is-done"></i><i class="dot is-current"></i><i class="dot"></i><i class="dot is-boss"></i></span>
+      <span class="stop__meta">2 missioni su 4</span>
+    </button>
+    <span class="stop__here">Sei qui</span>
+  </li>
+  <li class="stop stop--hub is-open">… <span class="stop__badge">Il centro della città</span> come primo figlio della card …</li>
+  <li class="stop is-locked">… <button class="stop__card" aria-disabled="true"> …</li>
+</ol>
+```
+
+**Stati della fermata**
+
+| Classe | Significato | Aspetto |
+|---|---|---|
+| `.is-done` | completato | nodo verde con ✓, binario verde |
+| `.is-open` | disponibile | nodo rosa con il numero, card con bordo rosa |
+| `.is-locked` | bloccato | nodo e card tratteggiati, binario a trattini |
+| `.is-here` | dove si trova Neri | anello che pulsa piano sul nodo, più l'etichetta `.stop__here` "Sei qui" |
+
+Il binario non si spezza: ogni fermata disegna il proprio tratto in arrivo, colorato col suo
+stato.
+
+**Varianti**
+- `.stop--hub` è **Operazioni**, lo snodo: nodo più grande, card con bordo a gradiente
+  tramonto, nome in insegna e badge `.stop__badge`. Pesa visivamente più di tutte.
+- `.stop--start` è "Parti da qui", la serie di casseforti di riscaldamento: card su
+  `surface-2`, più sobria.
+
+**Puntini e tocco**
+- I puntini (`.dot`) sono **indicatori**, non tasti: è la card intera che si tocca. Stati:
+  `.is-done`, `.is-current`, normale da fare. `.is-boss` è un rombo, il caveau finale.
+- Il tocco sulla card apre l'elenco delle missioni del quartiere. Si possono riusare
+  `.choices` o `.steps`.
+- Sulle fermate bloccate usa `aria-disabled="true"`, non `disabled`: così il tocco può
+  ancora dire "Si apre dopo …".
+
+**Nomi proposti** (il tema va sotto, in `.stop__topic`): Il Garage (Parti da qui), Molo dei
+Robot, Vicolo dei Bit, Piazza delle Posizioni, **Il Ponte** (decimale ⇄ binario, un ponte tra
+due basi), **Torre dei Conti** (operazioni), **Faro Sedici** (ottale ed esadecimale),
+Lungomare (virgola e confronti). Lo skyline di `map-sky.svg` contiene il ponte, la torre al
+centro e il faro.
+
 ### Cassaforte a 8 ruote (`.vault`)
 
 Ora è un componente di supporto.
@@ -346,6 +405,20 @@ Ora è un componente di supporto.
   quartiere 6 ogni fila è una cifra esadecimale. Sopra i 26rem va in 1×8, con uno spazio tra
   i due nibble.
 - **Stato.** `.vault.is-open` quando il codice è giusto.
+- **Codice.** `.vault__code` mostra il codice in binario sotto il display: "Codice binario:
+  `<b>0100 0101</b>`", diviso in nibble.
+- **Ruote bloccate.** Le ruote `:disabled` (domande "leggi la cassaforte", o dopo la
+  risposta) hanno il bordo tratteggiato e non rullano: si capisce che non si girano.
+
+### Varie
+
+- **Campo per i nomi.** `.answer__input.answer__input--text` usa il font dell'interfaccia e il
+  colore del testo. `.answer__input` da solo è pensato per le cifre (mono, ciano, spaziato).
+- **Bottoni di pericolo.** `.btn--danger` è pieno; `.btn--danger-outline` è col bordo e
+  funziona anche senza `.btn--ghost`.
+- **Conferma.** `dialog.confirm` > `form[method=dialog]` > `.confirm__title`,
+  `.confirm__text`, `.confirm__actions`. Su telefono i bottoni vanno uno per riga, con
+  "Annulla" in basso, vicino al pollice, e col focus.
 
 ## 6. Dal prototipo ai miei nomi
 
@@ -373,9 +446,8 @@ Ora è un componente di supporto.
 
 Nell'ordine di David:
 
-1. Mappa dei quartieri con le missioni come puntini. Operazioni è il quartiere centrale.
-2. Card "lezione" per la teoria, con R0b "sete" nella lezione 1.
-3. Caveau del boss.
-4. Notifiche-badge stile feed.
-5. Menu "smartphone".
-6. Negozio (skin di R0b, auto, sfondi).
+1. Card "lezione" per la teoria, con R0b "sete" nella lezione 1.
+2. Caveau del boss.
+3. Notifiche-badge stile feed.
+4. Menu "smartphone".
+5. Negozio (skin di R0b, auto, sfondi).
