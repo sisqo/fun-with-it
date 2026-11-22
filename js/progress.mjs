@@ -187,8 +187,8 @@ export const CHAPTER_STATE = {
   PERFECT: "perfetto", PASSED: "superato", REVIEW: "da-ripassare", COVERED: "coperto", STARTED: "in-corso", NEW: "da-iniziare",
 };
 export const CHAPTER_LABEL = {
-  perfetto: "Superato alla perfezione", superato: "Superato, non alla perfezione", "da-ripassare": "Da ripassare",
-  coperto: "Coperto", "in-corso": "In corso", "da-iniziare": "Da iniziare",
+  perfetto: "Superato alla perfezione", superato: "Superato", "da-ripassare": "Da ripassare",
+  coperto: "Tutto provato", "in-corso": "In corso", "da-iniziare": "Da iniziare",
 };
 
 // La perfezione misura come si va ADESSO, non la storia: gli errori fatti imparando non si portano dietro per sempre.
@@ -216,9 +216,15 @@ export function chapterDetail(ch) {
   switch (ch.state) {
     case CHAPTER_STATE.PERFECT: return "Tutti gli argomenti superati, ultime risposte tutte giuste";
     case CHAPTER_STATE.PASSED: {
-      const names = ch.topics.filter((t) => !t.perfect).map((t) => `«${t.title}»`);
-      const shown = names.slice(0, 2).join(" e ") + (names.length > 2 ? "…" : "");
-      return `Tutti superati. Per la perfezione: rifai giuste le ultime 5 domande di ${shown}`;
+      // La frase dice cosa serve davvero: errori nelle ultime risposte → rispondere giusto alle prossime;
+      // finestra pulita ma numeri ancora facili → continuare, arriveranno quelli difficili.
+      const names = (list) => list.slice(0, 2).map((t) => `«${t.title}»`).join(" e ") + (list.length > 2 ? "…" : "");
+      const imperfect = ch.topics.filter((t) => !t.perfect);
+      const withErrors = imperfect.filter((t) => (t.window ?? []).includes(0));
+      const clean = imperfect.filter((t) => !(t.window ?? []).includes(0));
+      if (withErrors.length && !clean.length) return `Tutti superati. Per la perfezione: rispondi giusto alle prossime domande di ${names(withErrors)}`;
+      if (!withErrors.length && clean.every((t) => !t.theory)) return `Tutti superati. Per la perfezione: continua con ${names(clean)}, arriveranno i numeri più difficili`;
+      return `Tutti superati. Per la perfezione: continua a rispondere giusto su ${names(imperfect)}`;
     }
     case CHAPTER_STATE.REVIEW: return `${ch.failed} ${ch.failed === 1 ? "argomento" : "argomenti"} da ripassare`;
     case CHAPTER_STATE.COVERED: return `Toccati tutti: ${ch.passed} su ${ch.total} superati`;

@@ -101,3 +101,7 @@
 /* il traguardo già raggiunto resta visibile anche se lo stato di adesso è sceso */
 .course__was, .topic__was, .chapter__was { display: block; font-size: var(--fs-xs); font-style: italic; color: var(--c-secondary); }
 .chapter__was { margin: 0; }
+
+/* come funzionano gli stati: elenco breve */
+.rules { margin: 0; padding-left: 1.2em; text-align: left; font-size: var(--fs-sm); color: var(--c-text-muted); display: flex; flex-direction: column; gap: var(--sp-1); }
+.rules b { color: var(--c-text); }

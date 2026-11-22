@@ -450,6 +450,49 @@
   </div>
 </section>
 
+<section class="pv-section">
+  <h2>Lezione, combinazione, traguardo in pausa</h2>
+  <div class="pv-screens">
+    <div>
+      <article class="lesson">
+        <header class="lesson__head"><p class="lesson__kicker">Lezione 1 · Ragionare per algoritmi</p>
+          <h1 class="lesson__title">Il robot che aveva sete</h1></header>
+        <div class="lesson__scene"><img class="lesson__mascot" src="mascot/r0b-sete.svg" alt="">
+          <p class="bubble">Ho sete. Ma so fare solo quello che mi scrivi, un passo alla volta.</p></div>
+        <div class="lesson__body">
+          <p>R0b non "capisce" cosa vuol dire bere un bicchiere d'acqua. Ha bisogno di istruzioni precise, in ordine, senza buchi.</p>
+          <p class="lesson__key"><b>Algoritmo</b> = una sequenza finita di istruzioni chiare che, eseguite in ordine, risolvono un problema.</p>
+          <ol class="algo">
+            <li>prendi il bicchiere</li>
+            <li>apri il rubinetto</li>
+            <li class="is-if">se il bicchiere è pieno: chiudi il rubinetto</li>
+            <li class="is-highlight">bevi</li>
+          </ol>
+          <p>Manca qualcosa? Prova a eseguirlo come farebbe R0b, alla lettera.</p>
+        </div>
+        <footer class="lesson__foot">
+          <span class="pager" role="img" aria-label="Pagina 2 di 4"><i class="is-done"></i><i class="is-current"></i><i></i><i></i></span>
+          <button class="btn btn--ghost" type="button">Indietro</button>
+          <button class="btn btn--primary" type="button">Avanti</button>
+        </footer>
+      </article>
+      <p class="pv-caption">Card lezione: scena con R0b e fumetto, definizione da ricordare in viola, algoritmo come istruzioni numerate (rientro per i "se", evidenza rosa per il passo di cui si parla), pagine a puntini.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <article class="card">
+        <h3 class="op-title"><span class="op-title__name">Combinazione</span><span>Scrivi <span class="n n--10">69<sub>10</sub></span> sotto i pesi</span></h3>
+        <form class="ruler-form" novalidate onsubmit="return false"><div class="ruler" role="group" aria-label="Pesi delle ruote e cifre della combinazione, da sinistra a destra"><span class="ruler__w">128</span><span class="ruler__w">64</span><span class="ruler__w">32</span><span class="ruler__w">16</span><span class="ruler__w">8</span><span class="ruler__w">4</span><span class="ruler__w">2</span><span class="ruler__w">1</span><input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" placeholder=" " aria-label="Cifra sotto il peso 128" value="0"><input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" placeholder=" " aria-label="Cifra sotto il peso 64" value="1"><input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" placeholder=" " aria-label="Cifra sotto il peso 32" value="0"><input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" placeholder=" " aria-label="Cifra sotto il peso 16" value="0"><input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" placeholder=" " aria-label="Cifra sotto il peso 8" value="0"><input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" placeholder=" " aria-label="Cifra sotto il peso 4" value=""><input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" placeholder=" " aria-label="Cifra sotto il peso 2" value=""><input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" placeholder=" " aria-label="Cifra sotto il peso 1" value=""></div><button class="btn btn--primary btn--block" type="submit">Apri</button></form>
+      </article>
+      <p class="pv-caption" style="margin:0">Combinazione: su telefono 2 file da 4 (un nibble per fila), ogni peso sopra la sua cifra; casella vuota tratteggiata.</p>
+      <ul class="topics">
+        <li class="topic topic--toccato"><div class="topic__main"><span class="topic__name">Sottrazione con prestito</span><span class="topic__score">9 su 12 giuste</span><span class="topic__was">Superato il <b>19/11</b>: 3 errori recenti, rifai giuste le prossime per tornarci</span></div><span class="chip chip--toccato">Toccato</span><button class="btn btn--ghost topic__train" type="button">Allenati</button></li>
+      </ul>
+      <ol class="course"><li><button class="course__item course__item--coperto" type="button"><span class="course__n" aria-hidden="true">4</span><span class="course__main"><span class="course__title">Operazioni in binario</span><span class="course__detail">Toccati tutti: 4 su 5 superati</span><span class="course__was">Era superato il <b>19/11</b>: rifai giuste le prossime domande per tornarci</span></span><span class="course__state course__state--coperto"><i class="state-dot state-dot--half" aria-hidden="true"></i><span>Coperto</span></span></button></li></ol>
+      <p class="pv-caption" style="margin:0">Traguardo in pausa: stella d'oro vuota + data in oro. Il trofeo è tenuto, non perso.</p>
+    </div>
+  </div>
+</section>
+
 <script>
   // --- solo demo: la logica vera è di David ---
   const swatches = ["bg","surface","surface-2","border","text","text-muted","primary","secondary","accent","digit","success","danger","cash","wanted","focus","vault","dial-on","lcd-text"];

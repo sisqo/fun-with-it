@@ -841,6 +841,114 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .metro__stop.is-complete .metro__node::after { content: "✓"; background: var(--c-success); color: var(--c-surface); }
 .metro__stop.is-review .metro__node::after { content: "!"; background: var(--c-danger); color: var(--c-surface); }
 
+/* ---------- Traguardo già raggiunto ("Era superato il 19/11…") ---------- */
+/* Tono: il trofeo non si perde, è in pausa. Stella d'oro VUOTA + testo normale (non corsivo,
+   a 13px il corsivo si legge male) con la data in grassetto: <span class="topic__was">Superato il <b>19/11</b>: …</span> */
+.course__was, .topic__was, .chapter__was {
+  display: flex; gap: 6px; align-items: baseline; margin: 4px 0 0;
+  font-size: var(--fs-xs); line-height: 1.35; color: var(--c-text-muted); font-style: normal;
+}
+.course__was::before, .topic__was::before, .chapter__was::before {
+  content: "★"; flex: none; font-size: 1.15em; line-height: 1;
+  color: transparent; -webkit-text-stroke: 1.5px var(--c-cash); /* stella vuota: il posto è tenuto */
+}
+.course__was b, .topic__was b, .chapter__was b { color: var(--c-cash); }
+
+/* ---------- Combinazione a 8 cifre sotto i pesi (.ruler-form) ---------- */
+/* Markup di David: .ruler con 8 span.ruler__w poi 8 input.ruler__cell.
+   8 caselle in fila su 320px sarebbero larghe ~32px (sotto i 44 di tap): sotto i 26rem
+   vanno in 2 file da 4 (un nibble per fila, come la cassaforte), ogni peso sopra la sua cifra. */
+.ruler-form { container-type: inline-size; display: flex; flex-direction: column; gap: var(--sp-3); }
+.ruler { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px var(--sp-2); }
+.ruler__w:nth-of-type(-n+4) { grid-row: 1; }
+.ruler__cell:nth-of-type(-n+4) { grid-row: 2; }
+.ruler__w:nth-of-type(n+5) { grid-row: 3; margin-top: var(--sp-2); }
+.ruler__cell:nth-of-type(n+5) { grid-row: 4; }
+@container (min-width: 26rem) {
+  .ruler { grid-template-columns: repeat(8, 1fr); gap: 4px 6px; }
+  .ruler__w { grid-row: 1 !important; margin-top: 0 !important; }
+  .ruler__cell { grid-row: 2 !important; }
+  .ruler > :nth-of-type(5) { margin-left: var(--sp-2); } /* respiro tra i nibble */
+}
+.ruler__w {
+  text-align: center; padding: 2px 0; font-family: var(--font-mono); font-feature-settings: var(--num-features);
+  font-weight: 700; font-size: var(--fs-xs); color: var(--c-text-muted);
+}
+.ruler__cell {
+  width: 100%; min-width: var(--tap); min-height: var(--tap-lg); padding: 0; text-align: center;
+  font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800;
+  font-size: max(16px, var(--fs-lg)); color: var(--c-digit);
+  background: var(--c-surface); border: var(--border-w) solid var(--c-border); border-radius: var(--r-md);
+  caret-color: var(--c-primary);
+}
+.ruler__cell:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 1px; border-color: transparent; }
+.ruler__cell:placeholder-shown { border-style: dashed; } /* casella ancora vuota (serve placeholder=" ") */
+.ruler__cell:disabled { opacity: 1; }
+.ruler-form.is-correct .ruler__cell { border-color: var(--c-success); background: var(--c-success-bg); color: var(--c-success); }
+.ruler-form.is-wrong .ruler__cell.is-wrong { border-color: var(--c-danger); background: var(--c-danger-bg); color: var(--c-danger); animation: shake var(--dur-slow) var(--ease-out); }
+
+/* ---------- Card "lezione" ---------- */
+/* Teoria in micro-pagine: scena con R0b e fumetto, poi il contenuto, poi "Ho capito".
+   <article class="lesson">
+     <header class="lesson__head"><p class="lesson__kicker">Lezione 1 · Ragionare per algoritmi</p>
+       <h1 class="lesson__title">Il robot che aveva sete</h1></header>
+     <div class="lesson__scene"><img class="lesson__mascot" src="design/mascot/r0b-sete.svg" alt="">
+       <p class="bubble">Ho sete. Ma so fare solo quello che mi scrivi, un passo alla volta.</p></div>
+     <div class="lesson__body"> <p>…</p> <p class="lesson__key"><b>Algoritmo</b> = …</p> <ol class="algo">…</ol> </div>
+     <footer class="lesson__foot"><span class="pager" aria-label="Pagina 2 di 4"><i class="is-done"></i><i class="is-current"></i><i></i><i></i></span>
+       <button class="btn btn--ghost">Indietro</button><button class="btn btn--primary">Avanti</button></footer>
+   </article> */
+.lesson {
+  background: var(--c-surface); border: var(--border-w) solid var(--c-border); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0;
+}
+.lesson__kicker { margin: 0; font-family: var(--font-sign); font-size: var(--fs-xs); letter-spacing: .06em; color: var(--c-accent); }
+.lesson__title { margin: 2px 0 0; font-size: var(--fs-xl); line-height: var(--lh-tight); text-wrap: balance; }
+.lesson__scene { display: grid; grid-template-columns: 96px 1fr; gap: var(--sp-3); align-items: center; }
+.lesson__mascot { width: 96px; height: auto; }
+
+/* fumetto: la coda punta verso R0b (a sinistra) */
+.bubble {
+  position: relative; margin: 0; padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface-2); border: var(--border-w) solid var(--c-border); border-radius: var(--r-lg);
+  font-weight: 700; line-height: 1.35;
+}
+.bubble::before {
+  content: ""; position: absolute; left: -9px; top: 50%; width: 16px; height: 16px; margin-top: -8px;
+  background: inherit; border: inherit; border-width: 0 0 var(--border-w) var(--border-w);
+  transform: rotate(45deg); border-radius: 0 0 0 4px;
+}
+.bubble--digit { font-family: var(--font-mono); font-feature-settings: var(--num-features); color: var(--c-digit); }
+
+.lesson__body { display: flex; flex-direction: column; gap: var(--sp-3); }
+.lesson__body p { margin: 0; }
+/* la definizione da ricordare */
+.lesson__key {
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--c-secondary) 10%, var(--c-surface));
+  border-left: 4px solid var(--c-secondary);
+}
+.lesson__key b { color: var(--c-secondary); }
+/* un algoritmo scritto come istruzioni per il robot */
+.algo { list-style: none; margin: 0; padding: 0; counter-reset: algo; display: flex; flex-direction: column; gap: 6px; }
+.algo > li {
+  counter-increment: algo; display: grid; grid-template-columns: 2.2em 1fr; gap: var(--sp-2); align-items: baseline;
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); background: var(--c-surface-2);
+  font-family: var(--font-mono); font-size: var(--fs-sm); line-height: 1.4;
+}
+.algo > li::before { content: counter(algo, decimal-leading-zero); color: var(--c-digit); font-weight: 800; font-feature-settings: var(--num-features); }
+.algo > li.is-if { margin-left: var(--sp-4); border-left: 3px solid var(--c-accent); } /* passo dentro un "se…" */
+.algo > li.is-highlight { background: color-mix(in srgb, var(--c-primary) 14%, var(--c-surface)); outline: 2px solid var(--c-primary); outline-offset: -2px; }
+
+.lesson__foot { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.lesson__foot .pager { grid-column: 1 / -1; justify-self: center; }
+.lesson__foot .btn--primary { grid-column: 3; }
+.lesson__foot .btn--ghost { grid-column: 1; }
+.pager { display: inline-flex; gap: 6px; }
+.pager i { width: 8px; height: 8px; border-radius: 4px; border: 1.5px solid var(--c-text-muted); transition: width var(--dur-med) var(--ease-out); }
+.pager i.is-done { background: var(--c-text-muted); }
+.pager i.is-current { width: 22px; background: var(--c-primary); border-color: var(--c-primary); }
+
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }
 

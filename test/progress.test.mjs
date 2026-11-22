@@ -495,13 +495,14 @@ test("superato non alla perfezione: dice quale argomento rifare, senza 'solo'", 
   const topics = { ...mastery(C1), "istruzioni-robot": { attempts: 12, correct: 9, window: [1, 1, 0, 1, 1], level: 1, lastAt: 1 } };
   const ch = chapterOf({ topics }, "c1");
   assert.deepEqual([ch.state, ch.complete, ch.mastered], ["superato", true, false]);
-  assert.equal(ch.label, "Superato, non alla perfezione");
-  assert.match(ch.detail, /Per la perfezione: rifai giuste le ultime 5 domande di «Istruzioni per il robot»/);
+  assert.equal(ch.label, "Superato");
+  assert.match(ch.detail, /Per la perfezione: rispondi giusto alle prossime domande di «Istruzioni per il robot»/);
   assert.doesNotMatch(ch.detail, /solo/);
   assert.doesNotMatch(ch.detail, /%/, "niente percentuali: conta come si va adesso");
   // più argomenti da rifare: ne cita due e poi puntini
   const many = chapterOf({ topics: mastery(C1, { window: [1, 1, 0, 1, 1] }) }, "c1");
   assert.match(many.detail, /«Istruzioni per il robot» e «Dati e informazioni»…$/);
+  assert.match(many.detail, /rispondi giusto alle prossime domande/);
 });
 
 test("per le operazioni con i numeri serve anche la difficoltà ≥ 0,9; per la teoria no", () => {
@@ -646,4 +647,42 @@ test("passedAt sopravvive al salvataggio e il reset lo cancella", () => {
 test("formatDay: giorno/mese", () => {
   assert.equal(G.formatDay(Date.UTC(2026, 10, 12, 12)), "12/11");
   assert.equal(G.formatDay(Date.UTC(2026, 0, 5, 12)), "5/1");
+});
+
+// ---------- Frasi della perfezione: dicono cosa serve davvero ----------
+
+test("frase della perfezione: errori nelle ultime risposte → 'rispondi giusto alle prossime'", () => {
+  const topics = { ...mastery(C1), storia: { attempts: 12, correct: 9, window: [1, 1, 1, 1, 0], level: 0.4, lastAt: 1 } };
+  const ch = chapterOf({ topics }, "c1");
+  assert.equal(ch.state, "superato");
+  assert.equal(ch.detail, "Tutti superati. Per la perfezione: rispondi giusto alle prossime domande di «Storia dell'informatica»");
+  assert.doesNotMatch(ch.detail, /rifai|ultime/);
+});
+
+test("frase della perfezione: ultime 5 giuste ma numeri ancora facili → 'continua, arriveranno i numeri più difficili'", () => {
+  const topics = mastery(NUM_OPS, { level: 0.75 }); // finestra pulita, livello 0,75 < 0,9
+  const ch = chapterOf({ topics }, "ops");
+  assert.equal(ch.state, "superato");
+  assert.equal(ch.detail, "Tutti superati. Per la perfezione: continua con «Addizione in binario» e «Sottrazione in binario»…, arriveranno i numeri più difficili");
+  const one = chapterOf({ topics: { ...mastery(NUM_OPS, { level: 1 }), addizione: { attempts: 12, correct: 10, window: [1, 1, 1, 1, 1], level: 0.8, lastAt: 1 } } }, "ops");
+  assert.equal(one.detail, "Tutti superati. Per la perfezione: continua con «Addizione in binario», arriveranno i numeri più difficili");
+  assert.doesNotMatch(one.detail, /rifai/);
+});
+
+test("frase della perfezione: casi misti o teoria con finestra corta → forma generica", () => {
+  const mixed = { ...mastery(NUM_OPS, { level: 1 }), addizione: { attempts: 12, correct: 8, window: [1, 1, 0, 1, 1], level: 1, lastAt: 1 }, sottrazione: { attempts: 12, correct: 10, window: [1, 1, 1, 1, 1], level: 0.8, lastAt: 1 } };
+  assert.equal(chapterOf({ topics: mixed }, "ops").detail, "Tutti superati. Per la perfezione: continua a rispondere giusto su «Addizione in binario» e «Sottrazione in binario»");
+  // teoria con soli 4 risposte giuste: non ha un livello, non si parla di numeri difficili
+  const shortTheory = { ...mastery(C1), storia: { attempts: 4, correct: 4, window: [1, 1, 1, 1], level: 0.5, lastAt: 1 } };
+  const d = chapterOf({ topics: shortTheory }, "c1").detail;
+  assert.equal(d, "Tutti superati. Per la perfezione: continua a rispondere giusto su «Storia dell'informatica»");
+  assert.doesNotMatch(d, /numeri/);
+});
+
+test("etichette dei capitoli semplificate", () => {
+  assert.equal(G.CHAPTER_LABEL.superato, "Superato");
+  assert.equal(G.CHAPTER_LABEL.perfetto, "Superato alla perfezione");
+  assert.equal(G.CHAPTER_LABEL.coperto, "Tutto provato");
+  assert.equal(new Set(Object.values(G.CHAPTER_LABEL)).size, 6);
+  assert.ok(Object.values(G.CHAPTER_LABEL).every((l) => !/non alla perfezione|coperto/i.test(l)));
 });

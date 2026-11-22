@@ -601,7 +601,13 @@ function progressScreen(focusChapter = null) {
       <h1 class="board__title">I miei progressi</h1>
       ${statsHTML(c)}
       ${metroHTML(sum)}
-      <p class="home__rules">Superato: almeno 4 giuste nelle ultime 5, con numeri da compito. Da ripassare: meno della metà giuste nelle ultime 5 (dopo almeno 5 domande). Negli esercizi a passaggi conta quanti passaggi hai fatto giusti. Puoi sempre migliorare: lo stato segue come stai andando adesso, quindi un capitolo superato può tornare coperto se sbagli di nuovo. Superato alla perfezione: tutti gli argomenti superati e le ultime 5 risposte tutte giuste.</p>
+      <ul class="rules" aria-label="Come funzionano gli stati">
+        <li><b>Superato:</b> almeno 4 giuste nelle ultime 5, con numeri da compito.</li>
+        <li><b>Alla perfezione:</b> tutti gli argomenti superati, ultime 5 tutte giuste e, per gli esercizi con i numeri, anche quelli più difficili.</li>
+        <li><b>Da ripassare:</b> meno della metà giuste nelle ultime 5 (dopo almeno 5 domande).</li>
+        <li>Negli esercizi a passaggi conta quanti passaggi fai giusti.</li>
+        <li>Lo stato segue come vai adesso: se sbagli di nuovo un capitolo può scendere, ma la data in cui l'avevi superato resta segnata.</li>
+      </ul>
       ${chapters}
       <button class="btn btn--primary btn--block" id="back" type="button">Torna a giocare</button>
     </section>`));
