@@ -1069,7 +1069,8 @@ function enterShop() {
   if (!player) return nameScreen();
   const ctx = shopCtx(player);
   shopFresh = new Set(S.newItems(player, ctx).map((i) => i.id));
-  commit(P.setShopSeen(store, store.current, S.buyableNow(player, ctx).map((i) => i.id)));
+  // unione: un oggetto è "novità" solo la prima volta che lo vedi comprabile, anche se poi i soldi salgono e scendono
+  commit(P.setShopSeen(store, store.current, [...new Set([...player.shopSeen, ...S.buyableNow(player, ctx).map((i) => i.id)])]));
   shopScreen();
 }
 

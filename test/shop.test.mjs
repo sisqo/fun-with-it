@@ -331,3 +331,14 @@ test("setShopSeen: salva, non cambia se uguale, il reset lo azzera", () => {
   assert.equal(setShopSeen(a, key, ["skin:notte"]), a);
   assert.deepEqual(resetPlayer(a, key).players[0].shopSeen, []);
 });
+
+test("novità: comprabile → visto → non più comprabile → di nuovo comprabile NON è una novità", () => {
+  const ctx = { chapters: 0 };
+  let p = { cash: 900, owned: [], shopSeen: [], look: {} };
+  const seen1 = buyableNow(p, ctx).map((i) => i.id);
+  assert.ok(seen1.includes("skin:tramonto"));
+  p = { ...p, shopSeen: [...new Set([...p.shopSeen, ...seen1])], cash: 0 }; // visita, poi spende tutto
+  assert.deepEqual(newItems(p, ctx), []);
+  p = { ...p, cash: 900 }; // torna a 900: niente lampeggia di nuovo
+  assert.deepEqual(newItems(p, ctx), []);
+});

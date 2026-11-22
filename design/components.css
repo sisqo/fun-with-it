@@ -1285,6 +1285,123 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .order__item.is-wrong .order__pos { background: var(--c-danger); border-color: var(--c-danger); color: var(--c-surface); }
 .order__hint { margin: 0; font-size: var(--fs-sm); color: var(--c-text-muted); }
 
+/* =========================================================================
+   AVVISI E BACHECA: lo stesso "post" in due formati
+   - .notice  = avviso a comparsa in alto (sblocchi, trofei, serie), si chiude da solo
+   - .feed    = "La Bacheca": lo storico degli avvisi come un feed social (finto, originale)
+   Tipi (colore dell'icona + icona + parola, mai solo colore):
+   --trophy (oro) · --unlock (viola) · --streak (arancio) · --chapter (verde) · --shop (contanti) · --radio (ciano)
+   ========================================================================= */
+.notice, .post { --kind: var(--c-secondary); }
+.notice--trophy, .post--trophy { --kind: var(--c-cash); }
+.notice--unlock, .post--unlock { --kind: var(--c-secondary); }
+.notice--streak, .post--streak { --kind: var(--c-accent); }
+.notice--chapter, .post--chapter { --kind: var(--c-success); }
+.notice--shop, .post--shop { --kind: var(--c-cash); }
+.notice--radio, .post--radio { --kind: var(--c-digit); }
+
+/* icona tonda del tipo (o la faccia di R0b / del DJ) */
+.kind-icon {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--kind) 16%, var(--c-surface)); color: var(--kind);
+  border: 2px solid var(--kind); overflow: hidden;
+}
+.kind-icon svg { width: 24px; height: 24px; }
+.kind-icon .mascot { width: 130%; height: auto; margin-top: 18%; } /* R0b come avatar: inquadrato sulla testa */
+
+/* ---------- Avviso a comparsa ---------- */
+/* <div class="notices" aria-live="polite">   ← contenitore fisso, uno per pagina
+     <div class="notice notice--unlock" role="status">
+       <span class="kind-icon">…svg…</span>
+       <div class="notice__body"><p class="notice__title">Sbloccato!</p><p class="notice__text">Puoi comprare <b>Tramonto</b>.</p></div>
+       <a class="notice__action" href="#shop">Vai</a>
+       <button class="notice__close" aria-label="Chiudi">×</button>
+     </div></div> */
+.notices {
+  position: fixed; z-index: 60; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + var(--sp-2));
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding-inline: var(--gutter); pointer-events: none;
+}
+.notice {
+  pointer-events: auto; width: 100%; max-width: 26rem;
+  display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+  border-radius: var(--r-lg); background: var(--c-surface); color: var(--c-text);
+  border: var(--border-w) solid var(--c-border); border-left: 5px solid var(--kind);
+  box-shadow: 0 10px 30px rgb(0 0 0 / .28);
+  animation: notice-in var(--dur-slow) var(--ease-pop) both;
+}
+.notice.is-leaving { animation: notice-out var(--dur-med) var(--ease-out) both; }
+.notice__body { flex: 1; min-width: 0; }
+.notice__title { margin: 0; font-weight: 800; line-height: 1.2; }
+.notice__text { margin: 2px 0 0; font-size: var(--fs-sm); color: var(--c-text-muted); }
+.notice__text b { color: var(--c-text); }
+.notice__action {
+  flex: none; min-height: var(--tap); display: inline-grid; place-items: center; padding: 0 var(--sp-3);
+  border-radius: var(--r-pill); background: var(--kind); color: var(--c-surface); font-weight: 800; font-size: var(--fs-sm); text-decoration: none;
+}
+.notice__close {
+  flex: none; width: var(--tap); height: var(--tap); border: 0; border-radius: 50%; background: transparent;
+  color: var(--c-text-muted); font-size: 1.4rem; line-height: 1;
+}
+@keyframes notice-in { from { transform: translateY(-120%); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes notice-out { to { transform: translateY(-120%); opacity: 0 } }
+
+/* ---------- La Bacheca (feed) ---------- */
+/* Ingresso dalla home: <button class="icon-btn" aria-label="Bacheca, 3 nuovi">…campanella…<span class="icon-btn__count">3</span></button>
+   <section class="feed"><h1 class="feed__title">La Bacheca</h1>
+     <ol class="feed__list"><li class="post post--trophy is-unread">
+       <header class="post__head"><span class="kind-icon">R0b inline</span>
+         <p class="post__who"><b>R0b</b> <span>@r0b · 2 h</span></p></header>
+       <p class="post__text">Neri ha aperto il caveau della Torre dei Conti. Io guardavo e basta, giuro.</p>
+       <div class="post__media">…trofeo / medaglione / skin…</div>
+       <footer class="post__foot"><button class="post__like" aria-pressed="false">♥ <span>12</span></button><span class="post__by">DJ Nibble e altri 11</span></footer>
+     </li></ol></section> */
+.icon-btn {
+  position: relative; width: var(--tap); height: var(--tap); border-radius: 50%; padding: 0;
+  display: grid; place-items: center; background: var(--c-surface); color: var(--c-text);
+  border: var(--border-w) solid color-mix(in srgb, var(--c-text-muted) 70%, var(--c-surface));
+}
+.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn__count {
+  position: absolute; top: -6px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px;
+  display: grid; place-items: center; background: var(--c-primary); color: var(--c-on-primary);
+  font-size: 11px; font-weight: 800; border: 2px solid var(--c-surface);
+}
+.feed { display: flex; flex-direction: column; gap: var(--sp-4); }
+.feed__title { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: var(--fs-xl); color: var(--c-primary); text-shadow: var(--glow); line-height: 1; }
+.feed__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.feed__day { margin: var(--sp-2) 0 0; font-size: var(--fs-xs); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-text-muted); }
+.post {
+  position: relative; display: flex; flex-direction: column; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--r-lg);
+  background: var(--c-surface); border: var(--border-w) solid var(--c-border); box-shadow: var(--shadow-1);
+}
+.post.is-unread { border-left: 5px solid var(--kind); }
+.post.is-unread::after { /* puntino "non letto" in alto a destra */
+  content: ""; position: absolute; top: var(--sp-3); right: var(--sp-3); width: 10px; height: 10px; border-radius: 50%; background: var(--c-primary);
+}
+.post__head { display: flex; align-items: center; gap: var(--sp-3); padding-right: var(--sp-4); }
+.post__who { margin: 0; line-height: 1.25; min-width: 0; }
+.post__who span { display: block; font-size: var(--fs-xs); color: var(--c-text-muted); }
+.post__type { /* etichetta del tipo: icona + parola */
+  display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 0 6px; border-radius: var(--r-pill);
+  font-size: 11px; font-weight: 800; color: var(--kind); border: 1.5px solid var(--kind); vertical-align: 1px;
+}
+.post__text { margin: 0; line-height: 1.45; }
+.post__media {
+  display: grid; place-items: center; padding: var(--sp-3); border-radius: var(--r-md);
+  background: var(--c-bg-sky), var(--c-bg); min-height: 120px;
+}
+.post__media > * { max-width: 140px; }
+.post__foot { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-xs); color: var(--c-text-muted); }
+.post__like {
+  min-height: var(--tap); min-width: var(--tap); padding: 0 var(--sp-3); border-radius: var(--r-pill);
+  display: inline-flex; align-items: center; gap: 6px; border: var(--border-w) solid var(--c-border); background: transparent;
+  font-weight: 800; color: var(--c-text-muted);
+}
+.post__like[aria-pressed="true"] { color: var(--c-primary); border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, var(--c-surface)); }
+.post__like[aria-pressed="true"] .post__heart { animation: star-in var(--dur-med) var(--ease-pop); }
+.feed__empty { text-align: center; color: var(--c-text-muted); }
+
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }
 
