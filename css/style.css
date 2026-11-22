@@ -100,5 +100,6 @@
 .lesson__skip { margin: 0; text-align: center; }
 .lesson__skip .btn { min-height: var(--tap); font-size: var(--fs-sm); }
 
-/* capitolo consigliato nella home */
-.course__next { display: inline-block; margin-left: var(--sp-1); padding: 1px var(--sp-2); border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 800; background: var(--c-primary); color: var(--c-on-primary); vertical-align: middle; white-space: nowrap; }
+
+/* "Esci dal caveau": il caveau è scuro in entrambi i temi, il tasto deve restare leggibile */
+.boss .lesson__skip .btn { color: #f4efff; border-color: rgb(244 239 255 / .5); background: transparent; }

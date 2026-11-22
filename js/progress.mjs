@@ -258,6 +258,13 @@ export function chapterDetail(ch) {
   }
 }
 
+// Stato del caveau di un capitolo: vinto (trofeo, per sempre), da tentare (capitolo alla perfezione), chiuso.
+export const VAULT_STATE = { WON: "won", READY: "ready", CLOSED: "closed" };
+export function vaultState(chapter, player) {
+  if (player?.trophies?.[chapter.id]) return VAULT_STATE.WON;
+  return chapter.state === CHAPTER_STATE.PERFECT ? VAULT_STATE.READY : VAULT_STATE.CLOSED;
+}
+
 // ---------- Riepilogo per la schermata "I miei progressi" ----------
 
 export function summarize(player) {
@@ -278,6 +285,8 @@ export function summarize(player) {
     // il capitolo era stato superato (ogni argomento superato almeno una volta) ma ora non lo è più
     const everAll = list.every((r) => r.passedAt > 0);
     ch.wasPassedAt = everAll ? Math.max(...list.map((r) => r.passedAt)) : 0;
+    ch.vault = vaultState(ch, player);
+    ch.trophyAt = player.trophies?.[ch.id] ?? 0;
     ch.wasNote = everAll && !ch.complete ? `Era superato il ${formatDay(ch.wasPassedAt)}: rifai giuste le prossime domande per tornarci` : "";
     ch.label = CHAPTER_LABEL[ch.state];
     ch.detail = chapterDetail(ch);

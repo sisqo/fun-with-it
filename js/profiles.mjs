@@ -2,7 +2,7 @@
 // Funzioni pure: lavorano su un oggetto `store` e ne restituiscono uno nuovo; la lettura/scrittura sul disco sta in app.js.
 //
 // store = { v: 2, current: "chiave"|null, legacy?: {cash, missionsDone}, players: [player] }
-// player = { key, name, cash, missionsDone, done: { [missione]: volte }, topics: { [argomento]: stats }, createdAt, updatedAt }
+// player = { key, name, cash, missionsDone, done: { [missione]: volte }, topics: { [argomento]: stats }, trophies: { [capitolo]: quando }, createdAt, updatedAt }
 // stats  = { attempts, correct, window: [0|1 … ultimi 5 esiti], level: 0..1 (difficoltà), lastAt, passedAt (quando è stato superato la prima volta, 0 = mai; non si cancella) }
 
 export const MAX_NAME = 20;
@@ -65,6 +65,14 @@ export function nextStats(st, outcome, now = Date.now()) {
   return { attempts: s.attempts + 1, correct: s.correct + (ok ? 1 : 0), window, level: clamp01(s.level + delta), lastAt: now, passedAt: s.passedAt ?? 0 };
 }
 
+// Trofei dei caveau vinti: { capitolo: data in ms }. Non si perdono mai, nemmeno con un errore successivo.
+function safeTrophies(t) {
+  const out = {};
+  if (!t || typeof t !== "object") return out;
+  for (const [id, when] of Object.entries(t)) if (/^[a-z0-9]{1,12}$/.test(id)) out[id] = Math.max(1, ts(when));
+  return out;
+}
+
 // Legge il testo salvato (anche corrotto o in formato vecchio) e restituisce sempre uno store valido.
 export function parseStore(raw) {
   let data;
@@ -79,7 +87,7 @@ export function parseStore(raw) {
       if (!n.ok || seen.has(n.key)) continue;
       seen.add(n.key);
       store.players.push({
-        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics),
+        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics), trophies: safeTrophies(p.trophies),
         createdAt: ts(p.createdAt), updatedAt: ts(p.updatedAt),
       });
       if (store.players.length >= MAX_PLAYERS) break;
@@ -106,7 +114,7 @@ export function enter(store, rawName, now = Date.now()) {
   if (existing) return { ok: true, isNew: false, store: { ...store, current: existing.key }, player: existing };
   if (store.players.length >= MAX_PLAYERS) return { ok: false, error: `Ci sono già ${MAX_PLAYERS} giocatori: elimina un profilo prima di aggiungerne uno.`, store };
   const inherited = store.legacy && store.players.length === 0 ? store.legacy : { cash: 0, missionsDone: 0 };
-  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, createdAt: now, updatedAt: now };
+  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, trophies: {}, createdAt: now, updatedAt: now };
   const next = { ...store, current: player.key, players: [...store.players, player] };
   delete next.legacy;
   return { ok: true, isNew: true, store: next, player };
@@ -114,7 +122,7 @@ export function enter(store, rawName, now = Date.now()) {
 
 // Azzera i progressi di un giocatore (conto, missioni completate), tenendo il nome.
 export function resetPlayer(store, key, now = Date.now()) {
-  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, updatedAt: now }));
+  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, updatedAt: now }));
 }
 
 // Elimina del tutto un giocatore.
@@ -150,4 +158,14 @@ export function markPassed(store, key, topic, now = Date.now()) {
   const current = store.players.find((p) => p.key === key)?.topics[topic];
   if (!current || current.passedAt > 0) return store; // niente da cambiare: stesso oggetto
   return replacePlayer(store, key, (p) => ({ ...p, topics: { ...p.topics, [topic]: { ...current, passedAt: now } } }));
+}
+
+export const VAULT_REWARD = 500;
+
+// Vince il caveau di un capitolo: contanti e trofeo, una volta sola (rivincere non paga di nuovo).
+export function winVault(store, key, chapterId, now = Date.now(), reward = VAULT_REWARD) {
+  if (!/^[a-z0-9]{1,12}$/.test(chapterId)) return store;
+  const player = store.players.find((p) => p.key === key);
+  if (!player || player.trophies?.[chapterId]) return store;
+  return replacePlayer(store, key, (p) => ({ ...p, cash: num(p.cash + reward), trophies: { ...p.trophies, [chapterId]: now }, updatedAt: now }));
 }

@@ -1,7 +1,9 @@
+import * as Q from "./questions.mjs";
 import { checkAnswer } from "./questions.mjs";
 import { judgeStep } from "./operations.mjs";
 import * as G from "./progress.mjs";
 import * as T from "./teach.mjs";
+import * as Boss from "./boss.mjs";
 import * as FX from "./fx.mjs";
 import * as P from "./profiles.mjs";
 import { WEIGHTS, bits8, nibbles, onWeights } from "./vault.mjs";
@@ -14,6 +16,15 @@ const CASH_PER_RIGHT = 100;
 const OP_STEP = 2; // nei passaggi guidati, il terzo è l'operazione in binario (con la colonna)
 const app = document.getElementById("app");
 const MASCOT = (name) => `design/mascot/r0b-${name}.svg`;
+
+// La porta del caveau e la coppa vanno messe INLINE (la CSS deve raggiungere volantino, bulloni e coppa): si caricano una volta.
+const ASSETS = { door: "", cup: "" };
+async function loadAssets() {
+  const get = async (url) => { try { const r = await fetch(url); return r.ok ? await r.text() : ""; } catch { return ""; } };
+  [ASSETS.door, ASSETS.cup] = await Promise.all([get("design/vault-door.svg"), get("design/trophy.svg")]);
+}
+const ICON_KEY = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M12.5 12H21M18 12v3.5M21 12v2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+const ICON_CUP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const save = {
   read() {
@@ -147,6 +158,7 @@ function home(greeting = "") {
       <details class="profile">
         <summary>Profilo e salvataggio</summary>
         <p class="profile__text">Giocatore: <b>${esc(player.name)}</b>. Conto ${money(player.cash)}, ${player.missionsDone} ${player.missionsDone === 1 ? "partita completata" : "partite completate"}. Partita e progressi sono salvati su questo dispositivo.</p>
+        ${trophiesHTML(player)}
         <div class="profile__actions">
           <button class="btn btn--ghost" type="button" id="switch">Cambia giocatore</button>
           <button class="btn btn--ghost" type="button" id="reset">Azzera i progressi</button>
@@ -607,7 +619,8 @@ const chapterTitle = (ch) => (ch.n > 0 ? `${ch.n} · ${ch.title}` : ch.title);
 // Elenco ordinato dei capitoli con lo stato di ciascuno: si vede subito dalla home.
 function coursesHTML(sum, nextId = null) {
   const html = `<ol class="course" aria-label="Capitoli del corso, in ordine">${sum.chapters.map((ch) => `<li>
-    <button class="course__item course__item--${ch.state}${justPerfect.has(ch.id) ? " is-new-state" : ""}" type="button" data-chapter="${ch.id}" aria-label="${esc(chapterTitle(ch))}: ${esc(ch.label)}. ${esc(ch.detail)}.${ch.id === nextId ? " Consigliato." : ""} Apri il capitolo.">
+    <button class="course__item course__item--${ch.state}${justPerfect.has(ch.id) ? " is-new-state" : ""}" type="button" data-chapter="${ch.id}" aria-label="${esc(chapterTitle(ch))}: ${esc(ch.label)}. ${esc(ch.detail)}.${ch.vault === "ready" ? " Caveau aperto da tentare." : ch.vault === "won" ? " Trofeo del caveau conquistato." : ""}${ch.id === nextId ? " Consigliato." : ""} Apri il capitolo.">
+      ${ch.vault === "ready" ? `<span class="course__vault course__vault--ready">${ICON_KEY}Caveau aperto</span>` : ch.vault === "won" ? `<span class="course__vault course__vault--won">${ICON_CUP}Trofeo</span>` : ""}
       <span class="course__n" aria-hidden="true">${ch.n > 0 ? ch.n : "0"}</span>
       <span class="course__main"><span class="course__title">${esc(ch.title)}${ch.id === nextId ? ' <span class="course__next">Consigliato</span>' : ""}</span><span class="course__detail">${esc(ch.detail)}</span>${ch.wasNote ? `<span class="course__was">${wasHTML(ch.wasNote)}</span>` : ""}</span>
       <span class="course__state course__state--${ch.state}">${STATE_ICON[ch.state]}<span>${esc(ch.label)}</span></span>
@@ -640,6 +653,7 @@ function finish(failed) {
       <p class="home__line">${failed ? "Cinque stelle: la polizia ti ha preso. Il bottino resta sul banco." : `Hai incassato <b>${money(game.earned)}</b>.`}</p>
       <p class="home__rules">Risposte giuste: ${game.rightCount} su ${game.totalUnits}${failed ? "" : ` · Il tuo conto: ${money(me().cash)}`}</p>
       ${newlyPerfect.length ? `<p class="home__hello" role="status">★ ${newlyPerfect.map((c) => esc(c.title)).join(" · ")}: superato alla perfezione!</p>` : ""}
+      ${newlyPerfect.filter((c) => c.vault === "ready").map((c) => `<section class="chapter-vault chapter-vault--ready"><span class="chapter-vault__icon">${ASSETS.door}</span><p class="chapter-vault__title">Il caveau ${c.n > 0 ? `del capitolo ${c.n}` : "del riscaldamento"} si è aperto: lo tenti?</p><p class="chapter-vault__text">Tre passaggi, niente stelle: se non riesce, riprovi quando vuoi.</p><button class="btn btn--block" type="button" data-boss="${c.id}">Tenta il caveau</button></section>`).join("")}
       ${rows ? `<h2 class="board__sub">Argomenti toccati in questa partita</h2><ul class="topics topics--summary">${rows}</ul>` : ""}
       ${radioFull()}
       <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : game.force ? "Allenati ancora" : "Altre domande del capitolo"}</button>
@@ -648,6 +662,7 @@ function finish(failed) {
       <button class="btn btn--ghost btn--block" id="menu" type="button">Tutti i capitoli</button>
     </section>`));
   document.getElementById("again").onclick = () => startGame({ force: game.force, chapter: game.chapter });
+  app.querySelectorAll("[data-boss]").forEach((b) => (b.onclick = () => startBoss(b.dataset.boss)));
   document.getElementById("to-chapter")?.addEventListener("click", () => chapterScreen(game.chapter));
   document.getElementById("progress").onclick = () => progressScreen();
   document.getElementById("menu").onclick = () => home();
@@ -656,23 +671,31 @@ function finish(failed) {
 // ---------- I miei progressi: capitoli coperti e argomenti toccati, superati, da ripassare ----------
 
 // Un capitolo con la sua barra e l'elenco degli argomenti (usato nei progressi e nella schermata del capitolo).
-function chapterBlockHTML(ch, player, { compact = false } = {}) {
+// Le righe degli argomenti di un capitolo (progressi e schermata del capitolo).
+function topicRowsHTML(ch, player) {
   const title = (id) => G.topicById[id]?.title ?? id;
-  const pct = (n) => Math.round((n / ch.total) * 100);
-  const inProgress = ch.touched - ch.passed - ch.failed;
-  const BADGE = { perfetto: " is-perfect", superato: " is-complete", "da-ripassare": " is-review", coperto: " is-covered", "in-corso": " is-started", "da-iniziare": "" };
-  const items = ch.topics.map((r) => {
+  return ch.topics.map((r) => {
     const needs = G.blockingNeeds(G.topicById[r.id], player.topics ?? {}).map(title);
     const can = r.unlocked || r.attempts > 0;
     const score = r.attempts ? `${r.correct} su ${r.attempts} ${r.attempts === 1 ? "giusta" : "giuste"}` : can ? "Mai provato" : `Si apre dopo: ${esc(needs.join(", "))}`;
     return `<li class="topic topic--${cls(r.status)}${can ? "" : " is-locked"}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${score}</span>${G.wasPassedNote(r) ? `<span class="topic__was">${wasHTML(G.wasPassedNote(r))}</span>` : ""}</div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}${T.hasLesson(r.id) ? `<button class="btn btn--ghost topic__train" type="button" data-lesson="${r.id}" aria-label="Rivedi la lezione: ${esc(r.title)}">Lezione</button>` : ""}</li>`;
   }).join("");
-  const head = compact ? "" : `<header class="chapter__head"><h2 class="chapter__title">${esc(chapterTitle(ch))}</h2><span class="chapter__badge${BADGE[ch.state]}">${esc(ch.label)}</span></header>
-    <p class="chapter__src">${esc(ch.source)}</p>`;
-  return `<article class="chapter" id="chapter-${ch.id}">${head}
-    <div class="chapter__bar" role="img" aria-label="${ch.passed} superati, ${inProgress} in corso, ${ch.failed} da ripassare su ${ch.total}"><i class="is-passed" style="width:${pct(ch.passed)}%"></i><i class="is-touched" style="width:${pct(inProgress)}%"></i><i class="is-failed" style="width:${pct(ch.failed)}%"></i></div>
+}
+
+const BADGE_CLASS = { perfetto: " is-perfect", superato: " is-complete", "da-ripassare": " is-review", coperto: " is-covered", "in-corso": " is-started", "da-iniziare": "" };
+const barHTML = (ch) => {
+  const pct = (n) => Math.round((n / ch.total) * 100);
+  const inProgress = ch.touched - ch.passed - ch.failed;
+  return `<div class="chapter__bar" role="img" aria-label="${ch.passed} superati, ${inProgress} in corso, ${ch.failed} da ripassare su ${ch.total}"><i class="is-passed" style="width:${pct(ch.passed)}%"></i><i class="is-touched" style="width:${pct(inProgress)}%"></i><i class="is-failed" style="width:${pct(ch.failed)}%"></i></div>`;
+};
+
+// Un capitolo con la sua barra e l'elenco degli argomenti (nei progressi).
+function chapterBlockHTML(ch, player) {
+  return `<article class="chapter" id="chapter-${ch.id}"><header class="chapter__head"><h2 class="chapter__title">${esc(chapterTitle(ch))}</h2><span class="chapter__badge${BADGE_CLASS[ch.state]}">${esc(ch.label)}</span></header>
+    <p class="chapter__src">${esc(ch.source)}</p>
+    ${barHTML(ch)}
     <p class="chapter__count"><b>${ch.touched}</b> toccati su ${ch.total} · <b>${ch.passed}</b> ${ch.passed === 1 ? "superato" : "superati"}</p>${ch.wasNote ? `<p class="chapter__was">${wasHTML(ch.wasNote)}</p>` : ""}
-    <ul class="topics">${items}</ul></article>`;
+    <ul class="topics">${topicRowsHTML(ch, player)}</ul></article>`;
 }
 
 // I pulsanti "Allenati" e "Lezione" degli argomenti: servono sia nei progressi sia nella schermata del capitolo.
@@ -705,7 +728,17 @@ function progressScreen(focusChapter = null) {
   wireTopicButtons((topic) => progressScreen(G.topicById[topic].chapter));
 }
 
-// ---------- Schermata di un capitolo: teoria, domande, argomenti ----------
+// ---------- Schermata di un capitolo: teoria, domande, caveau, argomenti ----------
+
+function vaultSectionHTML(ch) {
+  if (ch.vault === "won") {
+    return `<section class="chapter-vault chapter-vault--won"><span class="chapter-vault__icon">${ASSETS.cup}</span><p class="chapter-vault__title">Caveau aperto ✓</p><p class="chapter-vault__text">Trofeo conquistato il <b>${G.formatDay(ch.trophyAt)}</b> · ${money(P.VAULT_REWARD)}</p></section>`;
+  }
+  if (ch.vault === "ready") {
+    return `<section class="chapter-vault chapter-vault--ready"><span class="chapter-vault__icon">${ASSETS.door}</span><p class="chapter-vault__title">Il caveau si è aperto</p><p class="chapter-vault__text">Tre passaggi, niente stelle: se non riesce, riprovi quando vuoi.</p><button class="btn btn--block" type="button" data-boss="${ch.id}">Tenta il caveau</button></section>`;
+  }
+  return `<section class="chapter-vault chapter-vault--closed"><span class="chapter-vault__icon">${ASSETS.door}</span><p class="chapter-vault__title">Caveau chiuso</p><p class="chapter-vault__text">Supera il capitolo alla perfezione e il caveau si apre.</p></section>`;
+}
 
 function chapterScreen(id) {
   const player = P.currentPlayer(store);
@@ -713,26 +746,163 @@ function chapterScreen(id) {
   const ch = G.summarize(player).chapters.find((c) => c.id === id);
   if (!ch) return home();
   const fresh = ch.touched === 0;
-  const intro = G.initialTopics(id).filter((t) => T.hasLesson(t.id)).map((t) => t.id);
   const all = G.chapterTopics(id).filter((t) => T.hasLesson(t.id)).map((t) => t.id);
   const startLabel = fresh ? "Inizia il capitolo" : ch.complete ? "Rigioca il capitolo" : "Continua con le domande";
+  const flow = `<ol class="flow" aria-label="Come funziona"><li class="flow__step ${fresh ? "is-current" : "is-done"}"><b>${fresh ? "1" : "✓"}</b>Teoria breve</li><li class="flow__step ${fresh ? "" : "is-current"}"><b>2</b>Domande</li></ol>`;
   render(el(`
-    <section class="board">
-      <p class="lesson__kicker">${ch.n > 0 ? `Capitolo ${ch.n}` : "Riscaldamento"}</p>
-      <h1 class="board__title">${esc(ch.title)}</h1>
-      <p class="chapter__src">${esc(ch.source)}</p>
-      <p class="home__rules">${esc(ch.detail)}</p>
-      <button class="btn btn--primary btn--block" id="start-chapter" type="button">${startLabel}</button>
-      <p class="home__rules">${fresh ? "Si comincia con una breve teoria, poi le domande." : "Le domande si adattano a come stai andando: ogni argomento nuovo parte con la sua lezione."}</p>
-      ${all.length ? `<button class="btn btn--ghost btn--block" id="review-theory" type="button">Rivedi la teoria del capitolo (${all.length} ${all.length === 1 ? "lezione" : "lezioni"})</button>` : ""}
-      <span class="chapter__badge${{ perfetto: " is-perfect", superato: " is-complete", "da-ripassare": " is-review", coperto: " is-covered", "in-corso": " is-started", "da-iniziare": "" }[ch.state]}" id="chapter-state">${esc(ch.label)}</span>
-      ${chapterBlockHTML(ch, player, { compact: true })}
+    <section class="chapter-page">
+      <button class="chapter-page__back" id="back-top" type="button">Capitoli</button>
+      <header class="chapter-hero chapter-hero--${ch.state}">
+        <span class="chapter-hero__n" aria-hidden="true">${ch.n}</span>
+        <div><p class="chapter-hero__kicker">${ch.n > 0 ? `Capitolo ${ch.n}` : "Riscaldamento"}</p><h1 class="chapter-hero__title">${esc(ch.title)}</h1><p class="chapter-hero__src">${esc(ch.source)}</p></div>
+        <div class="chapter-hero__status"><span class="chapter__badge${BADGE_CLASS[ch.state]}" id="chapter-state">${esc(ch.label)}</span><p class="chapter-hero__detail">${esc(ch.detail)}</p></div>
+        ${barHTML(ch)}
+        <p class="chapter__count"><b>${ch.touched}</b> toccati su ${ch.total} · <b>${ch.passed}</b> ${ch.passed === 1 ? "superato" : "superati"}</p>${ch.wasNote ? `<p class="chapter__was">${wasHTML(ch.wasNote)}</p>` : ""}
+      </header>
+      <div class="chapter-cta">
+        ${flow}
+        <button class="btn btn--primary btn--block" id="start-chapter" type="button">${startLabel}</button>
+        ${all.length ? `<button class="btn btn--ghost btn--block" id="review-theory" type="button">Rivedi la teoria (${all.length} ${all.length === 1 ? "lezione" : "lezioni"})</button>` : ""}
+      </div>
+      ${vaultSectionHTML(ch)}
+      <section class="chapter-page__topics" id="chapter-${ch.id}"><h2>Argomenti</h2><ul class="topics">${topicRowsHTML(ch, player)}</ul></section>
       <button class="btn btn--ghost btn--block" id="back" type="button">Torna ai capitoli</button>
     </section>`));
   document.getElementById("start-chapter").onclick = () => startGame({ chapter: id, theory: fresh });
   document.getElementById("review-theory")?.addEventListener("click", () => showLessonSequence(all, () => chapterScreen(id), "Salta la teoria"));
   document.getElementById("back").onclick = () => home();
+  document.getElementById("back-top").onclick = () => home();
+  app.querySelectorAll("[data-boss]").forEach((b) => (b.onclick = () => startBoss(b.dataset.boss)));
   wireTopicButtons(() => chapterScreen(id));
 }
 
-home();
+// ---------- Il caveau del capitolo (boss): tre passaggi, niente stelle ----------
+
+let boss = null; // { chapter, name, steps, i }
+
+function startBoss(chapterId) {
+  const player = P.currentPlayer(store);
+  if (!player || player.trophies?.[chapterId]) return chapterScreen(chapterId); // già vinto: niente da rifare
+  boss = { ...Boss.buildBoss(Math.random, chapterId), i: 0 };
+  showBossStep();
+}
+
+function bossShell({ step, open = false, title, task, note = true }) {
+  const ch = G.CHAPTERS.find((c) => c.id === boss.chapter);
+  return `<section class="boss${open ? " is-open" : ""}" data-step="${step}">
+    <header class="boss__head"><p class="boss__kicker">Caveau · ${ch.n > 0 ? `Capitolo ${ch.n}` : "Riscaldamento"}</p><h1 class="boss__title">${esc(title)}</h1></header>
+    <div class="boss__stage">${ASSETS.door}</div>
+    <ol class="boss__steps">${boss.steps.map((s, k) => `<li class="${open || k < boss.i ? "is-done" : k === boss.i ? "is-current" : ""}">${esc(s.label)}</li>`).join("")}</ol>
+    <div class="boss__task">${task}</div>
+    ${note ? '<p class="boss__note">Nessuna stella in gioco. Se sbagli, il caveau resta lì.</p>' : ""}
+    ${open ? "" : '<p class="lesson__skip"><button class="btn btn--ghost" id="boss-quit" type="button">Esci dal caveau</button></p>'}
+  </section>`;
+}
+
+// La prova di un passaggio: ruote, domanda (scelta o testo, anche con cassaforte da leggere) o combinazione a 8 cifre.
+function bossTaskHTML(q, i) {
+  const head = `<p class="q__kicker" style="margin:0 0 8px">Passaggio ${i + 1} di 3</p><p class="q__prompt" style="margin:0 0 var(--sp-3)">${esc(q.prompt)}</p>`;
+  if (q.kind === "safe") return `${head}${vaultHTML()}<button class="btn btn--primary btn--block" id="boss-submit" type="button">Apri</button>`;
+  if (q.kind === "choice") {
+    const marks = ICON_OK.replace("<svg ", '<svg class="choice__mark choice__mark--ok" ') + ICON_KO.replace("<svg ", '<svg class="choice__mark choice__mark--ko" ');
+    return `${head}<ul class="choices choices--stack">${q.options.map((o) => `<li><button class="choice" type="button" data-v="${esc(o)}">${esc(o)}${marks}</button></li>`).join("")}</ul>`;
+  }
+  if (q.vault?.show === "ruler") {
+    return `${head}<div class="q__code">${q.vault.value}<sub>10</sub></div>
+      <form class="ruler-form" id="boss-form" novalidate><div class="ruler" role="group" aria-label="Pesi delle ruote e cifre della combinazione, da sinistra a destra">
+        ${WEIGHTS.map((w) => `<span class="ruler__w">${w}</span>`).join("")}
+        ${WEIGHTS.map((w) => `<input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" placeholder=" " autocomplete="off" aria-label="Cifra sotto il peso ${w}">`).join("")}
+      </div><button class="btn btn--primary btn--block" type="submit">Rispondi</button></form>`;
+  }
+  const locked = q.vault?.show === "read" ? vaultHTML({ bits: q.vault.bits, lcd: "?", sum: false, code: false }) : "";
+  return `${head}${locked}${answerForm(q, "La tua risposta").replace('id="form"', 'id="boss-form"')}`;
+}
+
+function showBossStep() {
+  const step = boss.steps[boss.i];
+  const q = step.q;
+  render(el(`<div>${bossShell({ step: boss.i + 1, title: boss.name, task: bossTaskHTML(q, boss.i) })}</div>`));
+  const root = app.firstElementChild;
+  root.querySelector("#boss-quit").onclick = () => chapterScreen(boss.chapter);
+  const answer = (given, clicked) => bossAnswer(q, given, clicked);
+
+  if (q.kind === "safe") {
+    const lcd = root.querySelector("#lcd"), sum = root.querySelector("#sum"), code = root.querySelector("#code b");
+    const recompute = () => {
+      const on = [...root.querySelectorAll('.dial[aria-pressed="true"]')].map((d) => Number(d.dataset.w));
+      const total = on.reduce((a, b) => a + b, 0);
+      lcd.textContent = total;
+      sum.textContent = on.length ? `${on.join(" + ")} = ${total}` : "tutte a zero";
+      if (code) code.textContent = nibbles(bits8(total));
+      return total;
+    };
+    root.querySelectorAll(".dial").forEach((d) => (d.onclick = () => { d.setAttribute("aria-pressed", d.getAttribute("aria-pressed") !== "true"); recompute(); }));
+    root.querySelector("#boss-submit").onclick = () => answer(recompute());
+  } else if (q.kind === "choice") {
+    root.querySelectorAll(".choice").forEach((b) => (b.onclick = () => answer(b.dataset.v, b)));
+  } else if (q.vault?.show === "ruler") {
+    const cells = [...root.querySelectorAll(".ruler__cell")];
+    cells.forEach((c, k) => {
+      c.addEventListener("input", () => { c.value = c.value.replace(/[^01]/g, "").slice(-1); if (c.value && cells[k + 1]) cells[k + 1].focus(); });
+      c.addEventListener("keydown", (e) => { if (e.key === "Backspace" && !c.value && cells[k - 1]) cells[k - 1].focus(); });
+    });
+    root.querySelector("#boss-form").onsubmit = (e) => { e.preventDefault(); const empty = cells.find((c) => c.value === ""); if (empty) return empty.focus(); answer(cells.map((c) => c.value).join("")); };
+  } else {
+    root.querySelector("#boss-form").onsubmit = (e) => { e.preventDefault(); const v = root.querySelector("#ans").value; if (v.trim()) answer(v); };
+  }
+  root.querySelector(".dial, .choice, .ruler__cell, .answer__input")?.focus?.({ preventScroll: true });
+}
+
+const bossShown = (q) => (q.kind === "safe" ? q.value : q.vault?.show === "ruler" ? bits8(q.vault.value) : q.answer);
+
+function bossAnswer(q, given, clicked) {
+  const root = app.firstElementChild;
+  if (root.dataset.done) return;
+  root.dataset.done = "1";
+  const ok = Q.checkAnswer(q, given);
+  root.querySelectorAll("input, .dial, button.btn--primary, .choice").forEach((n) => (n.disabled = true));
+  if (q.kind === "choice") root.querySelectorAll(".choice").forEach((b) => { if (b.dataset.v === q.answer) b.classList.add("is-correct"); else if (b === clicked) b.classList.add("is-wrong"); });
+  const task = root.querySelector(".boss__task");
+  const last = boss.i === boss.steps.length - 1;
+  if (ok) {
+    FX.play("ok");
+    if (last) return bossWin();
+    task.insertAdjacentHTML("beforeend", `<div class="feedback feedback--inline feedback--ok" role="status"><img class="feedback__mascot" src="${MASCOT("esulta")}" alt=""><p class="feedback__title">${ICON_OK}Passaggio superato</p><p class="feedback__text">Il volantino gira. Ne mancano ${boss.steps.length - boss.i - 1}.</p><button class="btn btn--block" type="button" id="boss-next">Passaggio ${boss.i + 2}</button></div>`);
+    const nb = root.querySelector("#boss-next");
+    nb.onclick = () => { boss.i += 1; showBossStep(); };
+    nb.focus({ preventScroll: true });
+    return;
+  }
+  // errore: nessuna stella e niente perso; il caveau resta lì (tono "indizio", non rosso)
+  task.insertAdjacentHTML("beforeend", `<div class="feedback feedback--inline feedback--hint" role="status"><img class="feedback__mascot" src="${MASCOT("perplesso")}" alt=""><p class="feedback__title">${ICON_HINT}Il caveau resta lì</p><p class="feedback__text">La risposta giusta era <span class="num">${esc(bossShown(q))}</span>. Non hai perso niente: riprovi quando vuoi.</p><ol class="feedback__explain">${(q.explain ?? []).map((l) => `<li>${esc(l)}</li>`).join("")}</ol><button class="btn btn--block" type="button" id="boss-retry">Riprova il caveau</button><button class="btn btn--ghost btn--block" type="button" id="boss-back">Torna al capitolo</button></div>`);
+  root.querySelector("#boss-retry").onclick = () => startBoss(boss.chapter);
+  root.querySelector("#boss-back").onclick = () => chapterScreen(boss.chapter);
+  root.querySelector("#boss-retry").focus({ preventScroll: true });
+  root.querySelector(".feedback").scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function bossWin() {
+  const chapterId = boss.chapter;
+  commit(P.winVault(store, store.current, chapterId));
+  FX.bigWin();
+  const ch = G.CHAPTERS.find((c) => c.id === chapterId);
+  const task = `<div style="display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center">
+    <figure class="trophy trophy--big">${ASSETS.cup}<figcaption><b>Trofeo del caveau</b>${ch.n > 0 ? `Capitolo ${ch.n}` : "Riscaldamento"}</figcaption></figure>
+    <div><p style="margin:0;font-weight:700">+ ${money(P.VAULT_REWARD)} e un trofeo nel profilo.</p><img src="${MASCOT("podio")}" alt="" style="width:72px;margin-top:8px"></div></div>
+    <button class="btn btn--primary btn--block" id="boss-done" type="button">Torna al capitolo</button>
+    <button class="btn btn--ghost btn--block" id="boss-home" type="button">Tutti i capitoli</button>`;
+  render(el(`<div>${bossShell({ step: 3, open: true, title: "Aperto!", task, note: false })}</div>`));
+  document.getElementById("boss-done").onclick = () => chapterScreen(chapterId);
+  document.getElementById("boss-home").onclick = () => home();
+}
+
+// Scaffale dei trofei per il profilo: uno per capitolo, la sagoma tratteggiata se ancora da aprire.
+function trophiesHTML(player) {
+  const won = G.CHAPTERS.filter((c) => player.trophies?.[c.id]).length;
+  return `<ul class="trophies" aria-label="Trofei dei caveau: ${won} su ${G.CHAPTERS.length}">${G.CHAPTERS.map((c) => {
+    const at = player.trophies?.[c.id];
+    return `<li><figure class="trophy${at ? "" : " is-empty"}">${ASSETS.cup}<figcaption><b>Caveau ${c.n}</b>${at ? G.formatDay(at) : "da aprire"}</figcaption></figure></li>`;
+  }).join("")}</ul>`;
+}
+
+loadAssets().finally(() => home());
