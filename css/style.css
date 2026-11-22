@@ -15,3 +15,55 @@
 
 .feedback--inline .solution { grid-column: 1 / -1; }
 #fb { display: contents; }
+
+/* ---------- Effetti: pioggia di monete, avvisi, conteggio contanti ---------- */
+.fx-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 50; }
+.fx-coin {
+  position: absolute; top: -48px; left: var(--x);
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  font: 800 16px/1 var(--font-mono, monospace); font-style: normal;
+  background: var(--c-cash); color: var(--c-surface);
+  border: 2px solid color-mix(in srgb, var(--c-cash) 55%, white);
+  box-shadow: 0 2px 6px rgb(0 0 0 / .25);
+  transform: scale(var(--s));
+  animation: coin-fall var(--d) cubic-bezier(.3, .1, .6, 1) var(--delay) both;
+}
+@keyframes coin-fall {
+  0% { transform: translate(0, 0) rotate(0) scale(var(--s)); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translate(var(--dx), calc(100vh + 80px)) rotate(var(--r)) scale(var(--s)); opacity: 0; }
+}
+.fx-toast {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 64px); left: 50%;
+  translate: -50% 0; max-width: calc(100% - 32px); padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-pill); background: var(--c-primary); color: var(--c-on-primary);
+  font-weight: 700; box-shadow: var(--glow); text-align: center;
+  animation: toast-pop 2.2s ease both;
+}
+@keyframes toast-pop {
+  0% { opacity: 0; transform: translateY(-14px) scale(.9); }
+  12% { opacity: 1; transform: translateY(0) scale(1.05); }
+  20% { transform: scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+.cash.is-counting { animation: cash-pulse .5s ease; }
+@keyframes cash-pulse { 50% { transform: scale(1.12); } }
+.cash__n { font-variant-numeric: tabular-nums; }
+.feedback--ok .feedback__mascot { animation: mascot-hop .6s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes mascot-hop { 0% { transform: translateY(0); } 40% { transform: translateY(-14px) rotate(-4deg); } 100% { transform: translateY(0); } }
+
+.hud__end { display: flex; align-items: center; gap: var(--sp-2); }
+.sound-toggle {
+  width: var(--tap); height: var(--tap); border-radius: 50%; padding: 0; flex: none;
+  display: grid; place-items: center; background: transparent; color: var(--c-text-muted);
+  border: var(--border-w, 1.5px) solid var(--c-border);
+}
+.sound-toggle svg { width: 22px; height: 22px; }
+.sound-toggle[aria-pressed="true"] { color: var(--c-text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-coin, .cash.is-counting, .feedback--ok .feedback__mascot { animation: none; }
+  .fx-toast { animation: none; }
+}

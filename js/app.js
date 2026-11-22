@@ -1,6 +1,9 @@
 import { buildMission, checkAnswer } from "./questions.mjs";
 import { buildOperationsMission, judgeStep } from "./operations.mjs";
 import { LESSONS, buildLessonMission } from "./lessons.mjs";
+import * as FX from "./fx.mjs";
+
+window.__fx = FX; // utile per provare gli effetti dal browser
 import { colopHTML, starsHTML, progressHTML, baseBadge, nTag } from "./colop.mjs";
 
 const MAX_STARS = 5;
@@ -80,9 +83,25 @@ function startMission(key) {
   showQuestion();
 }
 
+const SPEAKER = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/>${on ? '<path d="M15.5 9a4 4 0 010 6M18 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
+
 function hudHTML() {
   const delta = game.delta ? ` <span class="cash__delta">+${game.delta}</span>` : "";
-  return `<div class="hud">${starsHTML(game.stars, MAX_STARS, game.lit)}<span class="cash" aria-label="Contanti: ${profile.cash + game.earned} dollari">${money(profile.cash + game.earned)}${delta}</span></div>`;
+  const on = !FX.isMuted();
+  return `<div class="hud">${starsHTML(game.stars, MAX_STARS, game.lit)}<span class="hud__end"><button class="sound-toggle" type="button" aria-pressed="${on}" aria-label="${on ? "Suoni attivi: tocca per disattivarli" : "Suoni disattivati: tocca per attivarli"}">${SPEAKER(on)}</button><span class="cash" aria-label="Contanti: ${profile.cash + game.earned} dollari"><span class="cash__n">${money(profile.cash + game.earned)}</span>${delta}</span></span></div>`;
+}
+
+function wireSoundToggle(root) {
+  const b = root.querySelector(".sound-toggle");
+  if (!b) return;
+  b.onclick = () => {
+    FX.setMuted(!FX.isMuted());
+    if (!FX.isMuted()) FX.play("coin");
+    const on = !FX.isMuted();
+    b.setAttribute("aria-pressed", on);
+    b.setAttribute("aria-label", on ? "Suoni attivi: tocca per disattivarli" : "Suoni disattivati: tocca per attivarli");
+    b.innerHTML = SPEAKER(on);
+  };
 }
 
 // Su iPhone "numeric" non ha la virgola: per le risposte con la virgola serve "decimal".
@@ -149,6 +168,7 @@ function showQuestion() {
   const node = el(`<div data-prompt="${esc(q.prompt)}">${hudHTML()}${progressHTML(game.index, game.questions.length)}${body}</div>`);
   game.delta = 0; game.lit = false;
   render(node);
+  wireSoundToggle(node);
 
   if (q.kind === "choice") {
     node.querySelectorAll(".choice").forEach((b) => (b.onclick = () => submit(q, b.dataset.v, b)));
@@ -230,6 +250,7 @@ function submit(unit, given, clicked, afterJudge) {
     verdict = { ok, star: !ok, reward: ok, headline: ok ? "" : `Risposta giusta: ${q.kind === "safe" ? q.value : q.answer}`, note: "" };
   }
   game.totalUnits += 1;
+  const starsBefore = game.stars;
   if (isStep) game.marks[game.step] = { wrong: !verdict.ok && !verdict.discovered, correct: unit.answer };
 
   if (verdict.reward) {
@@ -244,6 +265,11 @@ function submit(unit, given, clicked, afterJudge) {
     game.lit = true;
   }
   afterJudge?.();
+  const cashBefore = profile.cash + game.earned - (verdict.reward ? CASH_PER_RIGHT : 0);
+  const starOff = verdict.reward && game.streak % 3 === 0 && game.stars < starsBefore;
+  if (verdict.reward) FX.celebrate({ streak: game.streak, starOff });
+  else if (verdict.star) FX.alarm(true);
+  else FX.alarm(false);
 
   const root = app.firstElementChild;
   root.querySelectorAll("input, .dial, #submit, .choice, #form .btn").forEach((n) => (n.disabled = true));
@@ -261,6 +287,8 @@ function submit(unit, given, clicked, afterJudge) {
   const last = game.index === game.questions.length - 1;
 
   root.querySelector(".hud").outerHTML = hudHTML();
+  wireSoundToggle(root);
+  if (verdict.reward) FX.countUp(root.querySelector(".cash__n"), cashBefore, profile.cash + game.earned, money);
   game.delta = 0; game.lit = false;
   root.querySelector("#fb").innerHTML = feedbackHTML({ q, unit, isStep, verdict, moreSteps, failed, last });
   const nb = root.querySelector("#next");
@@ -275,7 +303,7 @@ function submit(unit, given, clicked, afterJudge) {
 }
 
 function finish(failed) {
-  if (!failed) { profile.cash += game.earned; profile.missionsDone += 1; save.write(profile); }
+  if (!failed) { profile.cash += game.earned; profile.missionsDone += 1; save.write(profile); FX.bigWin(); } else FX.play("ko");
   render(el(`
     <section class="home">
       <img class="home__mascot" src="${MASCOT(failed ? "triste" : "podio")}" alt="">
