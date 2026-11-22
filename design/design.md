@@ -250,6 +250,16 @@ Allinea tutte le stringhe **a destra**: riempi a sinistra con celle vuote fino a
 Metti un `aria-label` testuale su `.colop`: le singole celle non hanno senso per uno screen
 reader.
 
+### Ordinamento a schede (`.order`)
+
+Il markup è quello di David: `button.order__item[aria-pressed]` con `.order__pos`,
+`.order__num` (con `<sub>` per la base), `.order__base` (il badge) e `.order__dec`.
+- **Slot.** Ogni scheda mostra in alto a sinistra uno slot tratteggiato vuoto: si capisce
+  che va numerata. Quando la scegli, lo slot diventa una bolla rosa col numero.
+- **Numero.** Si adatta alla larghezza della scheda (`cqi`): 9 cifre stanno anche a 320px.
+- **Dopo la risposta.** `.is-correct` / `.is-wrong` sulle singole schede (posizione giusta o
+  no) e `.order__dec` visibile come pillola "= 202".
+
 ### Feedback
 
 Ci sono due forme, con lo stesso contenuto:
@@ -609,6 +619,27 @@ lezioni.
 2. Metti `.is-bought` sulla card, che fa un piccolo salto.
 3. Aggiorna `.cash` (hai già il conteggio).
 4. Se vuoi, mostra R0b `esulta` con la skin nuova.
+
+**Classico dentro un'altra skin.** `.skin--classico` rimette i colori di partenza. Serve per
+l'anteprima del Classico nel negozio quando sul body c'è un'altra skin; sostituisce le
+variabili `initial` scritte inline.
+
+**Due tipi di blocco, due segni diversi.**
+
+| Manca | Classi | Cosa si vede |
+|---|---|---|
+| contanti | `.item--locked` | `.item__bar` oro (quanto hai del prezzo) e "Ti mancano `<b>$ 250</b>`" |
+| capitoli | `.item--locked.item--needs-chapters` | lucchetto viola sull'anteprima; `.item__pips` (un pallino per capitolo richiesto, pieni i superati) e "Servono `<b>4 capitoli superati</b>` (ne hai 2)" |
+
+Se mancano entrambi, mostra i capitoli: si sbloccano giocando, mentre i contanti arrivano da
+soli.
+
+**Novità.**
+- Sulla card, `.item.is-new` con `.item__tag` "Nuovo" la mette in oro. Usala per gli oggetti
+  diventati comprabili dall'ultima visita.
+- Sul tasto Negozio della home metti `<span class="btn__badge">2 novità</span>`: una
+  pillola oro con un puntino che pulsa piano, e il tasto prende il bordo oro. Il testo del
+  tasto resta su una riga; se non c'è posto, va a capo il segno.
 
 ### Radio in auto (`.radio`)
 

@@ -162,6 +162,7 @@ function nameScreen(message = "") {
 function home(greeting = "") {
   const player = P.currentPlayer(store);
   if (!player) return nameScreen();
+  const shopNews = S.newItems(P.currentPlayer(store), shopCtx(P.currentPlayer(store))).length;
   const synced = G.syncVaults(store, store.current);
   if (synced !== store) commit(synced); // salvataggi precedenti: un capitolo già perfetto apre il suo caveau
   const sum = G.summarize(P.currentPlayer(store));
@@ -179,7 +180,7 @@ function home(greeting = "") {
       <h2 class="board__sub">Scegli un capitolo</h2>
       <p class="home__rules">${started ? (next ? `Consigliato: <b>${esc(chapterTitle(next))}</b>.` : "Hai superato tutti i capitoli!") : "Ogni capitolo comincia con una breve teoria, poi arrivano le domande. Si parte dal riscaldamento con le casseforti."}</p>
       ${coursesHTML(sum, next?.id)}
-      <button class="btn btn--ghost btn--block" id="shop-open" type="button">Negozio · ${money(player.cash)}</button>
+      <button class="btn btn--ghost btn--block" id="shop-open" type="button">Negozio · ${money(player.cash)}${shopNews ? ` <span class="btn__badge">${shopNews} novità</span>` : ""}</button>
       <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi, argomento per argomento</button>
       <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la partita è finita. Tre risposte giuste di fila ne spengono una.</p>
       ${radioFull(DJ_LINES[0])}
@@ -195,7 +196,7 @@ function home(greeting = "") {
       </details>
     </section>`));
   refreshScreen = () => home(greeting);
-  document.getElementById("shop-open").onclick = () => shopScreen();
+  document.getElementById("shop-open").onclick = () => enterShop();
   document.getElementById("progress").onclick = () => progressScreen();
   app.querySelectorAll("[data-chapter]").forEach((b) => (b.onclick = () => chapterScreen(b.dataset.chapter)));
   document.getElementById("switch").onclick = () => { commit(P.signOut(store)); nameScreen(); };
@@ -429,8 +430,16 @@ function wireOrder(root, onAnswer) {
 }
 
 // Dopo la risposta: mostra il valore decimale di ogni scheda, così si vede perché quell'ordine.
-function revealOrder(root) {
-  root.querySelectorAll(".order__dec").forEach((d) => (d.hidden = false));
+function revealOrder(root, q, given) {
+  root.querySelectorAll(".order__dec").forEach((d) => { d.hidden = false; d.textContent = d.textContent.replace(" in decimale", ""); });
+  if (!q?.view?.items || !given) return;
+  // ogni scheda: giusta se è nella posizione che le spetta per valore
+  const sorted = q.view.items.map((it, k) => [k, it.dec]).sort((a, b) => a[1] - b[1]).map((x) => x[0]);
+  root.querySelectorAll(".order__item").forEach((b) => {
+    const k = Number(b.dataset.i) - 1;
+    const right = sorted.indexOf(k) === String(given).indexOf(String(k + 1));
+    b.classList.add(right ? "is-correct" : "is-wrong");
+  });
 }
 
 // Cassaforte a 8 ruote. bits = "01000101" la blocca in quella combinazione (domande di lettura).
@@ -638,7 +647,7 @@ function submit(unit, given, clicked, afterJudge) {
   }
   afterJudge?.();
   revealVault(q, verdict.ok);
-  if (q.view?.kind === "order") revealOrder(app.firstElementChild);
+  if (q.view?.kind === "order") revealOrder(app.firstElementChild, q, given);
   const cashBefore = me().cash + game.earned - (verdict.reward ? game.delta : 0);
   const starOff = verdict.reward && game.streak % 3 === 0 && game.stars < starsBefore;
   if (verdict.reward) FX.celebrate({ streak: game.streak, starOff });
@@ -975,7 +984,7 @@ function bossAnswer(q, given, clicked) {
   root.dataset.done = "1";
   const ok = Boss.bossCheck(q, given);
   root.querySelectorAll("input, .dial, button.btn--primary, .choice, .order__item, #order-reset").forEach((n) => (n.disabled = true));
-  if (q.view?.kind === "order") revealOrder(root);
+  if (q.view?.kind === "order") revealOrder(root, q, given);
   if (q.kind === "choice") root.querySelectorAll(".choice").forEach((b) => { if (b.dataset.v === q.answer) b.classList.add("is-correct"); else if (b === clicked) b.classList.add("is-wrong"); });
   if (q.kind === "multi") root.querySelectorAll(".choice").forEach((b) => { const p = q.parts[Number(b.dataset.part)]; if (b.dataset.v === p.answer) b.classList.add("is-correct"); else if (b.getAttribute("aria-pressed") === "true") b.classList.add("is-wrong"); });
   const task = root.querySelector(".boss__task");
@@ -1030,33 +1039,46 @@ function bossWin() {
 
 let shopTab = "skin";
 
-// Il Classico non ha una classe: eredita la skin attiva del body. Per mostrarlo davvero classico nell'anteprima si azzerano le variabili della skin
-// (con "initial" l'SVG ripiega sui colori di partenza, che stanno nei suoi var(--mascot-…, fallback)).
-const CLASSIC_RESET = ["body", "shade", "screen", "face", "led", "led-off", "ink"].map((v) => `--mascot-${v}:initial`).join(";");
+let shopFresh = new Set(); // oggetti diventati comprabili dall'ultima visita (per tutta la visita corrente)
 
 function shopItemHTML(it, player, ctx, boughtId) {
   const st = S.itemState(it, player, ctx);
   const preview = shopTab === "skin"
-    ? `<span class="${it.value === S.FREE.skin ? "" : `skin--${it.value}`}" style="display:contents${it.value === S.FREE.skin ? `;${CLASSIC_RESET}` : ""}">${mascot("neutro")}</span>`
+    ? `<span class="skin--${it.value}" style="display:contents">${mascot("neutro")}</span>`
     : `<span class="bg-swatch"${it.value === S.FREE.bg ? "" : ` data-bg="${it.value}"`}></span>`;
-  const tag = st.state === "equipped" ? '<span class="item__tag">In uso</span>' : st.state === "owned" ? '<span class="item__tag">Tuo</span>' : "";
+  const fresh = shopFresh.has(it.id) && st.state === "buy";
+  const tag = st.state === "equipped" ? '<span class="item__tag">In uso</span>' : st.state === "owned" ? '<span class="item__tag">Tuo</span>' : fresh ? '<span class="item__tag">Nuovo</span>' : "";
   const price = it.price > 0 && (st.state === "buy" || st.state === "locked") ? `<span class="item__price">${money(it.price)}</span>` : "";
   let action = "";
   if (st.state === "equipped") action = '<button class="btn btn--ghost" type="button" disabled aria-disabled="true">In uso</button>';
   else if (st.state === "owned") action = `<button class="btn btn--ghost" type="button" data-equip="${it.id}" aria-label="Usa ${esc(it.name)}">Usa</button>`;
   else if (st.state === "buy") action = `<button class="btn" type="button" data-buy="${it.id}" aria-label="Compra ${esc(it.name)} per ${money(it.price)}">Compra</button>`;
   else if (st.reason === "chapters") {
-    action = `<div class="item__bar" role="img" aria-label="Hai ${st.have} capitoli superati su ${st.need}"><i style="width:${st.percent}%"></i></div><p class="item__gap">Servono <b>${st.need} capitoli superati</b> (ne hai ${st.have})</p>`;
+    // bloccato dai capitoli: lucchetto viola e un pallino per ogni capitolo richiesto (si sbloccano giocando, i contanti arrivano da soli)
+    action = `<div class="item__pips" role="img" aria-label="${st.have} capitoli superati su ${st.need} richiesti">${Array.from({ length: st.need }, (_, k) => `<i${k < st.have ? ' class="is-on"' : ""}></i>`).join("")}</div><p class="item__gap">Servono <b>${st.need} capitoli superati</b> (ne hai ${st.have})</p>`;
   } else {
     action = `<div class="item__bar" role="img" aria-label="Hai il ${st.percent}% del prezzo"><i style="width:${st.percent}%"></i></div><p class="item__gap">Ti mancano <b>${money(st.gap)}</b></p>`;
   }
-  return `<li class="item item--${st.state}${boughtId === it.id ? " is-bought" : ""}" data-item="${it.id}">${tag}<div class="item__preview">${preview}</div><p class="item__name">${esc(it.name)}</p>${price}${action}</li>`;
+  const needs = st.state === "locked" && st.reason === "chapters" ? " item--needs-chapters" : "";
+  return `<li class="item item--${st.state}${needs}${fresh ? " is-new" : ""}${boughtId === it.id ? " is-bought" : ""}" data-item="${it.id}">${tag}<div class="item__preview">${preview}</div><p class="item__name">${esc(it.name)}</p>${price}${action}</li>`;
 }
+
+// Dalla home: le novità sono gli oggetti diventati comprabili dall'ultima visita; entrando si considerano viste.
+function enterShop() {
+  const player = P.currentPlayer(store);
+  if (!player) return nameScreen();
+  const ctx = shopCtx(player);
+  shopFresh = new Set(S.newItems(player, ctx).map((i) => i.id));
+  commit(P.setShopSeen(store, store.current, S.buyableNow(player, ctx).map((i) => i.id)));
+  shopScreen();
+}
+
+const shopCtx = (player) => ({ chapters: G.summarize(player).chapters.filter((c) => c.everPassed).length }); // superati almeno una volta, riscaldamento compreso
 
 function shopScreen(boughtId = null, walletFrom = null) {
   const player = P.currentPlayer(store);
   if (!player) return nameScreen();
-  const ctx = { chapters: G.summarize(player).chapters.filter((c) => c.everPassed).length }; // superati almeno una volta, riscaldamento compreso
+  const ctx = shopCtx(player);
   render(el(`
     <section class="shop">
       <header class="shop__head"><h1 class="shop__title">Negozio</h1><span class="cash shop__wallet" aria-label="Contanti: ${player.cash} dollari"><span class="cash__n">${money(walletFrom ?? player.cash)}</span></span></header>

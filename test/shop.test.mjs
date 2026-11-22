@@ -311,3 +311,23 @@ test("un oggetto comprato resta tuo e indossabile anche se i capitoli scendono d
   assert.equal(S.itemState(S.itemById("skin:oro"), me(S.equip(st, "neri", "skin:classico")), { chapters: 0 }).state, "owned");
   assert.equal(S.buy(st, "neri", "skin:oro", { chapters: 0 }).ok, false, "ma non si ricompra");
 });
+
+import { buyableNow, newItems } from "../js/shop.mjs";
+import { setShopSeen, emptyStore, enter, resetPlayer } from "../js/profiles.mjs";
+
+test("novità: oggetti diventati comprabili dall'ultima visita", () => {
+  const p = { cash: 500, owned: [], shopSeen: [], look: {} };
+  const now = buyableNow(p, { chapters: 0 }).map((i) => i.id);
+  assert.ok(now.length > 0);
+  assert.deepEqual(newItems(p, { chapters: 0 }).map((i) => i.id), now);
+  assert.deepEqual(newItems({ ...p, shopSeen: now }, { chapters: 0 }), []);
+});
+
+test("setShopSeen: salva, non cambia se uguale, il reset lo azzera", () => {
+  let st = enter(emptyStore(), "Neri", 1).store;
+  const key = st.current;
+  const a = setShopSeen(st, key, ["skin:notte", "skin:notte", 5]);
+  assert.deepEqual(a.players[0].shopSeen, ["skin:notte"]);
+  assert.equal(setShopSeen(a, key, ["skin:notte"]), a);
+  assert.deepEqual(resetPlayer(a, key).players[0].shopSeen, []);
+});

@@ -2,7 +2,7 @@
 // Funzioni pure: lavorano su un oggetto `store` e ne restituiscono uno nuovo; la lettura/scrittura sul disco sta in app.js.
 //
 // store = { v: 2, current: "chiave"|null, legacy?: {cash, missionsDone}, players: [player] }
-// player = { key, name, cash, missionsDone, done: { [missione]: volte }, topics: { [argomento]: stats }, trophies: { [capitolo]: quando }, vaultsOpened: { [capitolo]: quando }, owned: ["skin:menta", "bg:molo"…], look: { skin, bg }, createdAt, updatedAt }
+// player = { key, name, cash, missionsDone, done: { [missione]: volte }, topics: { [argomento]: stats }, trophies: { [capitolo]: quando }, vaultsOpened: { [capitolo]: quando }, owned: ["skin:menta", "bg:molo"…], look: { skin, bg }, shopSeen: [id…], createdAt, updatedAt }
 // stats  = { attempts, correct, window: [0|1 … ultimi 5 esiti], level: 0..1 (difficoltà), lastAt, passedAt (quando è stato superato la prima volta, 0 = mai; non si cancella) }
 
 export const MAX_NAME = 20;
@@ -101,7 +101,7 @@ export function parseStore(raw) {
       if (!n.ok || seen.has(n.key)) continue;
       seen.add(n.key);
       store.players.push({
-        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics), trophies: safeTrophies(p.trophies), vaultsOpened: safeTrophies(p.vaultsOpened), owned: safeOwned(p.owned), look: safeLook(p.look),
+        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics), trophies: safeTrophies(p.trophies), vaultsOpened: safeTrophies(p.vaultsOpened), owned: safeOwned(p.owned), look: safeLook(p.look), shopSeen: safeOwned(p.shopSeen),
         createdAt: ts(p.createdAt), updatedAt: ts(p.updatedAt),
       });
       if (store.players.length >= MAX_PLAYERS) break;
@@ -128,7 +128,7 @@ export function enter(store, rawName, now = Date.now()) {
   if (existing) return { ok: true, isNew: false, store: { ...store, current: existing.key }, player: existing };
   if (store.players.length >= MAX_PLAYERS) return { ok: false, error: `Ci sono già ${MAX_PLAYERS} giocatori: elimina un profilo prima di aggiungerne uno.`, store };
   const inherited = store.legacy && store.players.length === 0 ? store.legacy : { cash: 0, missionsDone: 0 };
-  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], look: { ...DEFAULT_LOOK }, createdAt: now, updatedAt: now };
+  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], look: { ...DEFAULT_LOOK }, shopSeen: [], createdAt: now, updatedAt: now };
   const next = { ...store, current: player.key, players: [...store.players, player] };
   delete next.legacy;
   return { ok: true, isNew: true, store: next, player };
@@ -136,7 +136,7 @@ export function enter(store, rawName, now = Date.now()) {
 
 // Azzera i progressi di un giocatore (conto, missioni completate), tenendo il nome.
 export function resetPlayer(store, key, now = Date.now()) {
-  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], look: { ...DEFAULT_LOOK }, updatedAt: now }));
+  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], look: { ...DEFAULT_LOOK }, shopSeen: [], updatedAt: now }));
 }
 
 // Elimina del tutto un giocatore.
@@ -211,4 +211,12 @@ export function setLook(store, key, slot, value, now = Date.now()) {
   const p = store.players.find((x) => x.key === key);
   if (!p || p.look?.[slot] === value) return store;
   return replacePlayer(store, key, (x) => ({ ...x, look: { ...x.look, [slot]: value }, updatedAt: now }));
+}
+
+// Ricorda quali oggetti erano già comprabili all'ultima visita al negozio (serve al segno "novità"). Non cambia lo store se è uguale.
+export function setShopSeen(store, key, ids) {
+  const p = store.players.find((x) => x.key === key);
+  const next = safeOwned(ids);
+  if (!p || (p.shopSeen.length === next.length && p.shopSeen.every((x, i) => x === next[i]))) return store;
+  return replacePlayer(store, key, (x) => ({ ...x, shopSeen: next }));
 }

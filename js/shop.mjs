@@ -70,3 +70,9 @@ export function equip(store, key, itemId, now = Date.now()) {
   if (!item || !player || !isOwned(item, player)) return store;
   return P.setLook(store, key, item.slot, item.value, now);
 }
+
+// Oggetti che si possono comprare adesso (te lo puoi permettere e hai i capitoli).
+export const buyableNow = (player, ctx = {}) => CATALOG.filter((i) => i.price > 0 && itemState(i, player, ctx).state === "buy");
+
+// Novità: oggetti diventati comprabili dall'ultima visita al negozio.
+export const newItems = (player, ctx = {}) => buyableNow(player, ctx).filter((i) => !(player?.shopSeen ?? []).includes(i.id));

@@ -102,24 +102,8 @@
 
 
 
-/* dentro il riquadro chiaro della prova il tasto ghost deve restare scuro (fuori, sul fondo scuro del caveau, lo schiarisce la CSS di Doris) */
-.boss__task .btn--ghost { color: var(--c-text); border-color: var(--c-border); }
 
 /* ---------- Domande con i numeri: presentazione chiara ---------- */
 .qview__to { margin: 0; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .qview__word { font-weight: 400; color: var(--c-text-muted); }
 
-.order { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
-.order__item {
-  position: relative; min-height: 104px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1);
-  padding: var(--sp-3); border-radius: var(--r-md); border: 2px solid var(--c-border); background: var(--c-surface); color: var(--c-text); cursor: pointer;
-}
-.order__item:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
-.order__item[aria-pressed="true"] { border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 10%, var(--c-surface)); }
-.order__item:disabled { opacity: 1; cursor: default; }
-.order__pos { position: absolute; top: 6px; left: 6px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--c-primary); color: var(--c-on-primary); opacity: 0; }
-.order__item[aria-pressed="true"] .order__pos { opacity: 1; }
-.order__num { font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800; font-size: var(--fs-xl); line-height: 1; overflow-wrap: anywhere; text-align: center; }
-.order__num sub { font-size: .45em; color: var(--c-text-muted); margin-left: 2px; }
-.order__dec { font-size: var(--fs-xs); font-weight: 700; color: var(--c-success); }
-.order__hint { margin: 0; font-size: var(--fs-sm); color: var(--c-text-muted); }
