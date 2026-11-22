@@ -11,15 +11,7 @@
 .home__missions .choice { justify-content: flex-start; text-align: left; }
 .home__sub { color: var(--c-text-muted); font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 400; }
 .home .btn { max-width: 28rem; }
-
-/* corpo del passaggio corrente (colonna + campo risposta) a tutta larghezza */
-.step__body { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--sp-3); }
-
-/* passaggio sbagliato nell'elenco dei fatti */
-.step.is-done.is-wrong { background: var(--c-danger-bg); }
-.step.is-done.is-wrong::before { content: "✕"; background: var(--c-danger); border-color: var(--c-danger); }
-.step.is-done.is-wrong .step__result { color: var(--c-danger); }
-.step.is-done.is-wrong s { opacity: .7; }
+.home .radio { width: 100%; max-width: 28rem; text-align: left; }
 
 .feedback--inline .solution { grid-column: 1 / -1; }
 #fb { display: contents; }

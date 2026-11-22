@@ -34,6 +34,22 @@ const ICON_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.
 const ICON_KO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
 const ICON_HINT = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>';
 
+// ---------- Radio in auto (Radio Overflow, DJ Nibble) ----------
+const EQ = '<svg class="radio__eq" viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="2" width="3" height="14" rx="1"/><rect x="6" y="2" width="3" height="14" rx="1"/><rect x="11" y="2" width="3" height="14" rx="1"/><rect x="16" y="2" width="3" height="14" rx="1"/></svg>';
+const DJ_LINES = [
+  "101.1010 in binario è 5,625: una frequenza su cui non trasmette nessuno. Per questo non ci trova nessuno.",
+  "Anche i computer sbagliano. Solo, molto più in fretta.",
+  "Notizia dal porto: il 10 è arrivato in ritardo. In binario era in anticipo di otto.",
+  "Ci sono 10 tipi di persone: chi capisce il binario e chi no. Voi siete in ottima compagnia.",
+  "Meteo di Neon Bay: serata limpida, 0 nuvole e 1 luna.",
+  "Il caveau della banca ha 8 ruote. Quelle del mio furgone, purtroppo, 4.",
+  "Questo brano è dedicato a tutti gli zeri: senza di voi i numeri sarebbero solo uno.",
+  "Un byte entra in un bar: ordina otto bit e se ne va con un po' di resto.",
+];
+const djLine = () => DJ_LINES[Math.floor(Math.random() * DJ_LINES.length)];
+const radioFull = (line = djLine()) => `<aside class="radio" aria-label="Radio Overflow, 101.1010 FM"><div class="radio__dial">${EQ}<span class="radio__freq">101.1010<small>FM</small></span><span class="radio__name">Radio Overflow</span><span class="radio__live">In onda</span></div><p class="radio__line"><b class="radio__dj">DJ Nibble</b>${esc(line)}</p></aside>`;
+const radioCompact = (line) => `<p class="radio radio--compact">${EQ}<span class="radio__freq">101.1010</span><span class="radio__line">${esc(line)}</span></p>`;
+
 function render(node) {
   app.replaceChildren(node);
   window.scrollTo({ top: 0 });
@@ -49,6 +65,7 @@ function home() {
       <h1 class="home__title">Neon <span>Bay</span></h1>
       <p class="home__line">Il tuo conto: <b>${money(profile.cash)}</b> · Missioni completate: <b>${profile.missionsDone}</b></p>
       <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la missione è fallita. Tre risposte giuste di fila ne spengono una.</p>
+      ${radioFull(DJ_LINES[0])}
       <ul class="choices choices--stack home__missions">
         ${Object.entries(MISSIONS).map(([k, m]) => `<li><button class="choice" type="button" data-m="${k}"><span><b>${esc(m.title)}</b><br><span class="home__sub">${esc(m.sub)}</span></span></button></li>`).join("")}
       </ul>
@@ -184,7 +201,7 @@ function feedbackHTML({ q, unit, isStep, verdict, moreSteps, failed, last }) {
     extra += `<details class="solution"${ok ? "" : " open"}><summary>${ok ? "Rivediamo il conto" : "Rifacciamolo insieme"}</summary>${col}<ol>${lines(q.explain)}</ol></details>`;
   }
   const tip = !ok && verdict.star ? `<p class="feedback__tip">+1 stella ricercato. Tre risposte giuste di fila e se ne spegne una.</p>` : "";
-  const radio = !moreSteps && q.radio ? `<p class="feedback__tip">📻 ${esc(q.radio)}</p>` : "";
+  const radio = radioCompact(!moreSteps && q.radio ? q.radio : djLine());
   const next = failed ? "Vedi come è andata" : moreSteps ? "Prossimo passaggio" : last ? "Fine missione" : "Avanti";
   return `<div class="feedback feedback--inline feedback--${variant}" role="status">
     <img class="feedback__mascot" src="${MASCOT(mascot)}" alt="">
@@ -263,6 +280,7 @@ function finish(failed) {
       <h1 class="home__title">${failed ? "Beccato!" : "Missione <span>compiuta</span>"}</h1>
       <p class="home__line">${failed ? "Cinque stelle: la polizia ti ha preso. Il bottino resta sul banco." : `Hai incassato <b>${money(game.earned)}</b>.`}</p>
       <p class="home__rules">Risposte giuste: ${game.rightCount} su ${game.totalUnits}</p>
+      ${radioFull()}
       <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : "Un'altra missione"}</button>
       <button class="btn btn--ghost btn--block" id="menu" type="button">Menu</button>
     </section>`));
