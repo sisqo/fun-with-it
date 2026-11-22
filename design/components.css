@@ -950,6 +950,182 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .pager i.is-done { background: var(--c-text-muted); }
 .pager i.is-current { width: 22px; background: var(--c-primary); border-color: var(--c-primary); }
 
+/* =========================================================================
+   STRUTTURA A CAPITOLI: home "Scegli un capitolo" → schermata del capitolo → teoria → domande
+   ========================================================================= */
+
+/* ---------- Home: il capitolo consigliato ---------- */
+/* Basta lo <span class="course__next">Consigliato</span> nel titolo: la card si accende da sola (:has). */
+.course__next {
+  display: inline-flex; align-items: center; gap: 3px; margin-left: var(--sp-1); vertical-align: 2px;
+  padding: 1px var(--sp-2); border-radius: var(--r-pill);
+  background: var(--c-primary); color: var(--c-on-primary);
+  font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 800; letter-spacing: .02em; white-space: nowrap;
+}
+.course__next::before { content: "▸"; }
+.course__item:has(.course__next) { outline: 3px solid var(--c-primary); outline-offset: 2px; }
+.course__item:has(.course__next)::after { color: var(--c-primary); }
+
+/* piccolo segno del caveau sulla card (in alto a destra). Chiuso: di solito non si mostra. */
+.course__vault {
+  position: absolute; top: -9px; right: 12px; z-index: 1;
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px 1px 6px; border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: 800; white-space: nowrap; border: 2px solid var(--c-surface);
+}
+.course__vault svg { width: 14px; height: 14px; flex: none; }
+.course__vault--closed { background: var(--c-surface-2); color: var(--c-text-muted); }
+.course__vault--ready { background: var(--neon-gold); color: var(--c-on-dial-on); box-shadow: 0 0 10px color-mix(in srgb, var(--neon-gold) 60%, transparent); animation: siren 2.4s ease-in-out infinite; }
+.course__vault--won { background: var(--c-cash); color: var(--c-surface); }
+
+/* ---------- Schermata del capitolo ---------- */
+/* <section class="chapter-page">
+     <button class="chapter-page__back">Capitoli</button>
+     <header class="chapter-hero chapter-hero--<stato>"> … </header>
+     <div class="chapter-cta"> flow + Inizia + Rivedi la teoria </div>
+     <section class="chapter-vault chapter-vault--closed|ready|won"> … </section>
+     <section class="chapter-page__topics"> <h2>Argomenti</h2> <ul class="topics">…</ul> </section>
+     <button class="btn btn--ghost btn--block">Torna ai capitoli</button>
+   </section>
+   <stato> = perfetto | superato | da-ripassare | coperto | in-corso | da-iniziare (come .course__item) */
+.chapter-page { display: flex; flex-direction: column; gap: var(--sp-4); }
+.chapter-page__back {
+  align-self: flex-start; min-height: var(--tap); padding: 0 var(--sp-3) 0 var(--sp-2);
+  display: inline-flex; align-items: center; gap: 4px; border-radius: var(--r-pill);
+  border: 0; background: transparent; color: var(--c-text-muted); font-weight: 700;
+}
+.chapter-page__back::before { content: "‹"; font-size: 1.5em; line-height: 1; }
+
+/* testata: medaglione + kicker + titolo + fonte + stato + barra */
+.chapter-hero {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2) var(--sp-4); align-items: center;
+  padding: var(--sp-5) var(--sp-4) var(--sp-4); border-radius: var(--r-lg);
+  background: var(--c-bg-sky), var(--c-surface); border: var(--border-w) solid var(--c-border); box-shadow: var(--shadow-1);
+}
+.chapter-hero__n {
+  width: 72px; height: 72px; border-radius: 50%; position: relative;
+  display: grid; place-items: center; font-family: var(--font-mono); font-feature-settings: var(--num-features);
+  font-size: 2rem; font-weight: 800; border: 4px solid currentColor; color: var(--c-text-muted); background: var(--c-surface);
+}
+.chapter-hero__kicker { margin: 0; font-family: var(--font-sign); font-size: var(--fs-xs); letter-spacing: .08em; color: var(--c-accent); }
+.chapter-hero__title { margin: 2px 0 0; font-size: var(--fs-xl); line-height: 1.1; text-wrap: balance; }
+.chapter-hero__src { margin: 2px 0 0; font-size: var(--fs-xs); color: var(--c-text-muted); }
+.chapter-hero__status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); }
+.chapter-hero__detail { margin: 0; font-size: var(--fs-sm); color: var(--c-text-muted); flex: 1 1 12rem; }
+.chapter-hero .chapter__bar, .chapter-hero .chapter__count, .chapter-hero .chapter__was { grid-column: 1 / -1; }
+/* stati del medaglione (stessa gerarchia della home) */
+.chapter-hero--perfetto { border: 3px solid transparent; background: var(--c-bg-sky) padding-box, linear-gradient(120deg, var(--neon-gold), var(--neon-orange), var(--neon-gold)) border-box; }
+.chapter-hero--perfetto .chapter-hero__n { color: var(--c-on-dial-on); background: var(--neon-gold); border-color: var(--c-cash); box-shadow: 0 0 18px color-mix(in srgb, var(--neon-gold) 55%, transparent); }
+.chapter-hero--perfetto .chapter-hero__n::after {
+  content: "★"; position: absolute; top: -6px; right: -6px; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 15px; background: var(--c-cash); color: var(--c-surface); border: 2px solid var(--c-surface);
+}
+.chapter-hero--superato .chapter-hero__n { color: var(--c-surface); background: var(--c-success); border-color: var(--c-success); }
+.chapter-hero--da-ripassare .chapter-hero__n { color: var(--c-danger); }
+.chapter-hero--coperto .chapter-hero__n { color: var(--c-surface); background: var(--c-secondary); border-color: var(--c-secondary); }
+.chapter-hero--in-corso .chapter-hero__n { color: var(--c-secondary); }
+.chapter-hero--da-iniziare .chapter-hero__n { border-style: dashed; }
+@media (max-width: 400px) {
+  .chapter-hero { gap: var(--sp-2) var(--sp-3); padding: var(--sp-4) var(--sp-3) var(--sp-3); }
+  .chapter-hero__n { width: 56px; height: 56px; font-size: 1.5rem; }
+}
+
+/* chiamata all'azione: come funziona (teoria → domande) + il tasto grande */
+.chapter-cta { display: flex; flex-direction: column; gap: var(--sp-3); }
+.chapter-cta .btn--primary { min-height: 64px; font-weight: 800; font-size: var(--fs-lg); box-shadow: var(--glow), var(--shadow-1); } /* frasi lunghe: font UI, non insegna */
+.chapter-cta .btn--primary::after { content: "▸"; font-family: var(--font-ui); }
+.flow { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; gap: var(--sp-2) var(--sp-6); flex-wrap: wrap; font-size: var(--fs-sm); }
+.flow__step { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 4px var(--sp-3) 4px 4px; border-radius: var(--r-pill); background: var(--c-surface); border: var(--border-w) solid var(--c-border); font-weight: 700; color: var(--c-text-muted); }
+.flow__step b { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: var(--fs-xs); background: var(--c-surface-2); color: var(--c-text); }
+.flow__step + .flow__step::before { content: "→"; position: absolute; right: calc(100% + var(--sp-2)); font-weight: 800; color: var(--c-text-muted); } /* freccia tra i passi */
+.flow__step.is-current { border-color: var(--c-primary); color: var(--c-text); }
+.flow__step.is-current b { background: var(--c-primary); color: var(--c-on-primary); }
+.flow__step.is-done b { background: var(--c-success); color: var(--c-surface); } /* metti ✓ al posto del numero */
+
+/* il caveau del capitolo: tre stati */
+.chapter-vault {
+  display: grid; grid-template-columns: 56px 1fr; gap: var(--sp-1) var(--sp-3); align-items: center;
+  padding: var(--sp-3) var(--sp-4); border-radius: var(--r-lg);
+  background: var(--c-vault); color: var(--c-vault-text); border: 2px solid var(--c-vault-edge);
+}
+.chapter-vault__icon { grid-row: span 2; width: 56px; height: 56px; }
+.chapter-vault__icon .boss__door, .chapter-vault__icon .trophy__cup { width: 100%; height: 100%; }
+.chapter-vault__title { margin: 0; font-family: var(--font-sign); font-size: var(--fs-sm); letter-spacing: .04em; }
+.chapter-vault__text { margin: 0; font-size: var(--fs-sm); color: var(--c-vault-muted); }
+.chapter-vault .btn { grid-column: 1 / -1; margin-top: var(--sp-2); }
+.chapter-vault--closed { border-style: dashed; border-color: var(--c-vault-muted); }
+.chapter-vault--closed .chapter-vault__icon { filter: grayscale(1); opacity: .7; }
+.chapter-vault--ready { border-color: var(--neon-gold); box-shadow: 0 0 0 1px var(--neon-gold), 0 0 22px color-mix(in srgb, var(--neon-gold) 35%, transparent); }
+.chapter-vault--ready .chapter-vault__title { color: var(--neon-gold); }
+.chapter-vault--ready .btn { background: var(--neon-gold); color: var(--c-on-dial-on); }
+.chapter-vault--won { border-color: var(--c-cash); }
+.chapter-vault--won .chapter-vault__title { color: var(--neon-gold); }
+
+.chapter-page__topics > h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-md); }
+/* "Allenati" + "Lezione" in coppia, Lezione più leggera */
+.topic__train[data-lesson] { border-style: dashed; }
+
+/* ---------- Il caveau (boss) ---------- */
+/* <section class="boss" data-step="1|2|3" [class="is-open"]>
+     <header class="boss__head"><p class="boss__kicker">Caveau · Capitolo 4</p><h1 class="boss__title">Il caveau della Torre</h1></header>
+     <div class="boss__stage"> <svg class="boss__door">…vault-door.svg inline…</svg> </div>
+     <ol class="boss__steps"><li class="is-done">Ruote</li><li class="is-current">Domanda</li><li>Combinazione</li></ol>
+     <div class="boss__task"> …la prova del passaggio (.vault, .q, .ruler-form)… </div>
+   </section>
+   Il volantino della porta gira di 120° a ogni passaggio superato; i bulloni (8 = 8 bit) si accendono. */
+.boss {
+  display: flex; flex-direction: column; gap: var(--sp-4); align-items: stretch;
+  padding: var(--sp-5) var(--sp-4); border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 60% at 50% 0%, color-mix(in srgb, var(--neon-violet) 28%, transparent), transparent 70%),
+    var(--c-vault-edge);
+  color: var(--c-vault-text); border: 3px solid var(--c-vault);
+  --door-light: var(--neon-pink);
+}
+.boss__head { text-align: center; }
+.boss__kicker { margin: 0; font-family: var(--font-sign); font-size: var(--fs-xs); letter-spacing: .1em; color: var(--neon-gold); }
+.boss__title { margin: 4px 0 0; font-family: var(--font-sign); font-weight: 400; font-size: var(--fs-xl); line-height: 1.05; color: var(--c-vault-text); text-shadow: 0 0 14px color-mix(in srgb, var(--neon-pink) 60%, transparent); }
+.boss__stage { display: grid; place-items: center; position: relative; }
+.boss__door { width: min(62vw, 240px); height: auto; filter: drop-shadow(0 10px 24px rgb(0 0 0 / .45)); }
+.boss__wheel { transform-box: view-box; transform-origin: 100px 100px; transition: transform var(--dur-slow) var(--ease-pop); }
+.boss[data-step="2"] .boss__wheel { transform: rotate(120deg); }
+.boss[data-step="3"] .boss__wheel { transform: rotate(240deg); }
+.boss.is-open .boss__wheel { transform: rotate(360deg); }
+.boss__bolt { transition: fill var(--dur-med); }
+.boss[data-step="2"] .boss__bolt:nth-child(-n+3),
+.boss[data-step="3"] .boss__bolt:nth-child(-n+6),
+.boss.is-open .boss__bolt { fill: var(--neon-gold) !important; } /* !important: i bulloni hanno il fill inline nello SVG */
+.boss.is-open { --door-light: var(--neon-mint); border-color: var(--neon-gold); }
+.boss.is-open .boss__door { filter: drop-shadow(0 0 26px color-mix(in srgb, var(--neon-gold) 70%, transparent)); }
+
+.boss__steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); counter-reset: bstep; }
+.boss__steps li {
+  counter-increment: bstep; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+  font-size: var(--fs-xs); font-weight: 700; color: var(--c-vault-muted);
+}
+.boss__steps li::before {
+  content: counter(bstep); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-mono); font-weight: 800; font-size: var(--fs-sm);
+  border: 3px dashed var(--c-vault-muted); color: var(--c-vault-muted);
+}
+.boss__steps li.is-current { color: var(--c-vault-text); }
+.boss__steps li.is-current::before { border-style: solid; border-color: var(--neon-pink); color: var(--neon-pink); box-shadow: 0 0 12px color-mix(in srgb, var(--neon-pink) 50%, transparent); }
+.boss__steps li.is-done { color: var(--c-vault-text); }
+.boss__steps li.is-done::before { content: "✓"; border-style: solid; border-color: var(--neon-gold); background: var(--neon-gold); color: var(--c-on-dial-on); }
+.boss__task { background: var(--c-surface); color: var(--c-text); border-radius: var(--r-md); padding: var(--sp-4); }
+.boss__note { margin: 0; text-align: center; font-size: var(--fs-sm); color: var(--c-vault-muted); }
+
+/* ---------- Trofei ---------- */
+/* <figure class="trophy"><svg class="trophy__cup">…trophy.svg…</svg><figcaption><b>Caveau 4</b>22/11</figcaption></figure>
+   Scaffale nel profilo: <ul class="trophies"> con un <li> per capitolo; .trophy.is-empty = sagoma tratteggiata. */
+.trophy { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; font-size: var(--fs-xs); color: var(--c-text-muted); }
+.trophy__cup { width: 56px; height: auto; filter: drop-shadow(0 3px 6px color-mix(in srgb, var(--c-cash) 40%, transparent)); }
+.trophy figcaption b { display: block; color: var(--c-text); }
+.trophy--big .trophy__cup { width: 112px; animation: star-in var(--dur-slow) var(--ease-pop); }
+.trophy.is-empty .trophy__cup { filter: none; --trophy-gold: transparent; --trophy-shade: transparent; --trophy-ink: var(--c-text-muted); opacity: .55; }
+.trophies { list-style: none; margin: 0; padding: var(--sp-3); display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: var(--sp-3) var(--sp-2);
+  border-radius: var(--r-lg); background: var(--c-surface); border: var(--border-w) solid var(--c-border); }
+
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }
 

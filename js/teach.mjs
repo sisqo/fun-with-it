@@ -18,15 +18,17 @@ const SUB = { a: bin(6), b: bin(1) };             // 110 - 1: un prestito sempli
 const subSteps = E.subSteps(SUB.a, SUB.b);
 const SUBC = { a: bin(8), b: bin(3) };            // 1000 - 11: prestito a catena attraverso gli zeri
 const subChain = E.subSteps(SUBC.a, SUBC.b);
-const MUL = { a: bin(5), b: bin(3) };             // 101 x 11
+const MUL = { a: bin(7), b: bin(5) };             // 111 x 101: una cifra 0 nel moltiplicatore e riporti nella somma
 const mulRes = E.mulBinary(MUL.a, MUL.b);
+// una riga per ogni cifra del moltiplicatore (anche per lo 0, che dà una riga di zeri)
+const mulRows = [...MUL.b].reverse().map((d, k) => (d === "1" ? MUL.a + "0".repeat(k) : "0".repeat(MUL.a.length + k)));
 const DIV = { a: bin(60), b: bin(6) };            // 111100 : 110
 const divRes = E.divSteps(DIV.a, DIV.b);
 const frac = E.decimalToBinaryPointDetailed("12,3125");
 
 export const LESSON_PAGES = {
   cassaforte: [
-    { bubble: "Benvenuto a Neon Bay. Qui un caveau non si apre con una password: si apre con la somma giusta.", mascot: "neutro",
+    { bubble: "Ti do il benvenuto a Neon Bay. Qui un caveau non si apre con una password: si apre con la somma giusta.", mascot: "neutro",
       paras: ["La cassaforte ha 8 ruote. Ogni ruota ha un peso: 128, 64, 32, 16, 8, 4, 2, 1.", "Ruota accesa = 1: aggiunge il suo peso. Ruota spenta = 0: non aggiunge niente."],
       key: "Il display segna la somma dei pesi delle ruote accese." },
     { bubble: "Guarda i pesi: ogni ruota vale il doppio di quella alla sua destra.", mascot: "neutro",
@@ -39,9 +41,9 @@ export const LESSON_PAGES = {
   "istruzioni-robot": [
     { bubble: "Ho sete. Ma so fare solo quello che mi scrivi, un passo alla volta.", mascot: "sete",
       paras: ["Per farmi riempire un bicchiere devi darmi istruzioni giuste. Ecco come si fa:"],
-      algo: [{ t: "Prendi il bicchiere." }, { t: "Capovolgilo e posalo sulla cattedra." }, { t: "Prendi la bottiglia con una mano." }, { t: "Con l'altra mano svita il tappo ruotando in senso antiorario." }, { t: "Versa l'acqua nel bicchiere." }],
+      algo: [{ t: "Prendi il bicchiere." }, { t: "Capovolgilo e posalo sulla cattedra." }, { t: "Prendi la bottiglia con una mano." }, { t: "Con l'altra mano svita il tappo ruotando in senso antiorario." }, { t: "Inclina la bottiglia sopra il bicchiere." }, { t: "Quando l'acqua arriva a due dita dal bordo, raddrizza la bottiglia." }, { t: "Posa la bottiglia." }],
       key: "Le istruzioni per una macchina devono essere precise, complete, ordinate e non ambigue." },
-    { bubble: "«Versa l'acqua nel bicchiere» da sola non mi basta: sottintende troppi passaggi.", mascot: "perplesso",
+    { bubble: "E se scrivessi solo «versa l'acqua nel bicchiere»? Non mi basta: sottintende troppi passaggi.", mascot: "perplesso",
       paras: ["Una macchina non indovina le intenzioni e non inventa i passaggi mancanti: esegue soltanto istruzioni che è in grado di comprendere."],
       algo: [{ t: "Versa l'acqua nel bicchiere.", hl: true }, { t: "…ma prima? Prendere la bottiglia, svitare il tappo, inclinarla…", iff: true }] },
     { bubble: "Anche istruzioni giuste devono essere nella mia lingua.", mascot: "neutro",
@@ -53,8 +55,6 @@ export const LESSON_PAGES = {
     { bubble: "Un dato da solo non dice niente. Due dati messi in relazione, invece, sì.", mascot: "neutro",
       paras: ["«2010» e «Paola» sono dati: numeri o sequenze di caratteri.", "«Paola è nata nel 2010» è un'informazione: ora so anche quanti anni ha."],
       key: "Dati = numeri o caratteri. Informazioni = relazioni tra dati che aumentano la nostra conoscenza." },
-    { bubble: "Informatica, da «informazione automatica»: far lavorare le macchine su dati e informazioni.", mascot: "esulta",
-      paras: ["Elaborare dati e informazioni significa compiere operazioni su di essi: archiviarli, organizzarli o trasformarli in altri dati o informazioni."] },
   ],
 
   "algoritmo-pensiero": [
@@ -64,11 +64,13 @@ export const LESSON_PAGES = {
     { bubble: "Per trovare un algoritmo si ragiona in quattro fasi, sempre in questo ordine.", mascot: "neutro",
       algo: [{ t: "Analisi del problema: cerca le regolarità (pattern)." }, { t: "Astrazione: tieni solo gli aspetti importanti." }, { t: "Scomposizione: dividi in sottoproblemi più semplici." }, { t: "Formulazione di algoritmi: scrivi i passi." }],
       key: "È il pensiero computazionale: ragionare su problemi complessi per risolverli in modo automatico." },
-    { bubble: "Poi arriva il coding: dire all'algoritmo come parlare con il computer.", mascot: "esulta",
+    { bubble: "Poi arriva il coding: scrivere l'algoritmo in un linguaggio che il computer capisce.", mascot: "esulta",
       paras: ["Si individuano le variabili, si scrive l'algoritmo in un linguaggio di programmazione, poi si esegue e si controlla il risultato."] },
   ],
 
   "informatica-termini": [
+    { bubble: "Informatica viene da «informazione automatica»: far lavorare le macchine su dati e informazioni.", mascot: "esulta",
+      paras: ["Elaborare dati e informazioni significa compiere operazioni su di essi: archiviarli, organizzarli o trasformarli in altri dati o informazioni."] },
     { bubble: "Informatica non vuol dire «saper usare il computer».", mascot: "neutro",
       paras: ["È una scienza alla base di molte tecnologie e applicazioni. Programmare è solo l'ultimo passo: prima si analizza il problema."],
       key: "Tecnologie: Wi-Fi, 5G. Applicazioni: Netflix, Instagram, TikTok." },
@@ -100,7 +102,7 @@ export const LESSON_PAGES = {
 
   "sistemi-posizionali": [
     { bubble: "Lo stesso numero si può scrivere in basi diverse, ma la quantità non cambia.", mascot: "neutro",
-      paras: ["In un sistema posizionale una cifra vale per la posizione che occupa: 453 = (4 × 100) + (5 × 10) + (3 × 1).", "Per questo 427 e 247 sono numeri diversi, anche se hanno le stesse cifre."],
+      paras: ["In un sistema posizionale il valore di una cifra dipende dalla cifra stessa e dalla posizione che occupa: 453 = (4 × 100) + (5 × 10) + (3 × 1).", "Per questo 427 e 247 sono numeri diversi, anche se hanno le stesse cifre."],
       key: "La base dice quante cifre diverse ci sono. I pesi sono le potenze della base." },
     { bubble: "In base 10 i pesi sono 1, 10, 100… In base 2 sono 1, 2, 4, 8…", mascot: "esulta",
       paras: [`101 in base 2 = (1 × 4) + (0 × 2) + (1 × 1) = ${E.fromBin("101")}. Si scrive 101₂ per distinguerlo da 101₁₀.`, "Noi usiamo la base 10 perché abbiamo dieci dita."] },
@@ -108,7 +110,7 @@ export const LESSON_PAGES = {
 
   "dec-bin": [
     { bubble: "Per passare dal decimale al binario ci sono due metodi. Il primo: i pesi.", mascot: "neutro",
-      paras: [`Prendi ${77}. Parti dal peso più grande che ci sta e togli: ${wSteps(77).split(" + ").join(", ")}.`, `Pesi usati: ${wSteps(77)} = 77. Scrivi 1 sotto i pesi usati e 0 sotto gli altri: ${bin(77)}.`],
+      paras: [`Prendi 77. A ogni peso, da 128 in giù, chiediti: ci sta in quello che resta? Se sì, scrivi 1 e toglilo; se no, scrivi 0.`, `${E.weightSteps(77).filter((s) => s.bit).map((s) => `${s.restBefore} − ${s.weight} = ${s.restAfter}`).join("; ")}. I pesi 128, 32, 16 e 2 non ci stanno: 0. Risultato: ${bin(77)}.`],
       key: "Peso che ci sta in quello che resta → 1 e toglilo. Non ci sta → 0." },
     { bubble: "Il secondo metodo: dividere per 2 e leggere i resti dal basso verso l'alto.", mascot: "esulta",
       algo: E.divisionSteps(22).map((s) => ({ t: `${s.dividend} : 2 = ${s.quotient} con resto ${s.remainder}` })),
@@ -117,7 +119,7 @@ export const LESSON_PAGES = {
 
   "bin-dec": [
     { bubble: "Dal binario al decimale: si sommano i pesi dove c'è un 1.", mascot: "neutro",
-      paras: [`11010 = (1 × 16) + (1 × 8) + (0 × 4) + (1 × 2) + (0 × 1) = ${E.fromBin("11010")}.`, "Gli zeri non contano: le posizioni con 0 non aggiungono niente."],
+      paras: [`11010 = (1 × 16) + (1 × 8) + (0 × 4) + (1 × 2) + (0 × 1) = ${E.fromBin("11010")}.`, "Gli zeri non aggiungono niente alla somma, ma tengono il posto: senza di loro le altre cifre cambierebbero peso."],
       key: "Pesi da destra: 1, 2, 4, 8, 16, 32, 64, 128…" },
   ],
 
@@ -135,11 +137,11 @@ export const LESSON_PAGES = {
       algo: [...addSteps.map((s, i) => ({ t: s.text.startsWith("Riporto finale") ? s.text : `${E.colName(2 ** s.column)}: ${s.text}`, hl: i === 0 })), { t: `Risultato: ${addRes.result}.` }] },
     { bubble: "Fai sempre tre mosse: converti, opera in binario, verifica in decimale.", mascot: "perplesso",
       paras: [`Verifica: ${E.fromBin(ADD.a)} + ${E.fromBin(ADD.b)} = ${E.fromBin(ADD.a) + E.fromBin(ADD.b)}, e ${addRes.result} in decimale fa ${E.fromBin(addRes.result)}. Se non torna, l'errore è nell'operazione in binario.`],
-      key: "Se la verifica non torna, hai sbagliato un riporto: rifai la somma colonna per colonna." },
+      key: "Se la verifica non torna, di solito è un riporto sbagliato: rifai la somma colonna per colonna." },
   ],
 
   sottrazione: [
-    { bubble: "Sottrarre è come sommare, ma con i prestiti.", mascot: "neutro",
+    { bubble: "Si sottrae colonna per colonna da destra, come in decimale; quando non si può, si chiede in prestito.", mascot: "neutro",
       algo: [{ t: "0 − 0 = 0" }, { t: "1 − 0 = 1" }, { t: "1 − 1 = 0" }, { t: "0 − 1 non si può: chiedo in prestito", hl: true }],
       key: "Quando in una colonna non si può sottrarre, si cerca a sinistra il primo 1: quello presta." },
     { bubble: `Un prestito semplice: ${SUB.a} − ${SUB.b}, cioè ${E.fromBin(SUB.a)} − ${E.fromBin(SUB.b)}.`, mascot: "esulta",
@@ -151,15 +153,17 @@ export const LESSON_PAGES = {
 
   moltiplicazione: [
     { bubble: "Moltiplicare in binario è copiare e sommare.", mascot: "neutro",
-      algo: [{ t: "× 0 = una riga di zeri" }, { t: "× 1 = copio il numero, spostato a sinistra di una posizione per ogni cifra" }, { t: "Alla fine sommo le righe, colonna per colonna" }],
-      key: "Per ogni 1 del moltiplicatore scrivi una riga con il primo numero, spostata a sinistra." },
-    { bubble: `Proviamo: ${MUL.a} × ${MUL.b}, cioè ${E.fromBin(MUL.a)} × ${E.fromBin(MUL.b)}.`, mascot: "esulta",
-      algo: mulRes.rows.map((r, i) => ({ t: `Riga ${i + 1}: ${r}${i ? " (spostata di " + i + ")" : ""}` })).concat([{ t: `Somma: ${mulRes.partials.at(-1)}`, hl: true }, { t: `${mulRes.result} in decimale fa ${E.fromBin(mulRes.result)}, ed è proprio ${E.fromBin(MUL.a)} × ${E.fromBin(MUL.b)}.` }]) },
+      algo: [{ t: "Ogni cifra del moltiplicatore dà una riga: se è 1 copi il primo numero, se è 0 scrivi solo zeri." }, { t: "La riga di ogni cifra si sposta a sinistra di tante posizioni quante sono le cifre alla sua destra: la prima non si sposta, la seconda di 1, la terza di 2…" }, { t: "Alla fine somma le righe, colonna per colonna." }],
+      key: "Moltiplicare per 1 è copiare, per 0 è azzerare: la difficoltà sta nella somma finale, con i riporti." },
+    { bubble: `Proviamo: ${MUL.a} × ${MUL.b}, cioè ${E.fromBin(MUL.a)} × ${E.fromBin(MUL.b)}. Il moltiplicatore ha anche uno 0.`, mascot: "esulta",
+      algo: [...[...MUL.b].reverse().map((d, k) => ({ t: `Riga ${k + 1} (cifra ${d}${k ? `, spostata di ${k}` : ""}): ${mulRows[k]}${d === "0" ? " → tutta di zeri, si può saltare" : ""}`, hl: d === "0" })),
+        { t: `Somma delle righe: ${mulRes.rows.join(" + ")} = ${mulRes.result}`, hl: false },
+        { t: `${mulRes.result} in decimale fa ${E.fromBin(mulRes.result)}, ed è proprio ${E.fromBin(MUL.a)} × ${E.fromBin(MUL.b)}.` }] },
   ],
 
   divisione: [
-    { bubble: "La divisione in binario è quella lunga delle elementari, ma più facile: il quoziente è solo 0 o 1.", mascot: "neutro",
-      algo: [{ t: "Prendi le prime cifre finché il divisore ci sta." }, { t: "Se ci sta: scrivi 1 nel quoziente e sottrai." }, { t: "Abbassa la cifra dopo." }, { t: "Se non ci sta: scrivi 0 nel quoziente." }, { t: "Alla fine, quello che resta è il resto." }],
+    { bubble: "La divisione in binario è quella lunga delle elementari, ma più facile: ogni cifra del quoziente è 0 o 1.", mascot: "neutro",
+      algo: [{ t: "Prendi le prime cifre finché il divisore ci sta: scrivi 1 nel quoziente e sottrai." }, { t: "Abbassa la cifra dopo." }, { t: "Il divisore ci sta? Sì: scrivi 1 e sottrai. No: scrivi 0." }, { t: "Ripeti gli ultimi due passi finché finiscono le cifre." }, { t: "Quello che resta è il resto." }],
       key: "Verifica: quoziente × divisore + resto deve dare il dividendo." },
     { bubble: `Esempio: ${DIV.a} : ${DIV.b}, cioè ${E.fromBin(DIV.a)} : ${E.fromBin(DIV.b)}.`, mascot: "esulta",
       algo: [...divRes.steps.map((s, i) => ({ t: s.text, hl: i === 0 })), { t: `Quoziente ${divRes.quotient}, resto ${divRes.remainder}. Verifica: ${E.fromBin(divRes.quotient)} × ${E.fromBin(DIV.b)} + ${E.fromBin(divRes.remainder)} = ${E.fromBin(DIV.a)}.` }] },
@@ -167,11 +171,11 @@ export const LESSON_PAGES = {
 
   "ott-esa": [
     { bubble: "Ottale ed esadecimale sono il binario con le cifre raggruppate.", mascot: "neutro",
-      paras: ["Ottale (base 8): ogni cifra vale 3 bit. Esadecimale (base 16): ogni cifra vale 4 bit.", "Le cifre esadecimali oltre il 9 sono lettere: A = 10, B = 11, C = 12, D = 13, E = 14, F = 15."],
+      paras: ["Ottale (base 8): ogni cifra corrisponde a un gruppo di 3 bit. Esadecimale (base 16): ogni cifra corrisponde a un gruppo di 4 bit.", "Le cifre esadecimali oltre il 9 sono lettere: A = 10, B = 11, C = 12, D = 13, E = 14, F = 15."],
       key: "Da base 8 o 16 a binario: ogni cifra diventa il suo gruppo di bit. Dal binario: raggruppa da destra." },
     { bubble: "Esempio: 347 in ottale e BA0 in esadecimale.", mascot: "esulta",
       algo: E.groupsToBin("347", 8).chunks.map((c) => ({ t: `${c.digit} → ${c.bits}` })).concat([{ t: `347₈ = ${E.groupsToBin("347", 8).bin}`, hl: true }]),
-      paras: [`BA0₁₆ = ${E.groupsToBin("BA0", 16).chunks.map((c) => `${c.digit} → ${c.bits}`).join(", ")} = ${E.groupsToBin("BA0", 16).bin}.`, "Da binario a esadecimale: raggruppa da destra a gruppi di 4, riempiendo con zeri a sinistra se serve."] },
+      paras: [`BA0₁₆ = ${E.groupsToBin("BA0", 16).chunks.map((c) => `${c.digit} → ${c.bits}`).join(", ")} = ${E.groupsToBin("BA0", 16).bin}.`, "Da binario a esadecimale: raggruppa da destra a gruppi di 4, riempiendo con zeri a sinistra se serve.", `Da ottale a esadecimale si passa dal binario: 351₈ = ${E.groupsToBin("351", 8).bin} = ${E.binToGroups(E.groupsToBin("351", 8).bin, 16).map((g) => g.digit).join("")}₁₆.`] },
   ],
 
   "ops-basi": [
@@ -200,3 +204,11 @@ export const LESSON_PAGES = {
 
 export const hasLesson = (topicId) => Array.isArray(LESSON_PAGES[topicId]) && LESSON_PAGES[topicId].length > 0;
 export const lessonFor = (topicId) => (hasLesson(topicId) ? LESSON_PAGES[topicId] : null);
+
+// La teoria con cui comincia un capitolo deve essere breve: se parte da un solo argomento se ne mostra l'intera lezione,
+// se parte da più argomenti solo la prima pagina di ciascuno (le altre arrivano alla prima domanda di quell'argomento).
+export function introPlan(initialIds) {
+  const withLesson = initialIds.filter(hasLesson);
+  if (withLesson.length === 1) return [{ topic: withLesson[0], until: LESSON_PAGES[withLesson[0]].length - 1 }];
+  return withLesson.map((topic) => ({ topic, until: 0 }));
+}

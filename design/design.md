@@ -9,6 +9,8 @@ e come integrarle. I file veri sono qui accanto:
 | `components.css` | Componenti (richiede `tokens.css`) |
 | `mascot/r0b-*.svg` | La mascotte R0b in 6 espressioni |
 | `mascot/_build.py` | Generatore della mascotte (modifica qui, non a mano negli SVG) |
+| `vault-door.svg` | Porta del caveau (boss), da mettere inline: volantino e bulloni si animano da CSS |
+| `trophy.svg` | Trofeo del caveau (coppa con buco della serratura) |
 | `map-sky.svg` | Skyline di Neon Bay per la testata della mappa (da mettere inline) |
 | `preview.html` | Anteprima di tutto, interattiva. Con il server di David: `http://localhost:8765/design/preview.html` |
 
@@ -467,6 +469,79 @@ Il markup è quello di David: `.ruler` con gli 8 `span.ruler__w` e poi gli 8
 - **Esiti.** `.ruler-form.is-correct` (tutte verdi) e `.ruler__cell.is-wrong`, insieme a
   `.ruler-form.is-wrong`, per le singole cifre sbagliate.
 
+### Struttura a capitoli
+
+Il percorso è: home "Scegli un capitolo" → schermata del capitolo → teoria → domande → fine
+partita.
+
+**Home: il consigliato.** Basta lo `<span class="course__next">Consigliato</span>` nel titolo:
+la card si accende da sola, con contorno e freccia rosa (`:has`). Il markup non cambia.
+
+**Segno del caveau sulla card** (`span.course__vault`, primo figlio del `button`): un'etichetta
+in alto a destra con icona e parola.
+
+| Classe | Aspetto | Testo |
+|---|---|---|
+| `--ready` | chiave, oro, pulsa piano | "Caveau aperto" |
+| `--won` | coppa | "Trofeo" |
+| `--closed` | lucchetto, grigio | esiste, ma in home **consiglio di non mostrarlo**: sarebbe rumore su quasi tutte le card |
+
+**Schermata del capitolo (`.chapter-page`)**, nell'ordine:
+1. `button.chapter-page__back` "‹ Capitoli", piccolo, in alto.
+2. `header.chapter-hero.chapter-hero--<stato>`, la testata. Contiene:
+   - il medaglione `.chapter-hero__n`, con gli stessi sei stati della home, oro con ★ se
+     perfetto;
+   - `.chapter-hero__kicker` "Capitolo N" (o "Riscaldamento"), `.chapter-hero__title` e
+     `.chapter-hero__src`;
+   - `.chapter-hero__status` con `.chapter__badge` e `.chapter-hero__detail`;
+   - `.chapter__bar`, e se servono `.chapter__count` e `.chapter__was`.
+   
+   Lo sfondo è il cielo dell'app.
+3. `.chapter-cta` con:
+   - `ol.flow`: "1 Teoria breve → 2 Domande", che spiega come funziona. Il passo attuale è
+     `.is-current`; quello fatto è `.is-done` con ✓ al posto del numero.
+   - il tasto grande `.btn--primary`: "Inizia il capitolo", "Continua con le domande" o
+     "Rigioca il capitolo";
+   - "Rivedi la teoria (N lezioni)" in ghost.
+4. `section.chapter-vault.chapter-vault--closed|ready|won`, il caveau del capitolo. È scuro in
+   entrambi i temi, come la cassaforte. Contiene `.chapter-vault__icon` (la porta inline,
+   oppure la coppa se vinto), `.chapter-vault__title`, `.chapter-vault__text` ed
+   eventualmente un `.btn`.
+
+   | Stato | Aspetto | Testo |
+   |---|---|---|
+   | chiuso | tratteggio, porta spenta | "Supera il capitolo alla perfezione e il caveau si apre." |
+   | da tentare | bordo e bagliore oro, tasto oro "Tenta il caveau" | "Tre passaggi, niente stelle: se non riesce, riprovi quando vuoi." |
+   | vinto | coppa | "Trofeo conquistato il **22/11** · $ 500" |
+5. `section.chapter-page__topics` con `h2` "Argomenti" e la lista `.topics` già usata. Il tasto
+   "Lezione" (`[data-lesson]`) ha il bordo tratteggiato, per essere più leggero di "Allenati".
+6. "Torna ai capitoli".
+
+### Il caveau (boss) (`.boss`)
+
+```html
+<section class="boss" data-step="2">
+  <header class="boss__head"><p class="boss__kicker">Caveau · Capitolo 4</p><h1 class="boss__title">La Torre dei Conti</h1></header>
+  <div class="boss__stage">…vault-door.svg INLINE…</div>
+  <ol class="boss__steps"><li class="is-done">Ruote</li><li class="is-current">Domanda</li><li>Combinazione</li></ol>
+  <div class="boss__task">…la prova del passaggio: .vault, .q, .ruler-form…</div>
+  <p class="boss__note">Nessuna stella in gioco. Se sbagli, il caveau resta lì.</p>
+</section>
+```
+
+- **Avanzamento.** `data-step="1|2|3"` fa girare il volantino della porta di 120° a ogni
+  passaggio. I bulloni sono 8, come i bit, e se ne accendono 3, poi 6, poi tutti.
+- **Vittoria.** `.is-open` porta il volantino a 360°, accende la spia verde e il bagliore
+  oro. Sotto metti `figure.trophy.trophy--big` con `trophy.svg`, la coppa che entra con un
+  salto, più R0b sul podio e "+ $ 500 e un trofeo nel profilo".
+- **Ritirata o sconfitta.** Usa un `.feedback--hint`, non `--ko`: non si perde niente.
+- **La porta va messa inline** (contenuto di `vault-door.svg`), altrimenti la CSS non
+  raggiunge il volantino e i bulloni. Non ha `id`.
+
+**Trofei nel profilo.** `ul.trophies` è uno scaffale con un `li` per capitolo, ognuno con
+`figure.trophy` > `svg.trophy__cup` (inline) + `figcaption` (`<b>Caveau 4</b>` e la data).
+`.trophy.is-empty` mostra la sagoma grigia con "da aprire".
+
 ### Radio in auto (`.radio`)
 
 **Radio Overflow, 101.1010 FM.** La frequenza è un indovinello: 101.1010₂ = 5,625₁₀, una
@@ -624,7 +699,6 @@ Ora è un componente di supporto.
 
 Nell'ordine di David:
 
-1. Caveau del boss: un bonus a fine partita quando un capitolo diventa perfetto.
-2. Notifiche-badge stile feed.
-3. Menu "smartphone".
-4. Negozio (skin di R0b, auto, sfondi).
+1. Notifiche-badge stile feed.
+2. Menu "smartphone".
+3. Negozio (skin di R0b, auto, sfondi).

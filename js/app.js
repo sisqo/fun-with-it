@@ -30,7 +30,7 @@ const commit = (next) => { store = next; save.write(P.serialize(store)); };
 const me = () => P.currentPlayer(store) ?? { name: "", cash: 0, missionsDone: 0, done: {} };
 let game = null;
 // Lezioni già mostrate in questa sessione (per giocatore): non si ripetono se si ricomincia una partita non iniziata.
-const lessonsSeen = new Set();
+const lessonsSeen = new Map(); // chiave giocatore:argomento -> quante pagine della lezione sono già state mostrate
 const lessonKey = (topic) => `${store.current}:${topic}`;
 
 const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
@@ -186,10 +186,12 @@ function startGame({ force = null, chapter = null, theory = false } = {}) {
   game.chBefore = Object.fromEntries(G.summarize(P.currentPlayer(store)).chapters.map((c) => [c.id, c.state]));
   nextQ();
   // Un capitolo nuovo comincia con la breve teoria degli argomenti da cui parte; poi le domande.
-  const intro = theory && ch ? G.initialTopics(ch).filter((t) => T.hasLesson(t.id)).map((t) => t.id) : [];
+  const intro = theory && ch ? T.introPlan(G.initialTopics(ch).map((t) => t.id)) : [];
   if (intro.length) {
-    intro.forEach((id) => lessonsSeen.add(lessonKey(id)));
-    showLessonSequence(intro, () => present(), "Salta la teoria");
+    intro.forEach((it) => lessonsSeen.set(lessonKey(it.topic), it.until + 1));
+    // "Salta la teoria" salta davvero tutto: le lezioni di questi argomenti si considerano viste, anche le pagine rimaste
+    const skipAll = () => { intro.forEach((it) => lessonsSeen.set(lessonKey(it.topic), T.lessonFor(it.topic).length)); present(); };
+    showLessonSequence(intro, () => present(), "Salta la teoria", skipAll);
   } else {
     present();
   }
@@ -199,9 +201,10 @@ function startGame({ force = null, chapter = null, theory = false } = {}) {
 function present() {
   const topic = game.q.topic;
   const first = (P.currentPlayer(store).topics?.[topic]?.attempts ?? 0) === 0;
-  if (first && !lessonsSeen.has(lessonKey(topic)) && T.hasLesson(topic)) {
-    lessonsSeen.add(lessonKey(topic));
-    showLesson(topic, () => showQuestion());
+  const shown = lessonsSeen.get(lessonKey(topic)) ?? 0;
+  if (first && T.hasLesson(topic) && shown < T.lessonFor(topic).length) {
+    lessonsSeen.set(lessonKey(topic), T.lessonFor(topic).length);
+    showLesson(topic, () => showQuestion(), { from: shown }); // le pagine non ancora viste
   } else {
     showQuestion();
   }
@@ -209,39 +212,50 @@ function present() {
 
 // ---------- Lezione in micro-pagine ----------
 
-function lessonHTML(topicId, i, skipLabel = "Salta la lezione") {
+function lessonHTML(topicId, i, skipLabel = "Salta la lezione", from = 0, until = null) {
   const pages = T.lessonFor(topicId);
+  const end = until ?? pages.length - 1;
   const pg = pages[i];
   const topic = G.topicById[topicId];
   const chapter = G.CHAPTERS.find((c) => c.id === topic.chapter);
-  const last = i === pages.length - 1;
+  const last = i === end;
   const paras = (pg.paras ?? []).map((p) => `<p>${esc(p)}</p>`).join("");
   const key = pg.key ? `<p class="lesson__key">${esc(pg.key)}</p>` : "";
   const algo = pg.algo?.length ? `<ol class="algo">${pg.algo.map((a) => `<li${a.hl || a.iff ? ` class="${[a.hl && "is-highlight", a.iff && "is-if"].filter(Boolean).join(" ")}"` : ""}>${esc(a.t)}</li>`).join("")}</ol>` : "";
-  const pager = pages.map((_, k) => `<i class="${k < i ? "is-done" : k === i ? "is-current" : ""}"></i>`).join("");
+  const shownPages = pages.slice(from, end + 1);
+  const pager = shownPages.map((_, k) => `<i class="${k + from < i ? "is-done" : k + from === i ? "is-current" : ""}"></i>`).join("");
   return `<div class="lesson-wrap" data-lesson-topic="${esc(topicId)}"><article class="lesson">
     <header class="lesson__head"><p class="lesson__kicker">Lezione · ${esc(chapter.title)}</p><h1 class="lesson__title">${esc(topic.title)}</h1></header>
     <div class="lesson__scene"><img class="lesson__mascot" src="${MASCOT(pg.mascot ?? "neutro")}" alt=""><p class="bubble">${esc(pg.bubble)}</p></div>
     <div class="lesson__body">${paras}${key}${algo}</div>
-    <footer class="lesson__foot"><span class="pager" aria-label="Pagina ${i + 1} di ${pages.length}">${pager}</span>
-      ${i > 0 ? '<button class="btn btn--ghost" id="lesson-back" type="button">Indietro</button>' : ""}
+    <footer class="lesson__foot"><span class="pager" aria-label="Pagina ${i - from + 1} di ${shownPages.length}">${pager}</span>
+      ${i > from ? '<button class="btn btn--ghost" id="lesson-back" type="button">Indietro</button>' : ""}
       <button class="btn btn--primary" id="lesson-next" type="button">${last ? "Ho capito" : "Avanti"}</button></footer>
   </article><p class="lesson__skip"><button class="btn btn--ghost" id="lesson-skip" type="button">${esc(skipLabel)}</button></p></div>`;
 }
 
-function showLesson(topicId, done, i = 0, skip = done, skipLabel = "Salta la lezione") {
+// opts: from (prima pagina da mostrare), until (ultima), skip (cosa fa "Salta"), skipLabel, i (pagina corrente)
+function showLesson(topicId, done, opts = {}) {
   const pages = T.lessonFor(topicId);
   if (!pages) return done();
-  render(el(lessonHTML(topicId, i, skipLabel)));
+  const from = opts.from ?? 0;
+  const until = opts.until ?? pages.length - 1;
+  const i = opts.i ?? from;
+  const skip = opts.skip ?? done;
+  const skipLabel = opts.skipLabel ?? "Salta la lezione";
+  if (from > until) return done();
+  render(el(lessonHTML(topicId, i, skipLabel, from, until)));
   document.getElementById("lesson-next").focus({ preventScroll: true });
-  document.getElementById("lesson-next").onclick = () => (i < pages.length - 1 ? showLesson(topicId, done, i + 1, skip, skipLabel) : done());
-  document.getElementById("lesson-back")?.addEventListener("click", () => showLesson(topicId, done, i - 1, skip, skipLabel));
+  document.getElementById("lesson-next").onclick = () => (i < until ? showLesson(topicId, done, { ...opts, i: i + 1 }) : done());
+  document.getElementById("lesson-back")?.addEventListener("click", () => showLesson(topicId, done, { ...opts, i: i - 1 }));
   document.getElementById("lesson-skip").onclick = () => skip();
 }
 
 // Più lezioni di fila (la teoria di un capitolo): "Salta la teoria" le salta tutte.
-function showLessonSequence(ids, done, skipLabel = "Salta la teoria") {
-  const run = (k) => (k >= ids.length ? done() : showLesson(ids[k], () => run(k + 1), 0, done, ids.length > 1 ? skipLabel : "Salta la lezione"));
+// items: [{ topic, until? }] oppure semplici id di argomento (lezione intera).
+function showLessonSequence(items, done, skipLabel = "Salta la teoria", onSkip = done) {
+  const list = items.map((it) => (typeof it === "string" ? { topic: it } : it));
+  const run = (k) => (k >= list.length ? done() : showLesson(list[k].topic, () => run(k + 1), { until: list[k].until, skip: onSkip, skipLabel: list.length > 1 ? skipLabel : "Salta la lezione" }));
   run(0);
 }
 
