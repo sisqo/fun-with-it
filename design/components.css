@@ -1126,6 +1126,95 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .trophies { list-style: none; margin: 0; padding: var(--sp-3); display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: var(--sp-3) var(--sp-2);
   border-radius: var(--r-lg); background: var(--c-surface); border: var(--border-w) solid var(--c-border); }
 
+/* ---------- Bottoni chiari sulle superfici scure (caveau, boss, cassaforte, radio) ---------- */
+:is(.boss, .chapter-vault, .vault, .radio) .btn--ghost {
+  color: var(--c-vault-text); border-color: var(--c-vault-muted); background: transparent;
+}
+:is(.boss, .chapter-vault, .vault, .radio) .btn--ghost:hover { border-color: var(--c-vault-text); }
+:is(.boss, .chapter-vault, .vault, .radio) :focus-visible { outline-color: var(--neon-cyan); }
+
+/* =========================================================================
+   NEGOZIO: skin di R0b e sfondi
+   ========================================================================= */
+
+/* ---------- Skin di R0b ---------- */
+/* Una skin è un set di colori della mascotte. Funziona solo con R0b INLINE (come la porta):
+   metti .skin--<nome> su R0b stesso o su un contenitore (es. <html> o .app) per tutte le sue copie. */
+.skin--notte    { --mascot-body: #4a3b80; --mascot-shade: #2e2360; --mascot-screen: #0d0820; --mascot-face: #ff4fa3; --mascot-led: #3ee6ff; --mascot-ink: #0d0820; }
+.skin--menta    { --mascot-body: #d3f8e8; --mascot-shade: #92dfbd; --mascot-screen: #10312a; --mascot-face: #4ff0a8; --mascot-led: #ff9a3c; }
+.skin--tramonto { --mascot-body: #ffc9a8; --mascot-shade: #ff8f7a; --mascot-screen: #2b1050; --mascot-face: #ffd166; --mascot-led: #a985ff; }
+.skin--terminale{ --mascot-body: #e6e6e6; --mascot-shade: #9a9a9a; --mascot-screen: #000000; --mascot-face: #4ff0a8; --mascot-led: #4ff0a8; --mascot-led-off: #4d4d4d; }
+.skin--oro      { --mascot-body: #ffd166; --mascot-shade: #e0a82e; --mascot-screen: #2a1a00; --mascot-face: #3ee6ff; --mascot-led: #ff4fa3; --mascot-ink: #3a2600; }
+
+/* ---------- Sfondi ---------- */
+/* Cambiano solo il cielo (--c-bg-sky), sfumato verso il fondo del tema: le card restano su
+   superfici normali, quindi testo e contrasti non cambiano. Funzionano in chiaro e scuro.
+   <html data-bg="molo"> ; per l'anteprima nel negozio: <span class="bg-swatch" data-bg="molo"></span> */
+/* --sky-k: intensità delle tinte. Di notte le tinte chiare abbasserebbero il contrasto dei titoli rosa: si dimezzano. */
+:root { --sky-k: 1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sky-k: .4; } }
+:root[data-theme="dark"] { --sky-k: .4; }
+[data-bg="molo"]     { --c-bg-sky: linear-gradient(180deg, color-mix(in srgb, #3ee6ff calc(30% * var(--sky-k)), var(--c-bg)) 0%, color-mix(in srgb, #2f6bff calc(16% * var(--sky-k)), var(--c-bg)) 40%, var(--c-bg) 85%); }
+[data-bg="aurora"]   { --c-bg-sky: linear-gradient(170deg, color-mix(in srgb, #4ff0a8 calc(30% * var(--sky-k)), var(--c-bg)) 0%, color-mix(in srgb, #a985ff calc(24% * var(--sky-k)), var(--c-bg)) 45%, var(--c-bg) 90%); }
+[data-bg="griglia"]  { --c-bg-sky:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--c-secondary) 14%, transparent) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--c-secondary) 14%, transparent) 0 1px, transparent 1px 28px),
+    linear-gradient(180deg, color-mix(in srgb, #ff4fa3 calc(22% * var(--sky-k)), var(--c-bg)) 0%, var(--c-bg) 70%); }
+[data-bg="codice"]   { --c-bg-sky:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='64'%3E%3Ctext x='4' y='20' font-family='monospace' font-size='14' fill='%23a985ff' fill-opacity='.18'%3E1011 0110%3C/text%3E%3Ctext x='-20' y='52' font-family='monospace' font-size='14' fill='%233ee6ff' fill-opacity='.14'%3E0100 1101 01%3C/text%3E%3C/svg%3E"),
+    linear-gradient(180deg, color-mix(in srgb, #a985ff calc(20% * var(--sky-k)), var(--c-bg)) 0%, var(--c-bg) 75%); }
+[data-bg="oro"]      { --c-bg-sky: radial-gradient(90% 50% at 50% 0%, color-mix(in srgb, #ffd166 calc(42% * var(--sky-k)), var(--c-bg)) 0%, color-mix(in srgb, #ff9a3c calc(14% * var(--sky-k)), var(--c-bg)) 50%, var(--c-bg) 90%); }
+.bg-swatch { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--r-sm); background: var(--c-bg-sky), var(--c-bg); border: 1px solid var(--c-border); }
+
+/* ---------- Schermata del negozio ---------- */
+/* <section class="shop">
+     <header class="shop__head"><h1 class="shop__title">Negozio</h1><span class="cash shop__wallet">$ 1.250</span></header>
+     <div class="tabs" role="tablist"><button role="tab" aria-selected="true" class="tabs__tab">R0b</button><button role="tab" aria-selected="false" class="tabs__tab">Sfondi</button></div>
+     <ul class="shop__grid" role="tabpanel"> <li class="item item--equipped|owned|buy|locked"> … </li> </ul>
+   </section> */
+.shop { display: flex; flex-direction: column; gap: var(--sp-4); }
+.shop__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.shop__title { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: var(--fs-xl); color: var(--c-primary); text-shadow: var(--glow); line-height: 1; }
+.shop__wallet { font-size: var(--fs-lg); min-height: var(--tap); padding-inline: var(--sp-4); }
+.shop__hint { margin: 0; font-size: var(--fs-sm); color: var(--c-text-muted); }
+
+/* schede (segmented control) */
+.tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: var(--r-pill); background: var(--c-surface-2); border: var(--border-w) solid var(--c-border); }
+.tabs__tab { min-height: var(--tap); border: 0; border-radius: var(--r-pill); background: transparent; font-weight: 800; color: var(--c-text-muted); }
+.tabs__tab[aria-selected="true"] { background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-1); }
+
+.shop__grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); gap: var(--sp-3); }
+.item {
+  position: relative; display: flex; flex-direction: column; gap: var(--sp-2);
+  padding: var(--sp-3); border-radius: var(--r-md);
+  background: var(--c-surface); border: var(--border-w) solid var(--c-border); box-shadow: var(--shadow-1);
+}
+.item__preview { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: var(--r-sm); background: var(--c-bg-sky), var(--c-bg); overflow: hidden; }
+.item__preview .mascot { width: 62%; height: auto; }
+.item__name { margin: 0; font-weight: 800; line-height: var(--lh-tight); }
+.item__price {
+  align-self: flex-start; font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800;
+  color: var(--c-cash); font-size: var(--fs-sm);
+}
+.item .btn { min-height: var(--tap); width: 100%; padding-inline: var(--sp-2); font-size: var(--fs-sm); }
+.item__tag { /* etichetta in alto: "In uso" / "Tuo" / "Nuovo" */
+  position: absolute; top: -9px; left: 10px; padding: 1px 8px; border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: 800; border: 2px solid var(--c-surface);
+}
+/* stati */
+.item--equipped { border-color: var(--c-success); box-shadow: 0 0 0 1px var(--c-success), var(--shadow-1); }
+.item--equipped .item__tag { background: var(--c-success); color: var(--c-surface); }
+.item--equipped .item__tag::before { content: "✓ "; }
+.item--owned .item__tag { background: var(--c-surface-2); color: var(--c-text); }
+.item--buy .btn { background: var(--c-cash); color: var(--c-surface); }
+.item--locked { box-shadow: none; }
+.item--locked .item__preview { filter: saturate(.35); }
+.item--locked .item__price { color: var(--c-text-muted); }
+.item__gap { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); } /* "Ti mancano $ 350" */
+.item__bar { height: 6px; border-radius: 3px; background: var(--c-surface-2); overflow: hidden; }
+.item__bar > i { display: block; height: 100%; background: var(--c-cash); }
+.item.is-bought { animation: star-in var(--dur-slow) var(--ease-pop); }
+
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }
 

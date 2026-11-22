@@ -70,7 +70,11 @@ const djLine = () => DJ_LINES[Math.floor(Math.random() * DJ_LINES.length)];
 const radioFull = (line = djLine()) => `<aside class="radio" aria-label="Radio Overflow, 101.1010 FM"><div class="radio__dial">${EQ}<span class="radio__freq">101.1010<small>FM</small></span><span class="radio__name">Radio Overflow</span><span class="radio__live">In onda</span></div><p class="radio__line"><b class="radio__dj">DJ Nibble</b>${esc(line)}</p></aside>`;
 const radioCompact = (line) => `<p class="radio radio--compact">${EQ}<span class="radio__freq">101.1010</span><span class="radio__line">${esc(line)}</span></p>`;
 
+// Schermata che usa le immagini del caveau (home, capitolo): si ridisegna quando le immagini sono arrivate.
+let refreshScreen = null;
+
 function render(node) {
+  refreshScreen = null;
   app.replaceChildren(node);
   window.scrollTo({ top: 0 });
   node.querySelector("input.answer__input, input.ruler__cell, .choice, .dial, .btn")?.focus?.({ preventScroll: true });
@@ -166,6 +170,7 @@ function home(greeting = "") {
         </div>
       </details>
     </section>`));
+  refreshScreen = () => home(greeting);
   document.getElementById("progress").onclick = () => progressScreen();
   app.querySelectorAll("[data-chapter]").forEach((b) => (b.onclick = () => chapterScreen(b.dataset.chapter)));
   document.getElementById("switch").onclick = () => { commit(P.signOut(store)); nameScreen(); };
@@ -768,6 +773,7 @@ function chapterScreen(id) {
       <section class="chapter-page__topics" id="chapter-${ch.id}"><h2>Argomenti</h2><ul class="topics">${topicRowsHTML(ch, player)}</ul></section>
       <button class="btn btn--ghost btn--block" id="back" type="button">Torna ai capitoli</button>
     </section>`));
+  refreshScreen = () => chapterScreen(id);
   document.getElementById("start-chapter").onclick = () => startGame({ chapter: id, theory: fresh });
   document.getElementById("review-theory")?.addEventListener("click", () => showLessonSequence(all, () => chapterScreen(id), "Salta la teoria"));
   document.getElementById("back").onclick = () => home();
@@ -905,4 +911,5 @@ function trophiesHTML(player) {
   }).join("")}</ul>`;
 }
 
-loadAssets().finally(() => home());
+home(); // subito: la prima schermata non aspetta le immagini del caveau
+loadAssets().then(() => refreshScreen?.());
