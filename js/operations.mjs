@@ -124,7 +124,7 @@ export function guidedOperation(rng, op) {
     const r = E.subBinary(A, B);
     const st = E.subSteps(A, B).map((s) => s.text);
     steps.push({ label: `Sottrazione in binario: ${A} − ${B}`, answer: r.result, base: 2, explain: st });
-    column = { op, a: A, b: B, result: r.result, borrows: r.borrows, steps: st };
+    column = { op, a: A, b: B, result: r.result, borrows: r.borrows, ...(({ values, lent, chains }) => ({ borrowed: values, lent, chains }))(E.subColumn(A, B)), steps: st };
     explain.push(...st, `${A} − ${B} = ${r.result}`);
   } else if (op === "×") {
     const r = E.mulBinary(A, B);

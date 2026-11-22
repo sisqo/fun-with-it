@@ -346,3 +346,30 @@ export function divSteps(a, b) {
   }
   return { steps, quotient: q, remainder: toBin(rem) };
 }
+
+// Dati per disegnare la sottrazione in colonna (valori allineati a destra su `len` colonne).
+// values[i]: valore che la cifra ha ADESSO, in binario, solo nelle colonne toccate da un prestito ("" altrove):
+//   ha prestato e basta → "0"; in mezzo a una catena → "1"; ha solo ricevuto → "10".
+// lent[i]: la cifra di `a` ha prestato (da barrare). chains: [{ from, to }] indici (0 = colonna più a sinistra).
+export function subColumn(a, b) {
+  const x = assertDigits(a, 2), y = assertDigits(b, 2);
+  if (fromBin(x) < fromBin(y)) throw new RangeError("risultato negativo");
+  const len = Math.max(x.length, y.length);
+  const cur = [...x.padStart(len, "0")].map(Number);
+  const low = [...y.padStart(len, "0")].map(Number);
+  const values = Array(len).fill("");
+  const lent = Array(len).fill(false);
+  const chains = [];
+  for (let i = len - 1; i >= 0; i--) {
+    if (cur[i] >= low[i]) continue;
+    let k = i - 1;
+    while (k >= 0 && cur[k] === 0) k--;
+    lent[k] = true;
+    cur[k] = 0;
+    values[k] = "0";
+    for (let j = k + 1; j < i; j++) { cur[j] = 1; lent[j] = true; values[j] = "1"; }
+    values[i] = "10";
+    chains.push({ from: k, to: i });
+  }
+  return { len, values, lent, chains };
+}
