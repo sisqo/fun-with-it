@@ -138,7 +138,7 @@ const THEORY = [
   },
   {
     prompt: "Quale di queste macchine usava il sistema decimale?",
-    options: ["L’ENIAC", "Tutti i computer moderni", "Nessuna macchina calcolatrice è mai stata decimale"],
+    options: ["L’ENIAC", "Un moderno PC", "Uno smartphone"],
     answer: 0,
     explain: ["Non tutte le macchine usavano il binario: l’ENIAC usava il sistema decimale. Il binario è diventato fondamentale con i circuiti digitali a due stati."],
     radio: "L’ENIAC faceva i conti in base 10. Sì, come te alle elementari.",
@@ -159,10 +159,10 @@ const THEORY = [
   },
   {
     prompt: "Secondo il libro, quanti byte equivalgono a 1 kB?",
-    options: ["1024 (2^10)", "1000 esatti", "512"],
+    options: ["1024 (2^10)", "8", "100"],
     answer: 0,
     explain: ["1 kB = 1024 byte = 2^10 byte; si usa ‘circa 10^3’ solo per fare i conti a mente."],
-    radio: "Anche i kilo, in informatica, sono potenze di 2: 1024, non 1000.",
+    radio: "Nel libro (e in molti programmi) 1 kB = 1024 byte = 2^10. Per i compiti segui il libro. Lo standard internazionale distingue: KiB = 1024 e kB = 1000.",
   },
   {
     prompt: "Qual è la più piccola unità di misura dell’informazione?",

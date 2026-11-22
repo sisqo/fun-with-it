@@ -273,6 +273,12 @@ export function addSteps(a, b) {
   return steps;
 }
 
+// Nome italiano di una colonna dal suo peso: "Colonna delle unità", "Colonna degli 8", "Colonna dei 16"...
+export function colName(w, capital = true) {
+  const base = w === 1 ? "colonna delle unità" : w === 8 ? "colonna degli 8" : `colonna dei ${w}`;
+  return capital ? base[0].toUpperCase() + base.slice(1) : base;
+}
+
 // Sottrazione "come alla lavagna": se la cifra sopra non basta, si cerca a sinistra il primo 1.
 // Quell'1 diventa 0, gli zeri attraversati diventano 1 e nella colonna corrente si hanno 2 (= 10 in binario).
 export function subSteps(a, b) {
@@ -287,7 +293,7 @@ export function subSteps(a, b) {
   for (let i = len - 1; i >= 0; i--) {
     const w = weight(i);
     const changed = cur[i] !== orig[i];
-    const head = `Colonna dei ${w}: ${changed ? `ora c'è ${cur[i]} (era ${orig[i]}) → ` : ""}`;
+    const head = `${colName(w)}: ${changed ? `ora c'è ${cur[i]} (era ${orig[i]}) → ` : ""}`;
     let digit, text, chain = null;
     if (cur[i] >= low[i]) {
       digit = cur[i] - low[i];
@@ -301,8 +307,8 @@ export function subSteps(a, b) {
       for (const j of crossed) cur[j] = 1;
       digit = 2 - low[i];
       chain = { from: len - 1 - k, crossed: crossed.map((j) => len - 1 - j) };
-      const cross = crossed.length ? `, gli zeri attraversati (colonne dei ${crossed.map(weight).join(", ")}) diventano 1` : "";
-      text = `${head}${cur[i]} − ${low[i]} non si può. Cerco a sinistra il primo 1: è nella colonna dei ${weight(k)}. Quell'1 diventa 0${cross}, e qui ho 2 (= 10 in binario): 2 − ${low[i]} = ${digit}`;
+      const cross = crossed.length ? `, gli zeri attraversati (pesi ${crossed.map(weight).join(", ")}) diventano 1` : "";
+      text = `${head}${cur[i]} − ${low[i]} non si può. Cerco a sinistra il primo 1: è nella ${colName(weight(k), false)}. Quell'1 diventa 0${cross}, e qui ho 2 (= 10 in binario): 2 − ${low[i]} = ${digit}`;
     }
     steps.push({ column: len - 1 - i, top: orig[i], bottom: low[i], digit, borrowOut: chain ? 1 : 0, chain, text });
   }
@@ -322,7 +328,7 @@ export function divSteps(a, b) {
     steps.push({ bring: null, partial: toBin(rem), fits: false, remainder: toBin(rem), text: `${x} è più piccolo di ${y}: quoziente 0 e resto ${x}` });
     return { steps, quotient: "0", remainder: toBin(rem) };
   }
-  steps.push({ bring: null, partial: toBin(rem), fits: true, remainder: toBin(rem - d), text: `Prendo le prime cifre finché ${y} ci sta: ${toBin(rem)}. Ci sta: scrivo 1 nel quoziente, ${toBin(rem)} − ${y} = ${toBin(rem - d)}` });
+  steps.push({ bring: null, partial: toBin(rem), fits: true, remainder: toBin(rem - d), text: `Prendo le prime cifre finché ${y} ci sta: ${toBin(rem)}. Scrivo 1 nel quoziente, ${toBin(rem)} − ${y} = ${toBin(rem - d)}` });
   q = "1";
   rem -= d;
   for (; i < x.length; i++) {
@@ -335,7 +341,7 @@ export function divSteps(a, b) {
       bring: x[i], partial: toBin(before), fits, remainder: toBin(rem),
       text: fits
         ? `Abbasso ${x[i]}: ${toBin(before)}. ${y} ci sta: scrivo 1 nel quoziente, ${toBin(before)} − ${y} = ${toBin(rem)}`
-        : `Abbasso ${x[i]}: ${toBin(before)}. ${y} non ci sta: scrivo 0 nel quoziente, il resto è ${toBin(rem)}`,
+        : `Abbasso ${x[i]}: ${toBin(before)}. ${y} non ci sta: scrivo 0 nel quoziente, resta ${toBin(rem)}`,
     });
   }
   return { steps, quotient: q, remainder: toBin(rem) };

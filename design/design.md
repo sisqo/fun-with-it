@@ -61,10 +61,22 @@ Ci sono anche spazi (`--sp-1…7`, base 4px), raggi (`--r-sm/md/lg/pill`), misur
 (`--fs-xs…--fs-num`) e durate (`--dur-fast/med/slow`). Con `prefers-reduced-motion` le durate
 vanno a 0 e le animazioni si spengono.
 
-**Contrasto, verificato con script (WCAG):** tutto il testo è ≥4.5:1 su `bg`, `surface` e
-`surface-2` in entrambi i temi; il minimo è `--c-success` su `surface-2` chiaro, 4.78:1. Gli
-elementi UI sono ≥3:1. I badge delle basi tengono il testo in `--c-text` e mettono il colore
-su bordo e puntino, perché alcune tinte su fondo tinto scendevano sotto 4.5.
+**Contrasto, verificato con script (WCAG), in entrambi i temi:**
+
+- Ogni colore di testo semantico è ≥4.5:1 su `bg`, `surface` e `surface-2`. Il minimo è
+  `--c-success` su `surface-2` chiaro, 4.78:1.
+- Sono ≥4.5:1 anche:
+  - i testi su `success-bg` e `danger-bg`;
+  - il titolo dell'indizio sulla sua tinta;
+  - i riporti sulla pillola della catena;
+  - le cifre sulle strisce delle colonne;
+  - tutto il testo della cassaforte.
+- Gli elementi UI sono ≥3:1: i contorni delle stelle spente e dei puntini di progresso. Le
+  ruote spente della cassaforte si distinguono dal bordo chiaro, non dal riempimento.
+- I badge delle basi tengono il testo in `--c-text` e mettono il colore su bordo e puntino:
+  alcune tinte su fondo tinto scendevano sotto 4.5.
+
+Se aggiungi coppie nuove (testo colorato su una tinta), verificale.
 
 ## 3. Tipografia
 
@@ -80,7 +92,10 @@ su bordo e puntino, perché alcune tinte su fondo tinto scendevano sotto 4.5.
 | UI (`--font-ui`) | Atkinson Hyperlegible | Nato per la leggibilità: 1, l e I sono ben distinti |
 | Cifre (`--font-mono`) | JetBrains Mono + `font-feature-settings: var(--num-features)` | Zero barrato (0 ≠ O) e cifre tutte larghe uguali: le colonne restano allineate |
 
-Ogni font ha un fallback di sistema: senza rete l'app resta usabile. Per un numero dentro il
+Ogni font ha un fallback di sistema: senza rete l'app resta usabile.
+
+**Attenzione:** in Bungee lo 0 e la O sono identici. Niente cifre in `--font-sign`: il nome
+della mascotte va scritto `R<span class="num">0</span>b`. Per un numero dentro il
 testo usa `.num`, oppure `.n` se serve anche il pedice della base.
 
 ## 4. Mascotte: R0b, l'informatore
@@ -167,7 +182,7 @@ cifre. Ogni riga ha **esattamente** `cols + 1` figli `<span>`; le celle vuote so
 
 ```html
 <div class="colop-wrap">
-  <div class="colop" style="--cols:7; --col:4" role="img" aria-label="111011 più 100101 …">
+  <div class="colop" style="--cols:7; --tracks:8; --col:4" role="img" aria-label="111011 più 100101 …">
     <i class="colop__focus" aria-hidden="true"></i>      <!-- solo se c'è --col -->
     <span></span> … <span class="colop__carry">1</span> …  <!-- riga riporti -->
     <span></span> … <span class="colop__dig">1</span> …    <!-- a -->
@@ -181,6 +196,8 @@ cifre. Ogni riga ha **esattamente** `cols + 1` figli `<span>`; le celle vuote so
 **Variabili**
 - `--cols` è il numero di cifre della riga più lunga, cioè `result.length` (o la riga più
   lunga dei `rows` nella moltiplicazione).
+- `--tracks` = `cols + 1`. Impostalo da JS come intero: Safari non accetta in modo affidabile
+  `calc()` come numero di ripetizioni in `repeat()`.
 - `--col` è la colonna evidenziata contata **da destra** (1 = unità), lo stesso verso dei
   riporti. Senza `--col` non c'è evidenza.
 
@@ -192,15 +209,39 @@ sono a strisce partendo dalle unità.
 - `.colop__res.is-blank` è la casella da riempire (tratteggiata).
 - `.is-new` fa entrare la cifra appena scritta.
 - `.is-wrong` sottolinea in rosso ondulato.
+- La dimensione minima dei riporti è 11px.
 
 **Dai tuoi dati (`q.column`) alla griglia**
 
 | `op` | Righe da disegnare |
 |---|---|
 | `+` | riporti (`carries`), `a`, `b` con `+`, linea, `result`. Disegna solo i `1` dei riporti; gli `0` diventano celle vuote. |
-| `−` | fila prestiti, `a`, `b` con `−`, linea, `result`. Per ogni `1` in `borrows`: la cifra di `a` in quella colonna prende `.is-lent` (barrata), e sopra la colonna a destra va `<span class="colop__carry is-borrow">10</span>`. Una fila di 1 consecutivi è una catena: alle celle riporto coinvolte metti `.is-chain`, più `.is-chain-start` sulla prima e `.is-chain-end` sull'ultima. Diventano una pillola unica. |
-| `×` | `a`, `b` con `×`, linea sottile (`.colop__rule.is-thin`), poi le righe di `rows` come `.colop__dig.is-partial` (l'ultima con `+` nel segno; i posti di spostamento come `.colop__dig.is-shift`, che mostra un puntino), linea, `result`. |
+| `−` | fila prestiti, `a`, `b` con `−`, linea, `result`. Regole sotto la tabella. |
+| `×` | `a`, `b` con `×`, linea sottile (`.colop__rule.is-thin`), poi le righe di `rows` come `.colop__dig.is-partial`, con `+` nel segno dell'ultima. Gli **0 di spostamento ci sono già** nelle tue stringhe: disegnali come cifre vere con in più `.is-shift` (grigio, sottolineato a puntini). Poi linea e `result`. |
 | `:` | La divisione lunga non va in colonna: usa `.steps` o la lista `.solution ol` con le frasi di `steps`. Il simbolo è sempre `:`. |
+
+**Prestiti nella sottrazione.** Sopra ogni colonna toccata da un prestito va il valore che
+quella cifra ha **adesso**, in binario:
+`cifra originale − (1 se ha prestato) + (10 se ha ricevuto)`.
+
+In una catena cambiano solo le colonne alle estremità; quelle in mezzo valgono 1.
+
+| Colonna | Cosa succede | Valore sopra |
+|---|---|---|
+| ha prestato e basta | 1 → | `0` |
+| in mezzo alla catena | ha ricevuto 10 e prestato 1 | `1` |
+| ha solo ricevuto | | `10` |
+
+Per esempio `1000 − 11` porta sopra `0 1 1 10`.
+
+Come marcare le celle:
+- ogni cifra di `a` che ha prestato prende `.colop__dig.is-lent` (barrata);
+- ogni valore sopra è `<span class="colop__carry is-borrow">`;
+- se la catena è più lunga di una colonna, le celle riporto coinvolte prendono `.is-chain`,
+  con `.is-chain-start` sulla prima e `.is-chain-end` sull'ultima. Diventano una pillola unica.
+
+Se `q.column` può darti direttamente questi valori per colonna (es. `borrowed: ["0","1","1","10"]`),
+è più sicuro che ricavarli da `borrows` nel renderer.
 
 Allinea tutte le stringhe **a destra**: riempi a sinistra con celle vuote fino a `--cols`.
 Metti un `aria-label` testuale su `.colop`: le singole celle non hanno senso per uno screen

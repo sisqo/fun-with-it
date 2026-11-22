@@ -146,8 +146,9 @@ test("verifica vera: un risultato sbagliato nell'operazione fa 'non tornare' la 
   const wrong = E.toBin(E.fromBin(q.steps[2].answer) + 1);
   const bad = O.resolveStep(verify, [q.steps[0].answer, q.steps[1].answer, wrong]);
   assert.equal(bad.consistent, false);
-  assert.match(bad.note, /non torna/);
   assert.equal(bad.expected, String(E.fromBin(wrong)));
+  const j = O.judgeStep(verify, [q.steps[0].answer, q.steps[1].answer, wrong], bad.expected);
+  assert.match(j.note, /≠/);
   const good = O.resolveStep(verify, [q.steps[0].answer, q.steps[1].answer, q.steps[2].answer]);
   assert.equal(good.consistent, true);
 });
@@ -239,9 +240,9 @@ test("verifica: risultato scritto con spazi interni viene riconosciuto", () => {
 test("sottrazione 64−13: una sola riga per la catena, poi colonne brevi", () => {
   const st = E.subSteps(E.toBin(64), E.toBin(13));
   assert.equal(E.fromBin(st.map((s) => s.digit).reverse().join("")), 51);
-  assert.match(st[0].text, /Colonna dei 1: 0 − 1 non si può/);
+  assert.match(st[0].text, /Colonna delle unità: 0 − 1 non si può/);
   assert.match(st[0].text, /colonna dei 64/);
-  assert.match(st[0].text, /colonne dei 32, 16, 8, 4, 2\) diventano 1/);
+  assert.match(st[0].text, /pesi 32, 16, 8, 4, 2\) diventano 1/);
   assert.equal(st.filter((s) => /Cerco a sinistra/.test(s.text)).length, 1, "una sola catena");
   assert.ok(st.every((s) => s.text.length < 260));
   assert.doesNotMatch(st.map((s) => s.text).join(" "), /\b3 −/);
@@ -271,7 +272,61 @@ test("divisione lunga: prime cifre insieme, 111100 : 110 = 1010", () => {
 
 test("colonne indicate col peso e somme parziali per esteso", () => {
   const add = O.guidedOperation(mulberry(2), "+");
-  assert.match(add.steps[2].explain[0], /^Colonna dei 1:/);
+  assert.match(add.steps[2].explain[0], /^Colonna delle unità:/);
   const mul = O.guidedOperation(mulberry(2), "×");
   assert.match(mul.steps[2].explain.join(" "), / \+ .* = /);
+});
+
+test("verifica divisione 9 : 3 con quoziente sbagliato 100 (= 4) e resto 0", () => {
+  const step = { answer: "9", base: 10, verify: { q: 0, r: 1, divisor: 3, summary: "il dividendo 9" } };
+  const givens = ["100", "0"];
+  const conto = O.judgeStep(step, givens, "12");
+  assert.equal(conto.headline, "Conto giusto!");
+  assert.deepEqual([conto.star, conto.reward], [false, true]);
+  assert.match(conto.note, /Con il tuo quoziente 100 \(= 4\) e il tuo resto 0: 4 × 3 \+ 0 = 12/);
+  assert.match(conto.note, /errore nel quoziente o nel resto/);
+  const natural = O.judgeStep(step, givens, "9");
+  assert.deepEqual([natural.star, natural.reward, natural.ok], [false, false, false]);
+  assert.match(natural.note, /4 × 3 \+ 0 = 12, non 9/);
+  const other = O.judgeStep(step, givens, "5");
+  assert.equal(other.star, true);
+  for (const j of [conto, natural, other]) assert.doesNotMatch(j.headline, /Risposta giusta/);
+});
+
+test("verifica conversione: terzo caso nomina entrambi gli errori e mostra i pesi", () => {
+  const step = { answer: "55", base: 10, verify: { of: 2, summary: "46 + 9 = 55" } };
+  const j = O.judgeStep(step, ["101110", "1001", "110110"], "50");
+  assert.match(j.note, /dovevi ottenere 54/);
+  assert.match(j.note, /110110 = 32 \+ 16 \+ 4 \+ 2 = 54/);
+  assert.match(j.note, /hai scritto 50/);
+  assert.match(j.note, /54 non è 46 \+ 9 = 55/);
+});
+
+test("etichette della verifica identiche e col divisore; nomi di colonna in italiano", () => {
+  const g = O.guidedOperation(mulberry(4), ":").steps.at(-1).label;
+  const b = O.binaryDivision(mulberry(4)).steps.at(-1).label;
+  assert.equal(g, b);
+  assert.match(g, /converti quoziente, divisore e resto/);
+  assert.equal(E.colName(1), "Colonna delle unità");
+  assert.equal(E.colName(8), "Colonna degli 8");
+  assert.equal(E.colName(16), "Colonna dei 16");
+  assert.equal(E.colName(8, false), "colonna degli 8");
+  const all = [];
+  for (let a = 1; a < 300; a++) for (const b of [1, 3, 8, 13]) if (a >= b) all.push(...E.subSteps(E.toBin(a), E.toBin(b)).map((s) => s.text));
+  assert.ok(all.every((t) => !/Colonna dei (1|8):/.test(t)));
+});
+
+test("divisione: nei passi intermedi 'resta', mai 'il resto è'", () => {
+  const t = E.divSteps("111100", "110").steps.map((s) => s.text).join(" ");
+  assert.doesNotMatch(t, /il resto è/);
+  assert.doesNotMatch(t, /ci sta: 111\. Ci sta/);
+});
+
+test("teoria: kB senza distrattore da standard SI, ENIAC con opzioni omogenee", () => {
+  const src = Q.theory.toString() + "";
+  for (let s = 1; s <= 800; s++) {
+    const q = Q.theory(mulberry(s));
+    assert.ok(!q.options.includes("1000 esatti"));
+    assert.ok(!q.options.some((o) => /Nessuna macchina/.test(o)));
+  }
 });

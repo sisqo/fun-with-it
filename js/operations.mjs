@@ -43,45 +43,64 @@ const convExplain = (n) => [
 // Per i passaggi di verifica il valore atteso dipende dalla risposta data prima:
 // così la verifica scopre davvero un'operazione sbagliata.
 export function resolveStep(step, givens) {
-  const bin = (s) => {
-    const t = String(s ?? "").replace(/\s+/g, "");
-    return /^[01]+$/.test(t) ? E.fromBin(t) : NaN;
-  };
+  const cleaned = (s) => String(s ?? "").replace(/\s+/g, "");
+  const bin = (s) => (/^[01]+$/.test(cleaned(s)) ? E.fromBin(cleaned(s)) : NaN);
   if (step.verify && "of" in step.verify) {
+    const userBin = cleaned(givens[step.verify.of]);
     const v = bin(givens[step.verify.of]);
     const expected = Number.isNaN(v) ? step.answer : String(v);
-    return { expected, consistent: expected === step.answer, note: expected === step.answer ? "" : `La verifica non torna: il risultato corretto in base 10 è ${step.answer}, il tuo risultato vale ${expected}. Ricontrolla l'operazione in binario.` };
+    return { kind: "conv", expected, consistent: expected === step.answer, userBin, detail: Number.isNaN(v) ? null : E.binToDecSteps(userBin) };
   }
   if (step.verify && "q" in step.verify) {
-    const q = bin(givens[step.verify.q]), r = bin(givens[step.verify.r]);
+    const qBin = cleaned(givens[step.verify.q]), rBin = cleaned(givens[step.verify.r]);
+    const q = bin(qBin), r = bin(rBin);
     const ok = !Number.isNaN(q) && !Number.isNaN(r);
-    const expected = ok ? String(q * step.verify.divisor + r) : step.answer;
-    return { expected, consistent: expected === step.answer, note: expected === step.answer ? "" : `La verifica non torna: quoziente × divisore + resto fa ${expected}, ma il dividendo è ${step.answer}. Ricontrolla quoziente e resto.` };
+    const d = step.verify.divisor;
+    const expected = ok ? String(q * d + r) : step.answer;
+    return { kind: "div", expected, consistent: expected === step.answer, qBin, rBin, q, r, d, calc: ok ? `con il tuo quoziente ${qBin}${qBin === String(q) ? "" : ` (= ${q})`} e il tuo resto ${rBin}${rBin === String(r) ? "" : ` (= ${r})`}: ${q} × ${d} + ${r} = ${expected}` : "" };
   }
-  return { expected: step.answer, consistent: true, note: "" };
+  return { kind: "plain", expected: step.answer, consistent: true };
 }
 
 // Giudizio su un passaggio guidato. Nei passaggi di verifica, se il risultato dell'operazione era sbagliato,
 // la verifica non è una domanda da giusto/sbagliato: è il momento in cui l'errore viene scoperto.
 // Il grassetto "Risposta giusta" non mostra mai un valore incoerente e non c'è una seconda stella per lo stesso errore.
+// Le frasi mostrano sempre i conti fatti con i numeri dell'utente.
 export function judgeStep(step, givens, given) {
   const r = resolveStep(step, givens);
   const same = (x) => E.sameNumberString(given, x);
   const summary = step.verify?.summary ?? step.answer;
+  const cap = (t) => t[0].toUpperCase() + t.slice(1);
   if (r.consistent) {
     const ok = same(r.expected);
     return { ok, star: !ok, reward: ok, headline: ok ? "" : `Risposta giusta: ${r.expected}`, note: "", discovered: false };
   }
+  const shown = String(given).trim();
+
+  if (r.kind === "div") {
+    const tail = `non ${step.answer} (il dividendo) → c'è un errore nel quoziente o nel resto.`;
+    if (same(r.expected)) {
+      return { ok: true, star: false, reward: true, discovered: true, headline: "Conto giusto!", note: `${cap(r.calc)}, ${tail}` };
+    }
+    if (same(step.answer)) {
+      return { ok: false, star: false, reward: false, discovered: true, headline: "Attenzione: qui si usano i TUOI risultati",
+        note: `${cap(r.calc)}, ${tail}` };
+    }
+    return { ok: false, star: true, reward: false, discovered: true, headline: "Ahi, il conto non torna",
+      note: `Il conto da fare era: ${r.calc}. Tu hai scritto ${shown}. E ${r.expected} è diverso dal dividendo ${step.answer}: c'è anche un errore nel quoziente o nel resto.` };
+  }
+
+  const expand = r.detail ? ` (${r.userBin} = ${r.detail.parts.map((p) => p.value).join(" + ") || 0} = ${r.expected})` : "";
   if (same(r.expected)) {
     return { ok: true, star: false, reward: true, discovered: true, headline: "Conversione giusta!",
-      note: `Ma ${r.expected} ≠ ${summary}: la verifica ha scoperto un errore nel passaggio precedente.` };
+      note: `Ma ${r.expected} ≠ ${summary}: la verifica ha scoperto un errore nell'operazione in binario.${expand}` };
   }
   if (same(step.answer)) {
-    return { ok: false, star: false, reward: false, discovered: true, headline: "Attenzione: la verifica chiede un'altra cosa",
-      note: `Hai usato il valore giusto (${step.answer}), ma qui si controlla il TUO risultato: vale ${r.expected}, non ${step.answer}. Quindi il passaggio precedente era sbagliato.` };
+    return { ok: false, star: false, reward: false, discovered: true, headline: "Attenzione: qui si riconverte il TUO risultato",
+      note: `Hai scritto il risultato dell'operazione in decimale (${step.answer}), ma qui si riconverte il tuo ${r.userBin}: vale ${r.expected}${expand}. Quindi l'operazione in binario era sbagliata.` };
   }
   return { ok: false, star: true, reward: false, discovered: true, headline: "Ahi, la riconversione non torna",
-    note: `Il tuo risultato vale ${r.expected} in base 10, ma il valore atteso è ${step.answer}: ricontrolla il passaggio precedente.` };
+    note: `Riconvertendo il tuo ${r.userBin} dovevi ottenere ${r.expected}${expand}, hai scritto ${shown}. E ${r.expected} non è ${summary}: quindi era sbagliata anche l'operazione in binario.` };
 }
 
 export function guidedOperation(rng, op) {
@@ -97,7 +116,7 @@ export function guidedOperation(rng, op) {
 
   if (op === "+") {
     const r = E.addBinary(A, B);
-    const st = E.addSteps(A, B).map((s) => `Colonna dei ${2 ** s.column}: ${s.text}`);
+    const st = E.addSteps(A, B).map((s) => `${E.colName(2 ** s.column)}: ${s.text}`);
     steps.push({ label: `Addizione in binario: ${A} + ${B}`, answer: r.result, base: 2, explain: st });
     column = { op, a: A, b: B, result: r.result, carries: r.carries, steps: st };
     explain.push(...st, `${A} + ${B} = ${r.result}`);
@@ -130,7 +149,7 @@ export function guidedOperation(rng, op) {
 
   if (op === ":") {
     steps.push({
-      label: "Verifica in base 10: quoziente × divisore + resto (con i TUOI risultati)",
+      label: "Verifica in base 10: converti quoziente, divisore e resto, poi calcola quoziente × divisore + resto (con i TUOI risultati): deve venire il dividendo",
       answer: String(a), base: 10, verify: { q: opIdx, r: opIdx + 1, divisor: b, summary: `il dividendo ${a}` },
       explain: [`quoziente × ${b} + resto deve dare il dividendo ${a}`],
     });
@@ -174,7 +193,7 @@ export function binaryDivision(rng) {
       { label: "Quoziente (in binario)", answer: div.quotient, base: 2, explain: st },
       { label: "Resto (in binario, 0 se esatta)", answer: div.remainder, base: 2, explain: [`Il resto è l'ultimo resto parziale: ${div.remainder}`] },
       {
-        label: "Verifica in base 10: quoziente × divisore + resto (con i TUOI risultati) deve dare il dividendo",
+        label: "Verifica in base 10: converti quoziente, divisore e resto, poi calcola quoziente × divisore + resto (con i TUOI risultati): deve venire il dividendo",
         answer: String(n), base: 10, verify: { q: 0, r: 1, divisor: d, summary: `il dividendo ${n}` },
         explain: [`Il dividendo ${A} in base 10 vale ${n}; il divisore ${B} vale ${d}`],
       },
