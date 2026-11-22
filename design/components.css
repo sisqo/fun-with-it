@@ -341,6 +341,82 @@ body {
 .solution .colop-wrap { margin-top: var(--sp-3); }
 .feedback__tip { grid-column: 1 / -1; margin: 0; font-size: var(--fs-sm); color: var(--c-text-muted); }
 
+/* ---------- Adottate dal prototipo di David ---------- */
+/* corpo del passaggio corrente (colonna + campo risposta) a tutta larghezza */
+.step__body { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+/* passaggio sbagliato nell'elenco dei fatti: ✕, risposta data barrata → quella giusta */
+.step.is-done.is-wrong { background: var(--c-danger-bg); }
+.step.is-done.is-wrong::before { content: "✕"; background: var(--c-danger); border-color: var(--c-danger); color: var(--c-surface); }
+.step.is-done.is-wrong .step__result { color: var(--c-danger); }
+.step.is-done.is-wrong s { color: var(--c-text-muted); text-decoration-thickness: 2px; margin-right: .4em; }
+/* la verifica "non torna": indizio, non errore → viola, niente shake */
+.answer.is-hint .answer__input { border-color: var(--c-secondary); background: color-mix(in srgb, var(--c-secondary) 12%, var(--c-surface)); }
+
+/* ---------- Radio in auto ---------- */
+/* Versione piena: un'autoradio scura (come la cassaforte, uguale nei due temi).
+   <aside class="radio" aria-label="Radio Overflow, 101.1010 FM">
+     <div class="radio__dial">
+       <svg class="radio__eq" viewBox="0 0 20 16" aria-hidden="true"><rect x="1" .../>×4</svg>
+       <span class="radio__freq">101.1010<small>FM</small></span>
+       <span class="radio__name">Radio Overflow</span>
+       <span class="radio__live">In onda</span>
+     </div>
+     <p class="radio__line"><b class="radio__dj">DJ Nibble</b> Testo della battuta…</p>
+   </aside> */
+.radio {
+  background: var(--c-vault); color: var(--c-vault-text);
+  border: 2px solid var(--c-vault-edge); border-radius: var(--r-lg);
+  box-shadow: 0 0 0 1px var(--c-border), var(--shadow-1);
+  padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2);
+  font-size: var(--fs-sm); min-width: 0;
+}
+.radio__dial {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3);
+  background: var(--c-lcd); border-radius: var(--r-sm); padding: var(--sp-2) var(--sp-3);
+}
+.radio__eq { width: 20px; height: 16px; flex: none; color: var(--c-lcd-text); }
+.radio__eq rect { fill: currentColor; transform-box: fill-box; transform-origin: 50% 100%; animation: eq 900ms ease-in-out infinite alternate; }
+.radio__eq rect:nth-child(2) { animation-delay: -300ms; animation-duration: 700ms; }
+.radio__eq rect:nth-child(3) { animation-delay: -600ms; animation-duration: 1100ms; }
+.radio__eq rect:nth-child(4) { animation-delay: -150ms; animation-duration: 800ms; }
+.radio__freq {
+  font-family: var(--font-mono); font-feature-settings: var(--num-features);
+  font-weight: 800; font-size: var(--fs-lg); color: var(--c-lcd-text); line-height: 1;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--c-lcd-text) 55%, transparent);
+}
+.radio__freq small { font-size: .55em; margin-left: .3em; letter-spacing: .08em; }
+.radio__name { font-family: var(--font-sign); font-size: var(--fs-xs); letter-spacing: .06em; color: var(--c-vault-muted); }
+.radio__live {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--neon-pink);
+}
+.radio__live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: siren 1.6s ease-in-out infinite; }
+.radio__line { margin: 0; line-height: 1.45; }
+.radio__dj { font-weight: 700; color: var(--neon-gold); margin-right: .35em; }
+.radio__dj::after { content: ":"; }
+
+/* Versione compatta, dentro .feedback: una riga sola, sfondo della superficie,
+   l'equalizzatore fermo (in un feedback non deve rubare attenzione).
+   <p class="radio radio--compact"><svg class="radio__eq">…</svg>
+     <span class="radio__freq">101.1010</span><span class="radio__line">Testo…</span></p> */
+.radio--compact {
+  grid-column: 1 / -1; margin: 0;
+  flex-direction: row; align-items: baseline; gap: var(--sp-2);
+  background: var(--c-surface); color: var(--c-text);
+  border: 0; border-left: 4px solid var(--c-digit); border-radius: var(--r-sm);
+  box-shadow: none; padding: var(--sp-2) var(--sp-3);
+}
+.radio--compact .radio__eq { color: var(--c-digit); align-self: center; }
+.radio--compact .radio__eq rect { animation: none; transform: scaleY(.55); }
+.radio--compact .radio__eq rect:nth-child(2) { transform: scaleY(1); }
+.radio--compact .radio__eq rect:nth-child(3) { transform: scaleY(.75); }
+.radio--compact .radio__eq rect:nth-child(4) { transform: scaleY(.4); }
+.radio--compact { flex-wrap: wrap; }
+.radio--compact .radio__line { flex: 1 1 14rem; } /* su telefono stretto va a capo sotto la frequenza */
+.radio--compact .radio__freq { font-size: var(--fs-xs); color: var(--c-digit); text-shadow: none; white-space: nowrap; }
+.radio--compact .radio__line { min-width: 0; color: var(--c-text-muted); }
+@keyframes eq { from { transform: scaleY(.35) } to { transform: scaleY(1) } }
+
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }
 

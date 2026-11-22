@@ -281,7 +281,7 @@ test("verifica divisione 9 : 3 con quoziente sbagliato 100 (= 4) e resto 0", () 
   const step = { answer: "9", base: 10, verify: { q: 0, r: 1, divisor: 3, summary: "il dividendo 9" } };
   const givens = ["100", "0"];
   const conto = O.judgeStep(step, givens, "12");
-  assert.equal(conto.headline, "Conto giusto!");
+  assert.equal(conto.headline, "Conto giusto, e la verifica ha scoperto un errore");
   assert.deepEqual([conto.star, conto.reward], [false, true]);
   assert.match(conto.note, /Con il tuo quoziente 100 \(= 4\) e il tuo resto 0: 4 × 3 \+ 0 = 12/);
   assert.match(conto.note, /errore nel quoziente o nel resto/);
@@ -329,4 +329,13 @@ test("teoria: kB senza distrattore da standard SI, ENIAC con opzioni omogenee", 
     assert.ok(!q.options.includes("1000 esatti"));
     assert.ok(!q.options.some((o) => /Nessuna macchina/.test(o)));
   }
+});
+
+test("titoli: l'errore scoperto si chiama 'La verifica ha scoperto un errore', senza 'Attenzione'", () => {
+  const conv = { answer: "55", base: 10, verify: { of: 2, summary: "46 + 9 = 55" } };
+  const div = { answer: "9", base: 10, verify: { q: 0, r: 1, divisor: 3, summary: "il dividendo 9" } };
+  const j1 = O.judgeStep(conv, ["x", "y", "110110"], "55");
+  const j2 = O.judgeStep(div, ["100", "0"], "9");
+  for (const j of [j1, j2]) { assert.equal(j.headline, "La verifica ha scoperto un errore"); assert.doesNotMatch(j.headline, /Attenzione/); }
+  assert.match(O.judgeStep(conv, ["x", "y", "110110"], "54").headline, /e la verifica ha scoperto un errore/);
 });

@@ -292,6 +292,47 @@ Il colore è sempre accompagnato da sigla e numero.
 | 10 | arancio |
 | 16 | rosa |
 
+### Radio in auto (`.radio`)
+
+**Radio Overflow, 101.1010 FM.** La frequenza è un indovinello: 101.1010₂ = 5,625₁₀, una
+frequenza dove non trasmette nessuno, "per questo non ci trova nessuno". Il DJ è **DJ
+Nibble**: lo si sente e basta, quindi niente nuovo personaggio da disegnare. Il nome è un
+suggerimento; si cambia nel testo.
+
+**Versione piena**: un'autoradio scura in entrambi i temi, come la cassaforte. La si usa tra
+una domanda e l'altra, nella home e a fine missione.
+
+```html
+<aside class="radio" aria-label="Radio Overflow, 101.1010 FM">
+  <div class="radio__dial">
+    <svg class="radio__eq" viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="2" width="3" height="14" rx="1"/><rect x="6" y="2" width="3" height="14" rx="1"/><rect x="11" y="2" width="3" height="14" rx="1"/><rect x="16" y="2" width="3" height="14" rx="1"/></svg>
+    <span class="radio__freq">101.1010<small>FM</small></span>
+    <span class="radio__name">Radio Overflow</span>
+    <span class="radio__live">In onda</span>
+  </div>
+  <p class="radio__line"><b class="radio__dj">DJ Nibble</b>Testo della battuta…</p>
+</aside>
+```
+
+L'equalizzatore si muove piano. Con `prefers-reduced-motion` si ferma, e si ferma anche il
+puntino "In onda".
+
+**Versione compatta**: l'ultima riga di **ogni** `.feedback`, prima del bottone. Prende tutta
+la larghezza della griglia del feedback.
+
+```html
+<p class="radio radio--compact"><svg class="radio__eq" …stesso svg…></svg>
+  <span class="radio__freq">101.1010</span><span class="radio__line">Testo…</span></p>
+```
+
+È volutamente calma: sfondo della superficie, bordo ciano, testo muted, equalizzatore fermo.
+Un feedback deve far leggere prima l'esito; la battuta viene dopo. Su telefono stretto il
+testo va a capo sotto la frequenza. I due puntini dopo il nome del DJ li mette la CSS.
+
+**Tono delle battute:** una riga, massimo due. Ironiche, mai sul ragazzo: si scherza sui
+computer, sulla città e sul DJ stesso. Per esempio: "Anche i computer sbagliano. Solo, molto
+più in fretta."
+
 ### Cassaforte a 8 ruote (`.vault`)
 
 Ora è un componente di supporto.
@@ -324,16 +365,17 @@ Ora è un componente di supporto.
 | `.steps .done / .cur` | `.steps .step.is-done / .is-current` (+ `.step__label`, `.step__result`) |
 | `.feedback.ok / .bad` | `.feedback.feedback--ok / --ko` (+ `--inline`, `--hint`) |
 | `.feedback ol` | `ol.feedback__explain` (un passaggio) / `details.solution ol` (tutto) |
-| `.radio` | ancora da disegnare (vedi sotto) |
+| `.radio` / `.feedback__tip` con 📻 | `p.radio.radio--compact` dentro `.feedback` (vedi "Radio in auto") |
+| `.step__body`, `.step.is-done.is-wrong`, `.answer.is-hint` | adottate in `components.css`: puoi toglierle da `style.css` |
 | emoji 🤖 🏆 🚔 | `r0b-neutro.svg`, `r0b-podio.svg`, `r0b-triste.svg` |
 
 ## 7. Ancora da fare
 
-Seguono le priorità di David:
+Nell'ordine di David:
 
-- Mappa dei quartieri con le missioni come puntini.
-- Menu "smartphone" (statistiche, appunti, ripasso).
-- "Radio in auto" con il DJ.
-- Notifiche-badge stile feed social.
-- Caveau del boss.
-- Negozio (skin di R0b, auto, sfondi).
+1. Mappa dei quartieri con le missioni come puntini. Operazioni è il quartiere centrale.
+2. Card "lezione" per la teoria, con R0b "sete" nella lezione 1.
+3. Caveau del boss.
+4. Notifiche-badge stile feed.
+5. Menu "smartphone".
+6. Negozio (skin di R0b, auto, sfondi).

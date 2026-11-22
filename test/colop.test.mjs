@@ -93,3 +93,17 @@ test("helper: stelle, progresso, badge e numeri con pedice", () => {
   assert.match(C.baseBadge(16), /base--16">HEX <b>16/);
   assert.match(C.nTag("3B", 16), /n--16">3B<sub>16/);
 });
+
+test("colonna non risolta: la larghezza non dipende dal risultato", () => {
+  const sub = O.guidedOperation(mulberry(11), "−").column;
+  const wide = { ...sub, result: "1".repeat(20) };
+  const short = { ...sub, result: "1" };
+  const cols = (c) => Number(C.colopHTML(c, { solved: false }).match(/--cols:(\d+)/)[1]);
+  assert.equal(cols(wide), cols(short));
+  assert.equal(cols(sub), Math.max(sub.a.length, sub.b.length));
+  const add = O.guidedOperation(mulberry(11), "+").column;
+  assert.equal(cols(add), Math.max(add.a.length, add.b.length) + 1);
+  assert.equal(cols({ ...add, result: "1" }), cols({ ...add, result: "1".repeat(30) }));
+  const html = C.colopHTML(add, { solved: false });
+  assert.equal((html.match(/colop__res is-blank/g) || []).length, cols(add));
+});

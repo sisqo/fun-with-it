@@ -80,10 +80,10 @@ export function judgeStep(step, givens, given) {
   if (r.kind === "div") {
     const tail = `non ${step.answer} (il dividendo) → c'è un errore nel quoziente o nel resto.`;
     if (same(r.expected)) {
-      return { ok: true, star: false, reward: true, discovered: true, headline: "Conto giusto!", note: `${cap(r.calc)}, ${tail}` };
+      return { ok: true, star: false, reward: true, discovered: true, headline: "Conto giusto, e la verifica ha scoperto un errore", note: `${cap(r.calc)}, ${tail}` };
     }
     if (same(step.answer)) {
-      return { ok: false, star: false, reward: false, discovered: true, headline: "Attenzione: qui si usano i TUOI risultati",
+      return { ok: false, star: false, reward: false, discovered: true, headline: "La verifica ha scoperto un errore",
         note: `${cap(r.calc)}, ${tail}` };
     }
     return { ok: false, star: true, reward: false, discovered: true, headline: "Ahi, il conto non torna",
@@ -92,11 +92,11 @@ export function judgeStep(step, givens, given) {
 
   const expand = r.detail ? ` (${r.userBin} = ${r.detail.parts.map((p) => p.value).join(" + ") || 0} = ${r.expected})` : "";
   if (same(r.expected)) {
-    return { ok: true, star: false, reward: true, discovered: true, headline: "Conversione giusta!",
+    return { ok: true, star: false, reward: true, discovered: true, headline: "Conversione giusta, e la verifica ha scoperto un errore",
       note: `Ma ${r.expected} ≠ ${summary}: la verifica ha scoperto un errore nell'operazione in binario.${expand}` };
   }
   if (same(step.answer)) {
-    return { ok: false, star: false, reward: false, discovered: true, headline: "Attenzione: qui si riconverte il TUO risultato",
+    return { ok: false, star: false, reward: false, discovered: true, headline: "La verifica ha scoperto un errore",
       note: `Hai scritto il risultato dell'operazione in decimale (${step.answer}), ma qui si riconverte il tuo ${r.userBin}: vale ${r.expected}${expand}. Quindi l'operazione in binario era sbagliata.` };
   }
   return { ok: false, star: true, reward: false, discovered: true, headline: "Ahi, la riconversione non torna",

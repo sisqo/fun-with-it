@@ -280,6 +280,41 @@
   </div>
 </section>
 
+<section class="pv-section">
+  <h2>Radio in auto</h2>
+  <div class="pv-screens">
+    <div>
+      <aside class="radio" aria-label="Radio Overflow, 101.1010 FM">
+        <div class="radio__dial">
+          <svg class="radio__eq" viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="2" width="3" height="14" rx="1"/><rect x="6" y="2" width="3" height="14" rx="1"/><rect x="11" y="2" width="3" height="14" rx="1"/><rect x="16" y="2" width="3" height="14" rx="1"/></svg>
+          <span class="radio__freq">101.1010<small>FM</small></span>
+          <span class="radio__name">Radio Overflow</span>
+          <span class="radio__live">In onda</span>
+        </div>
+        <p class="radio__line"><b class="radio__dj">DJ Nibble</b>Siamo sui 101.1010 FM, cioè 5,625 in decimale. Nessuna radio trasmette lì: per questo non ci trova nessuno.</p>
+      </aside>
+      <p class="pv-caption">Piena: tra una domanda e l'altra, nella home o a fine missione. L'equalizzatore si muove piano (fermo con riduzione movimento).</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="feedback feedback--inline feedback--ok" role="status">
+        <img class="feedback__mascot" src="mascot/r0b-esulta.svg" alt="">
+        <p class="feedback__title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>Pulito</p>
+        <p class="feedback__text"><span class="n n--2">1100000<sub>2</sub></span> = <span class="n n--10">96<sub>10</sub></span>. Cassaforte aperta.</p>
+        <p class="radio radio--compact"><svg class="radio__eq" viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="2" width="3" height="14" rx="1"/><rect x="6" y="2" width="3" height="14" rx="1"/><rect x="11" y="2" width="3" height="14" rx="1"/><rect x="16" y="2" width="3" height="14" rx="1"/></svg><span class="radio__freq">101.1010</span><span class="radio__line">Un byte entra in 8 bit. Il tuo stipendio, a quanto pare, no.</span></p>
+        <button class="btn btn--block" type="button">Avanti</button>
+      </div>
+      <div class="feedback feedback--inline feedback--ko" role="status">
+        <img class="feedback__mascot" src="mascot/r0b-perplesso.svg" alt="">
+        <p class="feedback__title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Quasi</p>
+        <p class="feedback__text">Il riporto della colonna 3 è rimasto per strada.</p>
+        <p class="radio radio--compact"><svg class="radio__eq" viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="2" width="3" height="14" rx="1"/><rect x="6" y="2" width="3" height="14" rx="1"/><rect x="11" y="2" width="3" height="14" rx="1"/><rect x="16" y="2" width="3" height="14" rx="1"/></svg><span class="radio__freq">101.1010</span><span class="radio__line">Anche i computer sbagliano. Solo, molto più in fretta.</span></p>
+        <button class="btn btn--block" type="button">Ci riprovo</button>
+      </div>
+      <p class="pv-caption">Compatta: l'ultima riga di ogni feedback, prima del bottone. Equalizzatore fermo.</p>
+    </div>
+  </div>
+</section>
+
 <script>
   // --- solo demo: la logica vera è di David ---
   const swatches = ["bg","surface","surface-2","border","text","text-muted","primary","secondary","accent","digit","success","danger","cash","wanted","focus","vault","dial-on","lcd-text"];

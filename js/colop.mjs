@@ -39,11 +39,13 @@ export function colopHTML(column, { solved = true } = {}) {
   if (op === ":") return "";
   let cols = Math.max(a.length, b.length, result.length);
   if (op === "×") cols = Math.max(cols, ...column.rows.map((r) => r.length));
+  // Senza soluzione la griglia non deve rivelare la lunghezza del risultato: usa la larghezza massima possibile.
+  if (!solved) cols = op === "+" ? Math.max(a.length, b.length) + 1 : op === "×" ? a.length + b.length : Math.max(a.length, b.length);
   const A = pad(a, cols), B = pad(b, cols), R = pad(result, cols);
   const parts = [];
   const resultRow = () => (solved
     ? row("", R, "colop__res")
-    : "<span></span>" + R.map((c) => (c === "" ? "<span></span>" : '<span class="colop__res is-blank"></span>')).join(""));
+    : "<span></span>" + Array(cols).fill('<span class="colop__res is-blank"></span>').join(""));
 
   if (op === "+") {
     const C = pad(column.carries || "", cols);

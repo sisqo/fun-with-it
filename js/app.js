@@ -66,12 +66,14 @@ function hudHTML() {
   return `<div class="hud">${starsHTML(game.stars, MAX_STARS, game.lit)}<span class="cash" aria-label="Contanti: ${profile.cash + game.earned} dollari">${money(profile.cash + game.earned)}${delta}</span></div>`;
 }
 
-const ANSWER_ATTR = (base) => (base === 2 || base === 10 ? 'inputmode="numeric"' : 'inputmode="text" autocapitalize="characters"');
+// Su iPhone "numeric" non ha la virgola: per le risposte con la virgola serve "decimal".
+const ANSWER_ATTR = (base, withPoint) => (withPoint ? 'inputmode="decimal"' : base === 2 || base === 10 ? 'inputmode="numeric"' : 'inputmode="text" autocapitalize="characters"');
 
 function answerForm(unit, label) {
   const base = unit.base ?? 10;
-  const hint = base === 2 ? "es. 10110" : base === 16 ? "es. 3B" : "";
-  return `<form class="answer" id="form"><label class="sr-only" for="ans">${esc(label)}</label><input class="answer__input" id="ans" ${ANSWER_ATTR(base)} autocomplete="off" spellcheck="false" ${hint ? `placeholder="${hint}"` : ""}><button class="btn btn--primary" type="submit">Rispondi</button></form>`;
+  const withPoint = /[.,]/.test(String(unit.answer ?? ""));
+  const hint = withPoint ? "es. 1011,01" : base === 2 ? "es. 10110" : base === 16 ? "es. 3B" : "";
+  return `<form class="answer" id="form"><label class="sr-only" for="ans">${esc(label)}</label><input class="answer__input" id="ans" ${ANSWER_ATTR(base, withPoint)} autocomplete="off" spellcheck="false" ${hint ? `placeholder="${hint}"` : ""}><button class="btn btn--primary" type="submit">Rispondi</button></form>`;
 }
 
 function opTitle(q) {
@@ -102,7 +104,7 @@ function showQuestion() {
       if (i === game.step) {
         const withColumn = i === OP_STEP && q.column && q.column.op !== ":";
         return `<li class="step is-current"><span class="step__label">${esc(s.label)}</span><span class="step__result" aria-hidden="true">?</span>
-          <div class="step__body">${withColumn ? colopHTML(q.column, { solved: false }) : ""}${answerForm(s, s.label)}</div></li>`;
+          <div class="step__body">${withColumn ? colopHTML(q.column, { solved: false }) + `<p class="answer__hint">${q.column.op === "×" ? "Prodotti parziali sul quaderno, poi scrivi il risultato qui sotto." : "Scrivi il risultato qui sotto, tutto di fila."}</p>` : ""}${answerForm(s, s.label)}</div></li>`;
       }
       return `<li class="step"><span class="step__label">${esc(s.label)}</span><span class="step__result"></span></li>`;
     }).join("");
@@ -158,13 +160,13 @@ function showQuestion() {
 
 function feedbackHTML({ q, unit, isStep, verdict, moreSteps, failed, last }) {
   const ok = verdict.ok;
-  const hint = !ok && verdict.discovered && !verdict.star;
-  const variant = ok ? "ok" : hint ? "hint" : "ko";
-  const mascot = ok ? "esulta" : failed ? "triste" : "perplesso";
-  const icon = ok ? ICON_OK : hint ? ICON_HINT : ICON_KO;
+  const found = Boolean(verdict.discovered && !verdict.star); // la verifica ha scoperto un errore: indizio, non festa
+  const variant = found ? "hint" : ok ? "ok" : "ko";
+  const mascot = found ? "perplesso" : ok ? "esulta" : failed ? "triste" : "perplesso";
+  const icon = found ? ICON_HINT : ok ? ICON_OK : ICON_KO;
   const gaveAnswer = verdict.headline.startsWith("Risposta giusta");
-  const title = ok ? verdict.headline || "Esatto!" : gaveAnswer ? "Quasi." : verdict.headline;
-  const text = ok
+  const title = ok ? verdict.headline || "Esatto!" : gaveAnswer ? "Non è questa" : verdict.headline;
+  const text = ok || found
     ? (verdict.note ? esc(verdict.note) : `Pulito. <span class="num">+${CASH_PER_RIGHT} $</span> sul conto.`)
     : gaveAnswer ? esc(verdict.headline).replace(/: (.*)$/, (_, v) => `: ${num(v)}`) : esc(verdict.note);
 
