@@ -180,6 +180,7 @@ function home(greeting = "") {
 // Una partita = 10 domande scelte dal gioco in base ai risultati (o 8 su un solo argomento, per allenarsi).
 function startGame({ force = null } = {}) {
   game = { force, count: force ? 8 : 10, q: null, last: null, seen: new Set(), touched: new Map(), qWrong: false, qUnits: 0, qOkUnits: 0, recorded: false, index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [], delta: 0, lit: false };
+  game.chBefore = Object.fromEntries(G.summarize(P.currentPlayer(store)).chapters.map((c) => [c.id, c.state]));
   nextQ();
   showQuestion();
 }
@@ -204,7 +205,7 @@ function recordQuestion() {
   t.res.push(frac >= P.OK_FRACTION);
   if (frac >= P.OK_FRACTION) t.ok += 1;
   game.touched.set(topic, t);
-  commit(P.recordResult(store, store.current, topic, frac));
+  commit(G.recordResult(store, store.current, topic, frac));
 }
 
 const SPEAKER = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/>${on ? '<path d="M15.5 9a4 4 0 010 6M18 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
@@ -502,6 +503,15 @@ function statsHTML(c) {
   return `<ul class="stats" aria-label="Argomenti">${item("superato", c.passed, "superati")}${item("toccato", c.inProgress, "in corso")}${item("da-ripassare", c.failed, "da ripassare")}${item("non-toccato", c.untouched, "da toccare")}</ul>`;
 }
 
+// Linea dei capitoli (si guarda e basta): il nodo mostra sempre il numero, lo stato è una spilla/riempimento.
+const METRO_LABEL = { warm: "Cassaforte", c1: "Algoritmi", c2: "Bit e byte", conv: "Dec → bin", ops: "Operazioni", basi: "Ottale / esa", virgola: "Virgola" };
+const METRO_CLASS = { perfetto: "is-perfect", superato: "is-complete", "da-ripassare": "is-review", coperto: "is-covered", "in-corso": "is-started", "da-iniziare": "is-new" };
+function metroHTML(sum) {
+  const count = (st) => sum.chapters.filter((c) => c.state === st).length;
+  const label = `Capitoli: ${count("perfetto")} superati alla perfezione, ${count("superato")} superati, ${count("da-ripassare")} da ripassare, ${count("coperto")} coperti, ${count("in-corso")} in corso, ${count("da-iniziare")} da iniziare`;
+  return `<ol class="metro" style="--stops:${sum.chapters.length}" aria-label="${label}">${sum.chapters.map((ch) => `<li class="metro__stop ${METRO_CLASS[ch.state]}${ch.id === "ops" ? " is-hub" : ""}"><span class="metro__node" aria-hidden="true">${ch.n}</span><span class="metro__label">${METRO_LABEL[ch.id] ?? esc(ch.title)}</span></li>`).join("")}</ol>`;
+}
+
 // Icone dello stato di un capitolo: forma + testo, mai solo il colore.
 const STATE_ICON = {
   perfetto: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></svg>',
@@ -511,21 +521,29 @@ const STATE_ICON = {
   "in-corso": '<i class="state-dot state-dot--ring" aria-hidden="true"></i>',
   "da-iniziare": '<i class="state-dot state-dot--dash" aria-hidden="true"></i>',
 };
+const justPerfect = new Set(); // capitoli diventati perfetti nell'ultima partita (il medaglione salta una volta)
 const chapterTitle = (ch) => (ch.n > 0 ? `${ch.n} · ${ch.title}` : ch.title);
 
 // Elenco ordinato dei capitoli con lo stato di ciascuno: si vede subito dalla home.
 function coursesHTML(sum) {
-  return `<ol class="course" aria-label="Capitoli del corso, in ordine">${sum.chapters.map((ch) => `<li>
-    <button class="course__item course__item--${ch.state}" type="button" data-chapter="${ch.id}" aria-label="${esc(chapterTitle(ch))}: ${esc(ch.label)}. ${esc(ch.detail)}. Apri il dettaglio.">
+  const html = `<ol class="course" aria-label="Capitoli del corso, in ordine">${sum.chapters.map((ch) => `<li>
+    <button class="course__item course__item--${ch.state}${justPerfect.has(ch.id) ? " is-new-state" : ""}" type="button" data-chapter="${ch.id}" aria-label="${esc(chapterTitle(ch))}: ${esc(ch.label)}. ${esc(ch.detail)}. Apri il dettaglio.">
       <span class="course__n" aria-hidden="true">${ch.n > 0 ? ch.n : "0"}</span>
-      <span class="course__main"><span class="course__title">${esc(ch.title)}</span><span class="course__detail">${esc(ch.detail)}</span></span>
+      <span class="course__main"><span class="course__title">${esc(ch.title)}</span><span class="course__detail">${esc(ch.detail)}</span>${ch.wasNote ? `<span class="course__was">${esc(ch.wasNote)}</span>` : ""}</span>
       <span class="course__state course__state--${ch.state}">${STATE_ICON[ch.state]}<span>${esc(ch.label)}</span></span>
     </button></li>`).join("")}</ol>`;
+  justPerfect.clear(); // il salto del medaglione avviene una volta sola
+  return html;
 }
 
 function finish(failed) {
   if (!failed) { commit(P.recordMission(store, store.current, "gioca", game.earned)); FX.bigWin(); } else FX.play("ko");
   const player = P.currentPlayer(store);
+  // capitoli che in questa partita sono diventati perfetti
+  justPerfect.clear();
+  const newlyPerfect = G.summarize(player).chapters.filter((c) => c.state === "perfetto" && game.chBefore?.[c.id] !== "perfetto");
+  newlyPerfect.forEach((c) => justPerfect.add(c.id));
+  if (newlyPerfect.length) FX.toast(`${newlyPerfect.length === 1 ? "Capitolo" : "Capitoli"} ${newlyPerfect.map((c) => c.n).join(", ")}: superato alla perfezione!`);
   const entries = [...game.touched.entries()].map(([id, t]) => ({ id, t, after: G.statusFor(player, id) }));
   const delta = (e) => Math.sign(RANK[e.after] - RANK[e.t.before]); // 1 salito, 0 invariato, -1 sceso
   const ordered = [...entries.filter((e) => delta(e) > 0), ...entries.filter((e) => delta(e) === 0), ...entries.filter((e) => delta(e) < 0)];
@@ -541,6 +559,7 @@ function finish(failed) {
       <h1 class="home__title">${failed ? "Beccato!" : "Partita <span>finita</span>"}</h1>
       <p class="home__line">${failed ? "Cinque stelle: la polizia ti ha preso. Il bottino resta sul banco." : `Hai incassato <b>${money(game.earned)}</b>.`}</p>
       <p class="home__rules">Risposte giuste: ${game.rightCount} su ${game.totalUnits}${failed ? "" : ` · Il tuo conto: ${money(me().cash)}`}</p>
+      ${newlyPerfect.length ? `<p class="home__hello" role="status">★ ${newlyPerfect.map((c) => esc(c.title)).join(" · ")}: superato alla perfezione!</p>` : ""}
       ${rows ? `<h2 class="board__sub">Argomenti toccati in questa partita</h2><ul class="topics topics--summary">${rows}</ul>` : ""}
       ${radioFull()}
       <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : "Gioca ancora"}</button>
@@ -569,18 +588,19 @@ function progressScreen(focusChapter = null) {
       const needs = G.blockingNeeds(G.topicById[r.id], player.topics ?? {}).map(title);
       const can = r.unlocked || r.attempts > 0;
       const score = r.attempts ? `${r.correct} su ${r.attempts} ${r.attempts === 1 ? "giusta" : "giuste"}` : can ? "Mai provato" : `Si apre dopo: ${esc(needs.join(", "))}`;
-      return `<li class="topic topic--${cls(r.status)}${can ? "" : " is-locked"}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${score}</span></div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}</li>`;
+      return `<li class="topic topic--${cls(r.status)}${can ? "" : " is-locked"}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${score}</span>${G.wasPassedNote(r) ? `<span class="topic__was">${esc(G.wasPassedNote(r))}</span>` : ""}</div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}</li>`;
     }).join("");
     return `<article class="chapter" id="chapter-${ch.id}"><header class="chapter__head"><h2 class="chapter__title">${esc(chapterTitle(ch))}</h2>${badge}</header>
       <p class="chapter__src">${esc(ch.source)}</p>
       <div class="chapter__bar" role="img" aria-label="${ch.passed} superati, ${inProgress} in corso, ${ch.failed} da ripassare su ${ch.total}"><i class="is-passed" style="width:${pct(ch.passed)}%"></i><i class="is-touched" style="width:${pct(inProgress)}%"></i><i class="is-failed" style="width:${pct(ch.failed)}%"></i></div>
-      <p class="chapter__count"><b>${ch.touched}</b> toccati su ${ch.total} · <b>${ch.passed}</b> ${ch.passed === 1 ? "superato" : "superati"}</p>
+      <p class="chapter__count"><b>${ch.touched}</b> toccati su ${ch.total} · <b>${ch.passed}</b> ${ch.passed === 1 ? "superato" : "superati"}</p>${ch.wasNote ? `<p class="chapter__was">${esc(ch.wasNote)}</p>` : ""}
       <ul class="topics">${items}</ul></article>`;
   }).join("");
   render(el(`
     <section class="board">
       <h1 class="board__title">I miei progressi</h1>
       ${statsHTML(c)}
+      ${metroHTML(sum)}
       <p class="home__rules">Superato: almeno 4 giuste nelle ultime 5, con numeri da compito. Da ripassare: meno della metà giuste nelle ultime 5 (dopo almeno 5 domande). Negli esercizi a passaggi conta quanti passaggi hai fatto giusti. Puoi sempre migliorare: lo stato segue come stai andando adesso, quindi un capitolo superato può tornare coperto se sbagli di nuovo. Superato alla perfezione: tutti gli argomenti superati e le ultime 5 risposte tutte giuste.</p>
       ${chapters}
       <button class="btn btn--primary btn--block" id="back" type="button">Torna a giocare</button>

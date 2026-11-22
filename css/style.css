@@ -97,38 +97,7 @@
 .home__missions { width: 100%; margin-top: var(--sp-3); max-width: 28rem; }
 .home__missions .choice { justify-content: flex-start; text-align: left; }
 
-/* ---------- Elenco ordinato dei capitoli (home) ---------- */
-.course { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 28rem; display: flex; flex-direction: column; gap: var(--sp-2); text-align: left; }
-.course__item { width: 100%; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "n main" "n state"; gap: var(--sp-1) var(--sp-3); align-items: center; padding: var(--sp-3); border-radius: var(--r-md); border: var(--border-w, 1.5px) solid var(--c-border); background: var(--c-surface); color: var(--c-text); text-align: left; cursor: pointer; }
-.course__item:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
-.course__n { grid-area: n; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800; border: 2px solid currentColor; color: var(--c-text-muted); }
-.course__main { grid-area: main; display: flex; flex-direction: column; min-width: 0; }
-.course__title { font-weight: 700; line-height: var(--lh-tight); }
-.course__detail { font-size: var(--fs-xs); color: var(--c-text-muted); }
-.course__state { grid-area: state; display: inline-flex; align-items: center; gap: 6px; justify-self: start; font-size: var(--fs-xs); font-weight: 800; padding: 2px var(--sp-3); border-radius: var(--r-pill); border: var(--border-w, 1.5px) solid currentColor; background: var(--c-surface); }
-.course__state svg { width: 14px; height: 14px; flex: none; }
-.state-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; display: inline-block; flex: none; }
-.state-dot--half { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
-.state-dot--dash { border-style: dotted; }
 
-.course__state--perfetto { color: var(--c-cash); background: color-mix(in srgb, var(--c-cash) 14%, var(--c-surface)); }
-.course__state--superato { color: var(--c-success); background: var(--c-success-bg); }
-.course__state--da-ripassare { color: var(--c-danger); background: var(--c-danger-bg); }
-.course__state--coperto { color: var(--c-secondary); }
-.course__state--in-corso { color: var(--c-secondary); border-style: dashed; }
-.course__state--da-iniziare { color: var(--c-text-muted); border-style: dashed; }
-
-.course__item--perfetto { border-color: var(--c-cash); border-width: 2px; }
-.course__item--perfetto .course__n { color: var(--c-cash); background: color-mix(in srgb, var(--c-cash) 14%, var(--c-surface)); }
-.course__item--superato { border-color: var(--c-success); }
-.course__item--superato .course__n { color: var(--c-success); }
-.course__item--da-ripassare { border-color: var(--c-danger); }
-.course__item--da-ripassare .course__n { color: var(--c-danger); }
-.course__item--coperto, .course__item--in-corso { border-color: var(--c-secondary); }
-.course__item--coperto .course__n, .course__item--in-corso .course__n { color: var(--c-secondary); }
-.course__item--da-iniziare { border-style: dashed; }
-
-/* badge del capitolo nella schermata dei progressi: i nuovi stati */
-.chapter__badge.is-perfect { color: var(--c-cash); border-color: var(--c-cash); background: color-mix(in srgb, var(--c-cash) 14%, var(--c-surface)); }
-.chapter__badge.is-review { color: var(--c-danger); border-color: var(--c-danger); background: var(--c-danger-bg); }
-.chapter__badge.is-started { color: var(--c-secondary); border-style: dashed; border-color: var(--c-secondary); }
+/* il traguardo già raggiunto resta visibile anche se lo stato di adesso è sceso */
+.course__was, .topic__was, .chapter__was { display: block; font-size: var(--fs-xs); font-style: italic; color: var(--c-secondary); }
+.chapter__was { margin: 0; }

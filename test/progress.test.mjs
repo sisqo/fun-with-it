@@ -558,3 +558,92 @@ test("ogni stato ha etichetta e riga di spiegazione", () => {
   const sum = G.summarize(newPlayer());
   assert.ok(sum.chapters.every((c) => c.detail && c.label && c.state === "da-iniziare"));
 });
+
+// ---------- Il traguardo raggiunto resta visibile ----------
+
+const DAY0 = Date.UTC(2026, 10, 12, 12); // 12 novembre 2026
+function playTopic(store, topic, outcomes, t0 = DAY0) {
+  let st = store;
+  outcomes.forEach((o, i) => { st = G.recordResult(st, "neri", topic, o, t0 + i); });
+  return st;
+}
+
+test("passedAt: si imposta la prima volta che l'argomento diventa superato e non cambia più", () => {
+  let st = P.enter(P.emptyStore(), "Neri", DAY0).store;
+  st = playTopic(st, "dati-informazioni", [true, true, true]);
+  assert.equal(P.currentPlayer(st).topics["dati-informazioni"].passedAt, 0, "con 3 risposte non è superato");
+  st = playTopic(st, "dati-informazioni", [true], DAY0 + 10);
+  const first = P.currentPlayer(st).topics["dati-informazioni"].passedAt;
+  assert.equal(first, DAY0 + 10, "alla quarta giusta");
+  st = playTopic(st, "dati-informazioni", [true, true], DAY0 + 99_999);
+  assert.equal(P.currentPlayer(st).topics["dati-informazioni"].passedAt, first, "non cambia");
+});
+
+test("passedAt non si cancella quando lo stato scende", () => {
+  let st = P.enter(P.emptyStore(), "Neri", DAY0).store;
+  st = playTopic(st, "dati-informazioni", [true, true, true, true]);
+  const player = () => P.currentPlayer(st);
+  assert.equal(G.statusFor(player(), "dati-informazioni"), "superato");
+  st = playTopic(st, "dati-informazioni", [false, false, false, false, false], DAY0 + 1000);
+  assert.equal(G.statusFor(player(), "dati-informazioni"), "da-ripassare");
+  assert.equal(player().topics["dati-informazioni"].passedAt, DAY0 + 3, "il traguardo resta");
+  const sum = G.summarize(player());
+  assert.equal(sum.counts.passed, 0, "il conteggio dei superati è quello di adesso");
+});
+
+test("nota 'superato il…': data, errori recenti e cosa fare", () => {
+  let st = P.enter(P.emptyStore(), "Neri", DAY0).store;
+  st = playTopic(st, "dati-informazioni", [true, true, true, true]);
+  st = playTopic(st, "dati-informazioni", [false, false], DAY0 + 50);
+  const row = G.summarize(P.currentPlayer(st)).rows.find((r) => r.id === "dati-informazioni");
+  assert.notEqual(row.status, "superato");
+  assert.equal(G.wasPassedNote(row), "Superato il 12/11: 2 errori recenti, rifai giuste le prossime per tornarci");
+  st = playTopic(st, "dati-informazioni", [true, true, true, true, true], DAY0 + 90);
+  const back = G.summarize(P.currentPlayer(st)).rows.find((r) => r.id === "dati-informazioni");
+  assert.equal(back.status, "superato");
+  assert.equal(G.wasPassedNote(back), "", "tornato superato: niente nota");
+  assert.equal(G.wasPassedNote({ passedAt: 0, status: "toccato", window: [0] }), "", "mai superato: niente nota");
+  assert.match(G.wasPassedNote({ passedAt: DAY0, status: "toccato", window: [0] }), /un errore recente/);
+  assert.equal(G.wasPassedNote({ passedAt: DAY0, status: "toccato", window: [1, 1] }), "Superato il 12/11, rifai giuste le prossime per tornarci");
+});
+
+test("nota del capitolo: era superato (tutti gli argomenti) e ora non lo è più", () => {
+  let st = P.enter(P.emptyStore(), "Neri", DAY0).store;
+  for (const id of ["istruzioni-robot", "dati-informazioni", "algoritmo-pensiero", "informatica-termini", "storia"]) st = playTopic(st, id, [true, true, true, true, true], DAY0);
+  const c1 = () => G.summarize(P.currentPlayer(st)).chapters.find((c) => c.id === "c1");
+  assert.equal(c1().state, "perfetto");
+  assert.equal(c1().wasNote, "", "ancora superato: nessuna nota");
+  st = playTopic(st, "storia", [false, false, false, false, false], DAY0 + 5000);
+  assert.equal(c1().state, "da-ripassare");
+  assert.equal(c1().wasNote, "Era superato il 12/11: rifai giuste le prossime domande per tornarci");
+  // un capitolo mai superato per intero non ha la nota
+  let st2 = P.enter(P.emptyStore(), "Neri", DAY0).store;
+  st2 = playTopic(st2, "istruzioni-robot", [true, true, true, true]);
+  assert.equal(G.summarize(P.currentPlayer(st2)).chapters.find((c) => c.id === "c1").wasNote, "");
+});
+
+test("markPassed: una sola volta, solo per argomenti provati, id non valido ignorato", () => {
+  let st = P.enter(P.emptyStore(), "Neri", DAY0).store;
+  assert.equal(P.markPassed(st, "neri", "addizione", 5), st, "mai provato: nessuna modifica");
+  st = P.recordResult(st, "neri", "addizione", true, 1);
+  st = P.markPassed(st, "neri", "addizione", 10);
+  st = P.markPassed(st, "neri", "addizione", 99);
+  assert.equal(P.currentPlayer(st).topics.addizione.passedAt, 10);
+  assert.equal(P.markPassed(st, "neri", "__proto__", 5), st);
+});
+
+test("passedAt sopravvive al salvataggio e il reset lo cancella", () => {
+  let st = P.enter(P.emptyStore(), "Neri", DAY0).store;
+  st = playTopic(st, "dati-informazioni", [true, true, true, true]);
+  const back = P.parseStore(P.serialize(st));
+  assert.equal(P.currentPlayer(back).topics["dati-informazioni"].passedAt, DAY0 + 3);
+  assert.equal(P.currentPlayer(P.resetPlayer(st, "neri")).topics["dati-informazioni"], undefined);
+  const hostile = P.parseStore(JSON.stringify({ players: [{ name: "Ok", topics: { addizione: { attempts: 2, correct: 1, window: [1, 0], level: 0.3, passedAt: "x" }, storia: { attempts: 1, correct: 1, window: [1], level: 0, passedAt: -5 } } }] }));
+  assert.deepEqual(P.currentPlayer({ ...hostile, current: "ok" }).topics.addizione.passedAt, 0);
+  assert.equal(P.currentPlayer({ ...hostile, current: "ok" }).topics.storia.passedAt, 0);
+});
+
+test("formatDay: giorno/mese", () => {
+  assert.equal(G.formatDay(Date.UTC(2026, 10, 12, 12)), "12/11");
+  assert.equal(G.formatDay(Date.UTC(2026, 0, 5, 12)), "5/1");
+});

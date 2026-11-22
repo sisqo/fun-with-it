@@ -639,14 +639,14 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .metro__stop.is-new .metro__node { border-style: dashed; border-color: var(--c-text-muted); color: var(--c-text-muted); }
 .metro__stop.is-hub .metro__node { width: 40px; height: 40px; margin-top: -4px; margin-bottom: -4px; box-shadow: var(--glow); } /* Operazioni */
 .metro__label {
-  position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  position: absolute; top: calc(100% - var(--lab) + 4px); left: 50%; transform: translateX(-50%);
   width: 190%; text-align: center; line-height: 1.2; color: var(--c-text-muted);
 }
-.metro__stop:nth-child(even) .metro__label { top: auto; bottom: calc(100% + 4px); }
+.metro__stop:nth-child(even) .metro__label { top: auto; bottom: calc(100% - var(--lab) + 4px); }
 .metro__stop:first-child .metro__label { left: 0; transform: none; text-align: left; width: 150%; }
 .metro__stop:last-child .metro__label { left: auto; right: 0; transform: none; text-align: right; width: 150%; }
-.metro__stop.is-hub .metro__label { top: calc(100% + 8px); }
-.metro__stop.is-hub:nth-child(even) .metro__label { top: auto; bottom: calc(100% + 8px); }
+.metro__stop.is-hub .metro__label { top: calc(100% - var(--lab) + 8px); }
+.metro__stop.is-hub:nth-child(even) .metro__label { top: auto; bottom: calc(100% - var(--lab) + 8px); }
 .metro__stop.is-complete .metro__label, .metro__stop.is-covered .metro__label { color: var(--c-text); font-weight: 700; }
 
 /* ---------- Schermata "I miei progressi" ---------- */
@@ -667,7 +667,7 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
   font-size: var(--fs-xs); font-weight: 800; padding: 2px var(--sp-3); border-radius: var(--r-pill);
   border: var(--border-w) dashed var(--c-text-muted); color: var(--c-text-muted); white-space: nowrap;
 }
-.chapter__badge.is-covered { border-style: solid; border-color: var(--c-secondary); color: var(--c-secondary); }
+.chapter__badge.is-covered { border-style: solid; border-color: var(--c-secondary); background: var(--c-secondary); color: var(--c-surface); } /* pieno, come il nodo; "in corso" è solo contorno */
 .chapter__badge.is-complete { border-style: solid; border-color: var(--c-success); background: var(--c-success); color: var(--c-surface); }
 .chapter__badge.is-complete::before { content: "✓ "; }
 .chapter__src { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); }

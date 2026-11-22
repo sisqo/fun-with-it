@@ -3,7 +3,7 @@
 //
 // store = { v: 2, current: "chiave"|null, legacy?: {cash, missionsDone}, players: [player] }
 // player = { key, name, cash, missionsDone, done: { [missione]: volte }, topics: { [argomento]: stats }, createdAt, updatedAt }
-// stats  = { attempts, correct, window: [0|1 … ultimi 5 esiti], level: 0..1 (difficoltà), lastAt }
+// stats  = { attempts, correct, window: [0|1 … ultimi 5 esiti], level: 0..1 (difficoltà), lastAt, passedAt (quando è stato superato la prima volta, 0 = mai; non si cancella) }
 
 export const MAX_NAME = 20;
 export const MAX_PLAYERS = 12;
@@ -45,7 +45,7 @@ function safeTopics(t) {
     if (!/^[a-z0-9-]{1,32}$/.test(id) || !st || typeof st !== "object") continue;
     const window = Array.isArray(st.window) ? st.window.slice(-WINDOW).map((x) => (x ? 1 : 0)) : [];
     const attempts = num(st.attempts);
-    out[id] = { attempts, correct: Math.min(num(st.correct), attempts), window: window.slice(-attempts), level: clamp01(st.level), lastAt: ts(st.lastAt) };
+    out[id] = { attempts, correct: Math.min(num(st.correct), attempts), window: window.slice(-attempts), level: clamp01(st.level), lastAt: ts(st.lastAt), passedAt: ts(st.passedAt) };
     if (++n >= MAX_TOPICS) break;
   }
   return out;
@@ -56,13 +56,13 @@ function safeTopics(t) {
 // Lo stato guarda se la domanda è "giusta" (>= 75%); la difficoltà sale e scende in proporzione,
 // e sale di più (+0,2) alla terza risposta giusta di fila.
 export function nextStats(st, outcome, now = Date.now()) {
-  const s = st ?? { attempts: 0, correct: 0, window: [], level: 0, lastAt: 0 };
+  const s = st ?? { attempts: 0, correct: 0, window: [], level: 0, lastAt: 0, passedAt: 0 };
   const frac = outcome === true ? 1 : outcome === false ? 0 : clamp01(Number(outcome));
   const ok = frac >= OK_FRACTION;
   const window = [...s.window, ok ? 1 : 0].slice(-WINDOW);
   const streak3 = window.length >= 3 && window.slice(-3).every((x) => x === 1);
   const delta = frac * (streak3 ? 0.2 : 0.12) - (1 - frac) * 0.18;
-  return { attempts: s.attempts + 1, correct: s.correct + (ok ? 1 : 0), window, level: clamp01(s.level + delta), lastAt: now };
+  return { attempts: s.attempts + 1, correct: s.correct + (ok ? 1 : 0), window, level: clamp01(s.level + delta), lastAt: now, passedAt: s.passedAt ?? 0 };
 }
 
 // Legge il testo salvato (anche corrotto o in formato vecchio) e restituisce sempre uno store valido.
@@ -141,4 +141,13 @@ export function recordMission(store, key, missionKey, earned, now = Date.now()) 
 export function recordResult(store, key, topic, ok, now = Date.now()) {
   if (!/^[a-z0-9-]{1,32}$/.test(topic)) return store;
   return replacePlayer(store, key, (p) => ({ ...p, topics: { ...p.topics, [topic]: nextStats(p.topics[topic], ok, now) }, updatedAt: now }));
+}
+
+// Segna il momento in cui un argomento è stato superato per la prima volta. Una volta impostato non cambia e non si cancella:
+// lo stato di adesso può scendere, ma il traguardo raggiunto resta visibile.
+export function markPassed(store, key, topic, now = Date.now()) {
+  if (!/^[a-z0-9-]{1,32}$/.test(topic)) return store;
+  const current = store.players.find((p) => p.key === key)?.topics[topic];
+  if (!current || current.passedAt > 0) return store; // niente da cambiare: stesso oggetto
+  return replacePlayer(store, key, (p) => ({ ...p, topics: { ...p.topics, [topic]: { ...current, passedAt: now } } }));
 }

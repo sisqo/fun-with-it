@@ -340,8 +340,8 @@ bordo rosso, "da toccare" il bordo tratteggiato.
 
 **Linea dei capitoli (`ol.metro`)**: è la metropolitana della mappa, orizzontale e compatta.
 Ha una fermata per capitolo e **non si tocca**: si guarda e basta.
-- Stati della fermata:
-  - `.is-complete`: ✓ verde;
+- Stati della fermata (vedi anche "Capitoli in home" per `.is-perfect` e `.is-review`):
+  - `.is-complete`: verde con la spilla ✓;
   - `.is-covered`: numero su viola pieno;
   - `.is-started`: numero col bordo viola;
   - `.is-new`: tratteggio, con il binario tratteggiato.
@@ -374,6 +374,60 @@ di testo) e, se c'è un bocciato, `Ripassa: …` come `.btn--ghost.btn--block`.
   nuovo con un piccolo salto; `.is-down` aggiunge un contorno rosso.
 - **Ordine.** Prima quelli saliti, poi gli invariati, poi quelli scesi: si chiude con quello
   da sistemare.
+
+### Capitoli in home: sei stati (`.course`)
+
+La home ha un tasto solo, **Gioca**, e sotto l'elenco ordinato dei 7 capitoli (0–6) con lo
+stato di ciascuno. Toccando un capitolo si apre il dettaglio: ogni card ha la freccia ›. Il
+markup è quello di David: `button.course__item.course__item--<stato>` con `.course__n`,
+`.course__main` (`.course__title`, `.course__detail`) e `.course__state.course__state--<stato>`
+(icona + parola).
+
+**Gerarchia:** i due stati "superato" sono pieni, il perfetto in più è oro; poi viene
+l'attenzione (rosso tenue), poi il lavoro in corso (viola), poi il quieto (tratteggio).
+
+| Stato | Card | Nodo | Pillola |
+|---|---|---|---|
+| `perfetto`, superato alla perfezione | bordo a gradiente oro-arancio, tinta oro, bagliore; titolo in oro | medaglione oro con stellina ★ nell'angolo | piena oro, ★ |
+| `superato`, non alla perfezione | bordo verde | pieno verde | piena verde, ✓ |
+| `da-ripassare` | tinta e bordo rossi | contorno rosso | contorno rosso, ! |
+| `coperto` | bordo viola | **pieno** viola | contorno viola, cerchio mezzo pieno |
+| `in-corso` | bordo viola | **contorno** viola | contorno viola, cerchio vuoto |
+| `da-iniziare` | tratteggio, trasparente, senza ombra | tratteggiato | tratteggiata, cerchio tratteggiato |
+
+- Le icone a pallino sono `.state-dot--half`, `--ring` e `--dash`. Le icone SVG (★ ✓ !) sono
+  quelle di `STATE_ICON` in `app.js`.
+- **Animazione.** `.is-new-state` sul `.course__item` perfetto fa saltare il medaglione una
+  volta. Usalo quando il capitolo è appena diventato perfetto, per esempio tornando alla home
+  dopo la partita.
+- **Badge nei progressi.** `.chapter__badge` ha gli stessi stati:
+  - `.is-perfect`: pieno oro con ★;
+  - `.is-complete`: pieno verde con ✓;
+  - `.is-review`: tinta rossa con !;
+  - `.is-covered`: pieno viola;
+  - `.is-started`: contorno viola;
+  - nessuna classe: tratteggio.
+
+**La metro in cima ai progressi (`ol.metro`, `--stops: 7`).**
+
+Il nodo mostra **sempre il numero** del capitolo. Gli stati:
+
+| Classe | Nodo | Spilla nell'angolo |
+|---|---|---|
+| `.is-perfect` | oro | ★ |
+| `.is-complete` | verde | ✓ |
+| `.is-review` | contorno rosso | ! |
+| `.is-covered` | viola pieno | nessuna |
+| `.is-started` | contorno viola | nessuna |
+| `.is-new` | tratteggiato | nessuna |
+
+Altre regole:
+- `.is-hub` va su Operazioni.
+- Le etichette si alternano sopra e sotto il binario. **Sotto i ~30rem di larghezza (7 fermate
+  su telefono) si nascondono**: restano i numeri, l'elenco dei capitoli è subito sotto e
+  l'`aria-label` dell'`<ol>` riassume tutto.
+- Le etichette brevi suggerite sono Cassaforte, Algoritmi, Bit e byte, Dec → bin, Operazioni,
+  Ottale / esa e Virgola.
 
 ### Radio in auto (`.radio`)
 

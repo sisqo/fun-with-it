@@ -2,6 +2,7 @@
 // Il giocatore non sceglie capitoli: gioca. Qui si decide cosa proporgli e si tiene traccia di
 // argomenti toccati, superati e bocciati, e di quanti capitoli del materiale sono coperti.
 
+import * as P from "./profiles.mjs";
 import { WINDOW, nextStats } from "./profiles.mjs";
 import * as Q from "./questions.mjs";
 import * as O from "./operations.mjs";
@@ -160,6 +161,25 @@ export function nextQuestion(player, rng, opts = {}) {
   return buildQuestion(topic, rng, player, opts);
 }
 
+// Registra l'esito di una domanda e, se l'argomento diventa "superato" per la prima volta, ne ricorda la data.
+export function recordResult(store, key, topic, outcome, now = Date.now()) {
+  let next = P.recordResult(store, key, topic, outcome, now);
+  const player = P.currentPlayer({ ...next, current: key });
+  if (player && statusFor(player, topic) === STATUS.PASSED) next = P.markPassed(next, key, topic, now);
+  return next;
+}
+
+// "12/11" (giorno/mese) per una data in millisecondi.
+export const formatDay = (ts) => { const d = new Date(ts); return `${d.getDate()}/${d.getMonth() + 1}`; };
+
+// Riga per chi ha già superato un argomento ma ora non lo è più (o non è più perfetto): il traguardo resta visibile.
+export function wasPassedNote(row) {
+  if (!row.passedAt || row.status === STATUS.PASSED) return "";
+  const errs = (row.window ?? []).filter((x) => x === 0).length;
+  const recent = errs === 0 ? "" : errs === 1 ? "un errore recente" : `${errs} errori recenti`;
+  return `Superato il ${formatDay(row.passedAt)}${recent ? `: ${recent}` : ""}, rifai giuste le prossime per tornarci`;
+}
+
 // ---------- Stato di un capitolo ----------
 
 export const PERFECT_LEVEL = 0.9; // per gli argomenti con i numeri: difficoltà arrivata quasi al massimo
@@ -213,7 +233,7 @@ export function summarize(player) {
   const topics = player.topics ?? {};
   const rows = TOPICS.map((t) => {
     const st = topics[t.id];
-    return { ...t, status: statusOf(st, t), perfect: isPerfect(st, t), attempts: st?.attempts ?? 0, correct: st?.correct ?? 0, level: st?.level ?? 0, unlocked: isUnlocked(t, topics) };
+    return { ...t, status: statusOf(st, t), perfect: isPerfect(st, t), passedAt: st?.passedAt ?? 0, window: st?.window ?? [], attempts: st?.attempts ?? 0, correct: st?.correct ?? 0, level: st?.level ?? 0, unlocked: isUnlocked(t, topics) };
   });
   const chapters = CHAPTERS.map((c) => {
     const list = rows.filter((r) => r.chapter === c.id);
@@ -224,6 +244,10 @@ export function summarize(player) {
     const correct = list.reduce((a, r) => a + r.correct, 0);
     const ch = { ...c, topics: list, total: list.length, touched, passed, failed, covered: touched === list.length, complete: passed === list.length, mastered: list.every((r) => r.perfect), accuracy: attempts ? correct / attempts : 0, attempts };
     ch.state = chapterState(ch);
+    // il capitolo era stato superato (ogni argomento superato almeno una volta) ma ora non lo è più
+    const everAll = list.every((r) => r.passedAt > 0);
+    ch.wasPassedAt = everAll ? Math.max(...list.map((r) => r.passedAt)) : 0;
+    ch.wasNote = everAll && !ch.complete ? `Era superato il ${formatDay(ch.wasPassedAt)}: rifai giuste le prossime domande per tornarci` : "";
     ch.label = CHAPTER_LABEL[ch.state];
     ch.detail = chapterDetail(ch);
     return ch;
