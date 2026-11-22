@@ -116,11 +116,11 @@ function nameScreen(message = "") {
       return;
     }
     commit(r.store);
-    home(r.isNew ? `Piacere, ${r.player.name}!` : `Bentornato, ${r.player.name}!`);
+    home(r.isNew ? `Piacere, ${r.player.name}!` : `Ciao di nuovo, ${r.player.name}!`);
   };
   app.querySelectorAll("[data-player]").forEach((b) => (b.onclick = () => {
     const r = P.enter(store, store.players.find((p) => p.key === b.dataset.player)?.name ?? "");
-    if (r.ok) { commit(r.store); home(`Bentornato, ${r.player.name}!`); }
+    if (r.ok) { commit(r.store); home(`Ciao di nuovo, ${r.player.name}!`); }
   }));
 }
 

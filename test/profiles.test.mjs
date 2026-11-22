@@ -21,7 +21,7 @@ test("enter: crea un giocatore nuovo e lo seleziona", () => {
   assert.equal(r.ok, true);
   assert.equal(r.isNew, true);
   assert.equal(r.store.current, "neri");
-  assert.deepEqual(r.player, { key: "neri", name: "Neri", cash: 0, missionsDone: 0, done: {}, createdAt: 1000, updatedAt: 1000 });
+  assert.deepEqual(r.player, { key: "neri", name: "Neri", cash: 0, missionsDone: 0, done: {}, topics: {}, createdAt: 1000, updatedAt: 1000 });
 });
 
 test("enter con lo stesso nome (anche con altre maiuscole) riprende il giocatore", () => {
@@ -153,4 +153,15 @@ test("il nome è sempre trattato come testo: nessuna interpretazione HTML nello 
   assert.equal(r.ok, true);
   assert.equal(r.player.name, "<img onerror=x>");
   assert.equal(P.enter(P.emptyStore(), "<img src=x onerror=alert(1)>").ok, false, "i nomi troppo lunghi (anche se ostili) sono rifiutati");
+});
+
+test("le date in millisecondi sopravvivono al salvataggio e alla rilettura", () => {
+  const now = 1_770_000_000_000;
+  let st = P.enter(P.emptyStore(), "Neri", now).store;
+  st = P.recordResult(st, "neri", "dec-bin", true, now + 5);
+  const back = P.parseStore(P.serialize(st));
+  const p = P.currentPlayer(back);
+  assert.equal(p.createdAt, now);
+  assert.equal(p.updatedAt, now + 5);
+  assert.equal(p.topics["dec-bin"].lastAt, now + 5);
 });

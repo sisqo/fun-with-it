@@ -17,19 +17,19 @@ export const LESSONS = {
       },
       {
         prompt: "Perché al robot non basta l'istruzione «versa l'acqua nel bicchiere»?",
-        options: ["Sottintende troppi passaggi che la macchina non può inventare da sola", "Il robot non conosce la parola acqua", "Il bicchiere sarebbe troppo piccolo"],
+        options: ["Sottintende troppi passaggi che la macchina non può inventare da sola", "Contiene una parola che il robot non può conoscere, come «acqua»", "È un'istruzione troppo breve: una macchina vuole frasi più lunghe"],
         explain: ["Una macchina non interpreta intenzioni né passaggi sottintesi: esegue soltanto istruzioni che è in grado di comprendere."],
         radio: "Il robot ha sete di istruzioni, non di acqua.",
       },
       {
         prompt: "Istruzioni corrette bastano sempre al robot?",
-        options: ["No: devono anche essere espresse in un linguaggio adatto alla macchina", "Sì, basta che siano corrette", "Sì, se il robot è abbastanza moderno"],
+        options: ["No: devono anche essere espresse in un linguaggio adatto alla macchina", "Sì: se i passaggi sono giusti, il robot li capisce in qualsiasi lingua", "Sì, ma solo se il robot è abbastanza moderno da intuire le intenzioni"],
         explain: ["Anche istruzioni corrette devono essere espresse in un linguaggio che la macchina sa capire."],
         radio: "Parlare italiano a un circuito è come recitare poesie a un tostapane.",
       },
       {
         prompt: "Che cos'è un algoritmo?",
-        options: ["Una sequenza di passi chiari che, eseguiti alla lettera, risolve un problema", "Un linguaggio di programmazione", "Un programma già scritto e salvato"],
+        options: ["Una sequenza di passi chiari che, eseguiti alla lettera, risolve un problema", "Un linguaggio con cui si scrivono i programmi per il computer", "Un programma già scritto che il computer esegue e salva in memoria"],
         explain: ["Un algoritmo è una sequenza di istruzioni (step) che, se eseguite alla lettera, permettono di risolvere un dato problema."],
         radio: "Una ricetta è un algoritmo. Quella della nonna, però, con 'quanto basta' non vale.",
       },
@@ -41,7 +41,7 @@ export const LESSONS = {
       },
       {
         prompt: "«Paola è nata nel 2010, quindi so quanti anni ha»: che cos'è?",
-        options: ["Un'informazione: una relazione tra dati che aumenta la mia conoscenza", "Un dato", "Un algoritmo"],
+        options: ["Un'informazione: una relazione tra dati che aumenta la mia conoscenza", "Un dato: un numero o una sequenza di caratteri", "Un algoritmo: una sequenza di passi per risolvere un problema"],
         explain: ["Le informazioni sono relazioni tra i dati. Mettendo insieme «Paola» e «2010» conosciamo l'età di Paola."],
         radio: "Le informazioni sono i dati che hanno trovato lavoro.",
       },
@@ -75,7 +75,7 @@ export const LESSONS = {
       },
       {
         prompt: "L'informatica è...",
-        options: ["Una scienza alla base di molte tecnologie e applicazioni, non solo «saper programmare»", "Soltanto saper usare il computer", "Soltanto la scrittura dei programmi"],
+        options: ["Una scienza alla base di molte tecnologie e applicazioni, non solo «saper programmare»", "Una tecnologia per costruire circuiti integrati e sistemi operativi, e nient'altro", "Un'applicazione informatica, come i videogiochi, i social network o i robot"],
         explain: ["Programmare è soltanto l'ultimo passo: prima ci sono l'analisi del problema e lo studio delle strategie per risolverlo."],
         radio: "Saper usare un computer sta all'informatica come saper guidare sta alla meccanica.",
       },
@@ -93,7 +93,7 @@ export const LESSONS = {
       },
       {
         prompt: "Perché in italiano «computer» si dice anche «elaboratore»?",
-        options: ["Perché non esegue solo calcoli aritmetici: manipola simboli che rappresentano informazioni", "Perché serve soltanto a memorizzare i dati", "Perché «computer» non è una parola inglese"],
+        options: ["Perché non esegue solo calcoli aritmetici: manipola simboli che rappresentano informazioni", "Perché serve soltanto a memorizzare dati e documenti, senza fare calcoli", "Perché «computer» è una parola inglese che in italiano non si può usare"],
         explain: ["Computer significa «calcolatore», ma la macchina elabora anche informazioni, non solo numeri."],
         radio: "Calcolatore suona da ragioniere. Elaboratore suona da regista.",
       },
@@ -107,15 +107,15 @@ export const LESSONS = {
         prompt: "Dopo aver formulato un algoritmo, che cosa fa il coding?",
         options: [
           "Individua le variabili, codifica l'algoritmo in un linguaggio di programmazione, esegue e controlla il risultato",
-          "Lo scrive in italiano e lo appende in classe",
-          "Lo trasforma in un'informazione",
+          "Analizza il problema, lo astrae e lo scompone in sottoproblemi più semplici",
+          "Raccoglie i dati e li trasforma in informazioni utili per prendere decisioni",
         ],
         explain: ["Variabili → codifica in un linguaggio comprensibile al computer → esecuzione e verifica del risultato."],
         radio: "Il coding è dire al computer cosa fare, senza mai alzare la voce.",
       },
       {
-        prompt: "Come si chiamavano un tempo i «computers»?",
-        options: ["Persone incaricate di eseguire calcoli, spesso donne", "Grandi macchine a schede perforate", "Calcolatrici tascabili"],
+        prompt: "Che cosa indicava un tempo la parola inglese «computers»?",
+        options: ["Persone incaricate di eseguire calcoli, spesso donne", "Grandi macchine a schede perforate per i centri di ricerca", "Le prime calcolatrici elettroniche da tenere sulla scrivania"],
         explain: ["I computers erano persone pagate per fare calcoli lunghi e ripetitivi, per esempio nei centri di ricerca aeronautica."],
         radio: "Il computer più veloce del 1940 aveva un nome, un cognome e una matita.",
       },
@@ -128,7 +128,7 @@ export const LESSONS = {
     questions: [
       {
         prompt: "Che cos'è un bit?",
-        options: ["La più piccola unità di informazione: vale 0 oppure 1", "Un gruppo di 8 byte", "Una cifra del sistema decimale"],
+        options: ["La più piccola unità di informazione: vale 0 oppure 1", "Un gruppo di otto byte, usato per misurare la memoria", "Una cifra del sistema decimale, da 0 fino a 9"],
         explain: ["Il bit può valere 0 o 1 ed è l'unità di informazione più piccola."],
         radio: "Un bit: l'unico lavoratore che ha solo due umori.",
       },
@@ -136,13 +136,13 @@ export const LESSONS = {
         prompt: "Che cos'è un byte?",
         options: ["Un gruppo di 8 bit", "Un gruppo di 10 bit", "Un singolo bit molto grande"],
         explain: ["Un byte è un gruppo di 8 bit, per esempio 10010100 o 00110111."],
-        radio: "Otto bit insieme fanno un byte. Con meno non ci si fa neanche una lettera.",
+        radio: "Otto bit insieme fanno un byte: abbastanza per una lettera.",
       },
       {
         prompt: "Perché si dice che il computer «ha soltanto due dita»?",
-        options: ["Perché ogni componente può assumere solo due stati: acceso (1) o spento (0)", "Perché usa soltanto due tasti", "Perché sa contare solo fino a 2"],
+        options: ["Perché ogni componente può assumere solo due stati: acceso (1) o spento (0)", "Perché i dati si scrivono usando soltanto due tasti della tastiera", "Perché i circuiti sanno contare soltanto fino al numero due"],
         explain: ["I dati sono rappresentati da corrente (1) oppure assenza di corrente (0): ogni componente ha due soli stati."],
-        radio: "Con due dita conta fino a 255. A voi servono dieci per arrivare a 10.",
+        radio: "Due dita, ma tante posizioni: con 8 bit arriva a 255.",
       },
       {
         prompt: "Quanti valori diversi si possono rappresentare con 2 bit?",
@@ -195,15 +195,15 @@ export const LESSONS = {
     questions: [
       {
         prompt: "453 = (4 × 100) + (5 × 10) + (3 × 1). Che cosa mostra?",
-        options: ["Il valore di una cifra dipende dalla cifra e dalla posizione che occupa", "Che 453 è un numero binario", "Che le cifre contano meno della posizione solo nelle centinaia"],
+        options: ["Il valore di una cifra dipende dalla cifra e dalla posizione che occupa", "Il valore di un numero è soltanto la somma delle sue cifre: 4 + 5 + 3", "Le cifre di un numero decimale valgono tutte uguale, in qualsiasi posizione"],
         explain: ["In un sistema posizionale ogni cifra vale la cifra stessa per il peso della sua posizione."],
         radio: "Nella fila al bar conta quando arrivi, non solo chi sei. Nei numeri uguale.",
       },
       {
         prompt: "Perché 427 e 247 sono numeri diversi, pur avendo le stesse cifre?",
-        options: ["Perché le cifre occupano posizioni diverse e quindi hanno pesi diversi", "Perché uno è decimale e l'altro no", "Perché 4 è maggiore di 2"],
+        options: ["Perché le cifre occupano posizioni diverse e quindi hanno pesi diversi", "Perché uno dei due è scritto in decimale e l'altro in un'altra base", "Perché la cifra 4 vale sempre più della cifra 2, in qualsiasi posizione"],
         explain: ["Nel sistema decimale le posizioni valgono unità, decine, centinaia: 427 = 4 centinaia, 247 = 2 centinaia."],
-        radio: "Stesse cifre, ordine diverso: come 'ama' e 'maa'. Solo che qui cambia il conto in banca.",
+        radio: "Stesse lettere, ordine diverso: 'Roma' e 'amor'. Con i numeri cambia anche il conto in banca.",
       },
       {
         prompt: "Quali sono i pesi delle posizioni in base 10, partendo da destra?",
@@ -225,7 +225,7 @@ export const LESSONS = {
       },
       {
         prompt: "Perché noi usiamo normalmente il sistema decimale?",
-        options: ["Perché abbiamo dieci dita: è più semplice contare con le dita", "Perché il 10 è un numero perfetto", "Perché i computer lo richiedono"],
+        options: ["Perché abbiamo dieci dita: è più semplice contare con le dita", "Perché il dieci è il numero più grande che un computer sa memorizzare", "Perché i circuiti elettronici distinguono dieci livelli di tensione"],
         explain: ["Il sistema decimale ha base 10 perché abbiamo dieci dita nelle mani."],
         radio: "Se avessimo avuto otto dita, vivremmo in ottale. E andrebbe benissimo.",
       },
@@ -233,7 +233,7 @@ export const LESSONS = {
         prompt: "Quanto vale 101 scritto in base 2?",
         options: ["5", "101", "3"],
         explain: ["101₂ = (1 × 4) + (0 × 2) + (1 × 1) = 5."],
-        radio: "101 in binario vale 5. In una taverna del porto, invece, vale 101 birre.",
+        radio: "101 in binario vale 5. Sul tabellone dei prezzi del porto, invece, vale 101 dollari.",
       },
       {
         prompt: "Che numero decimale rappresenta 10 in base 2?",
@@ -243,7 +243,7 @@ export const LESSONS = {
       },
       {
         prompt: "Come si indica la base quando bisogna distinguere due rappresentazioni?",
-        options: ["In basso a destra del numero, come 101₂ o 73₁₀", "In alto a sinistra", "Con un asterisco davanti"],
+        options: ["In basso a destra del numero, come 101₂ o 73₁₀", "In alto a sinistra del numero, come un esponente: ²101", "Con un asterisco davanti al numero, come in *101"],
         explain: ["La base si scrive come pedice a destra del numero: 101₂ è diverso da 101₁₀."],
         radio: "Il pedice è la targa del numero: dice in che base è immatricolato.",
       },

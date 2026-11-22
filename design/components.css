@@ -417,6 +417,144 @@ body {
 .radio--compact .radio__line { min-width: 0; color: var(--c-text-muted); }
 @keyframes eq { from { transform: scaleY(.35) } to { transform: scaleY(1) } }
 
+/* ---------- Campo di testo (nomi, non numeri) ---------- */
+/* .answer__input è pensato per le cifre (mono, ciano, spaziato). Per un nome: */
+.answer__input--text { font-family: var(--font-ui); color: var(--c-text); letter-spacing: 0; font-weight: 700; }
+
+/* ---------- Bottoni di pericolo ---------- */
+.btn--danger { background: var(--c-danger); color: var(--c-surface); }
+.btn--danger-outline { background: transparent; color: var(--c-danger); border: var(--border-w) solid var(--c-danger); }
+
+/* ---------- Finestra di conferma ---------- */
+/* <dialog class="confirm"><form method="dialog"><h2 class="confirm__title">…</h2><p class="confirm__text">…</p>
+     <div class="confirm__actions"><button class="btn btn--ghost" value="cancel" autofocus>Annulla</button>
+     <button class="btn btn--danger" value="ok">Elimina</button></div></form></dialog>
+   Su telefono i due bottoni vanno uno per riga e "Annulla" resta sotto, vicino al pollice. */
+dialog.confirm {
+  border: var(--border-w) solid var(--c-border); border-radius: var(--r-lg);
+  background: var(--c-surface); color: var(--c-text);
+  padding: var(--sp-5); width: min(calc(100vw - 2 * var(--gutter)), 26rem);
+  box-shadow: 0 12px 40px rgb(0 0 0 / .4);
+}
+dialog.confirm[open] { animation: sheet-in var(--dur-med) var(--ease-out); }
+dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
+.confirm__title { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); line-height: var(--lh-tight); }
+.confirm__text { margin: 0 0 var(--sp-4); color: var(--c-text-muted); }
+.confirm__actions { display: flex; flex-wrap: wrap-reverse; gap: var(--sp-2); }
+.confirm__actions .btn { flex: 1 1 9rem; }
+
+/* ---------- Cassaforte: codice e ruote bloccate ---------- */
+/* codice binario sotto il display, a nibble: "0100 0101" */
+.vault__code {
+  margin: 0; font-family: var(--font-mono); font-feature-settings: var(--num-features);
+  font-size: var(--fs-sm); color: var(--c-vault-muted);
+}
+.vault__code b { color: var(--c-lcd-text); font-size: var(--fs-md); letter-spacing: .14em; white-space: nowrap; }
+/* ruote bloccate (domande "leggi la cassaforte", o dopo la risposta): stesso colore,
+   ma bordo tratteggiato e niente risposta al tocco → si capisce che non si girano */
+.vault .dial:disabled { opacity: 1; cursor: default; border-style: dashed; }
+.vault .dial:disabled[aria-pressed="true"] { border-style: solid; border-color: var(--c-vault-edge); }
+.vault .dial:disabled .dial__track { transition: none; }
+
+/* ---------- Mappa dei quartieri ---------- */
+/* Una linea della metro al neon: ogni quartiere è una fermata con la sua card.
+   Una colonna sola (telefono), si legge dall'alto verso il basso come un percorso.
+   <ol class="map">
+     <li class="stop is-done|is-open|is-locked [stop--hub] [is-here]">
+       <span class="stop__node" aria-hidden="true">…numero, ✓ o lucchetto…</span>
+       <button class="stop__card" type="button" [aria-disabled="true"]>
+         <span class="stop__kicker">Quartiere 5</span>
+         <span class="stop__name">Torre dei Conti</span>
+         <span class="stop__topic">Operazioni in binario</span>
+         <span class="stop__dots" aria-hidden="true"><i class="dot is-done"></i>…</span>
+         <span class="stop__meta">3 missioni su 5 · $ 400</span>
+       </button>
+     </li>
+   </ol> */
+.map-sky { display: block; width: 100%; height: auto; border-radius: var(--r-lg); }
+.map { --rail: 56px; --node: 44px; --line: 4px; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.stop { position: relative; display: grid; grid-template-columns: var(--rail) 1fr; gap: var(--sp-3); align-items: center; }
+/* Binario: ogni fermata disegna il suo tratto, dallo spazio sopra fino in fondo
+   (la prima parte dal centro, l'ultima finisce al centro). Il colore è lo stato della fermata:
+   così la linea non si spezza anche se una fermata è più alta (lo snodo). */
+.stop::before {
+  content: ""; position: absolute; left: calc(var(--rail) / 2 - var(--line) / 2);
+  top: calc(var(--sp-3) * -1); bottom: 0; width: var(--line); border-radius: 2px;
+  background: var(--c-secondary); z-index: 0;
+}
+.stop:first-child::before { top: 50%; }
+.stop:last-child::before { bottom: 50%; }
+.stop.is-done::before { background: var(--c-success); }
+.stop.is-locked::before { background: repeating-linear-gradient(to bottom, var(--c-text-muted) 0 6px, transparent 6px 12px); }
+.stop__node {
+  position: relative; z-index: 1; width: var(--node); height: var(--node); border-radius: 50%;
+  display: grid; place-items: center; justify-self: center;
+  font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800;
+  background: var(--c-surface); border: 3px solid var(--c-secondary); color: var(--c-secondary);
+}
+.stop__node svg { width: 20px; height: 20px; }
+.stop.is-done .stop__node { background: var(--c-success); border-color: var(--c-success); color: var(--c-surface); }
+.stop.is-open .stop__node { border-color: var(--c-primary); color: var(--c-primary); box-shadow: var(--glow); }
+.stop.is-locked .stop__node { border-style: dashed; border-color: var(--c-text-muted); color: var(--c-text-muted); }
+
+.stop__card {
+  width: 100%; min-height: var(--tap-lg); text-align: left;
+  display: grid; gap: 2px; padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md); border: var(--border-w) solid var(--c-border);
+  background: var(--c-surface); box-shadow: var(--shadow-1);
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast);
+}
+.stop__card:active { transform: scale(.98); }
+.stop.is-open .stop__card { border-color: var(--c-primary); }
+.stop.is-locked .stop__card { background: transparent; box-shadow: none; border-style: dashed; color: var(--c-text-muted); cursor: not-allowed; }
+.stop.is-locked .stop__card:active { transform: none; }
+.stop__kicker { font-family: var(--font-sign); font-size: var(--fs-xs); letter-spacing: .06em; color: var(--c-accent); }
+.stop.is-locked .stop__kicker { color: var(--c-text-muted); }
+.stop__name { font-size: var(--fs-lg); font-weight: 700; line-height: var(--lh-tight); }
+.stop__topic { font-size: var(--fs-sm); color: var(--c-text-muted); }
+.stop__meta { font-size: var(--fs-xs); color: var(--c-text-muted); font-weight: 700; margin-top: 4px; }
+.stop.is-done .stop__meta { color: var(--c-success); }
+
+/* puntini delle missioni: solo indicatori (si tocca la card, non il puntino) */
+.stop__dots { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--c-text-muted); }
+.dot.is-done { background: var(--c-success); border-color: var(--c-success); }
+.dot.is-current { border-color: var(--c-primary); background: var(--c-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 30%, transparent); }
+.dot.is-boss { border-radius: 3px; transform: rotate(45deg) scale(.9); } /* il caveau finale: rombo */
+
+/* "Sei qui": etichetta sulla fermata attuale */
+.stop__here {
+  position: absolute; top: -10px; right: var(--sp-3); z-index: 2;
+  padding: 2px var(--sp-2); border-radius: var(--r-pill);
+  background: var(--c-primary); color: var(--c-on-primary);
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: .04em;
+}
+.stop.is-here .stop__node::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%;
+  border: 2px solid var(--c-primary); animation: ping 1.8s var(--ease-out) infinite;
+}
+
+/* Il centro: Operazioni è lo snodo. Fermata più grande, card con bordo a gradiente tramonto. */
+.stop--hub { --node: 56px; padding-block: var(--sp-3); }
+.stop--hub .stop__node { font-size: var(--fs-lg); border-width: 4px; }
+.stop.stop--hub .stop__card {
+  padding: var(--sp-4); border: 3px solid transparent;
+  background:
+    linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(120deg, var(--neon-pink), var(--neon-orange), var(--neon-violet)) border-box;
+}
+.stop--hub .stop__name { font-size: var(--fs-xl); font-family: var(--font-sign); font-weight: 400; color: var(--c-primary); text-shadow: var(--glow); }
+.stop--hub .stop__badge {
+  justify-self: start; margin-bottom: 4px; padding: 2px var(--sp-2); border-radius: var(--r-pill);
+  background: var(--c-accent); color: var(--c-surface); font-size: var(--fs-xs); font-weight: 800;
+}
+.stop.stop--hub.is-locked .stop__card { background: linear-gradient(var(--c-bg), var(--c-bg)) padding-box, linear-gradient(120deg, var(--c-text-muted), var(--c-text-muted)) border-box; border-style: solid; }
+.stop--hub.is-locked .stop__name { color: var(--c-text-muted); text-shadow: none; }
+
+/* Fermata di partenza ("Parti da qui"): piccola, un'insegna sola */
+.stop--start .stop__card { background: var(--c-surface-2); }
+@keyframes ping { from { transform: scale(.85); opacity: .9 } to { transform: scale(1.35); opacity: 0 } }
+
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }
 

@@ -2,11 +2,14 @@
 // Funzioni pure: lavorano su un oggetto `store` e ne restituiscono uno nuovo; la lettura/scrittura sul disco sta in app.js.
 //
 // store = { v: 2, current: "chiave"|null, legacy?: {cash, missionsDone}, players: [player] }
-// player = { key, name, cash, missionsDone, done: { [missione]: volte }, createdAt, updatedAt }
+// player = { key, name, cash, missionsDone, done: { [missione]: volte }, topics: { [argomento]: stats }, createdAt, updatedAt }
+// stats  = { attempts, correct, window: [0|1 … ultimi 5 esiti], level: 0..1 (difficoltà), lastAt }
 
 export const MAX_NAME = 20;
 export const MAX_PLAYERS = 12;
 export const STORE_KEY = "neonbay";
+export const WINDOW = 5; // gli ultimi esiti che contano per dire se un argomento è superato o bocciato
+export const MAX_TOPICS = 60;
 
 export const emptyStore = () => ({ v: 2, current: null, players: [] });
 
@@ -22,6 +25,7 @@ export function normalizeName(raw) {
   return { ok: true, name, key: name.toLocaleLowerCase("it-IT") };
 }
 
+const ts = (v) => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0); // millisecondi: nessun tetto a 1e9
 const num = (v) => (Number.isFinite(v) && v >= 0 ? Math.min(Math.floor(v), 1e9) : 0);
 const safeDone = (d) => {
   const out = {};
@@ -30,6 +34,33 @@ const safeDone = (d) => {
   }
   return out;
 };
+
+const clamp01 = (v) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0);
+function safeTopics(t) {
+  const out = {};
+  if (!t || typeof t !== "object") return out;
+  let n = 0;
+  for (const [id, st] of Object.entries(t)) {
+    if (!/^[a-z0-9-]{1,32}$/.test(id) || !st || typeof st !== "object") continue;
+    const window = Array.isArray(st.window) ? st.window.slice(-WINDOW).map((x) => (x ? 1 : 0)) : [];
+    const attempts = num(st.attempts);
+    out[id] = { attempts, correct: Math.min(num(st.correct), attempts), window: window.slice(-attempts), level: clamp01(st.level), lastAt: ts(st.lastAt) };
+    if (++n >= MAX_TOPICS) break;
+  }
+  return out;
+}
+
+// Aggiorna le statistiche di un argomento dopo una domanda (ok = tutta giusta, senza errori).
+export function nextStats(st, ok, now = Date.now()) {
+  const s = st ?? { attempts: 0, correct: 0, window: [], level: 0, lastAt: 0 };
+  return {
+    attempts: s.attempts + 1,
+    correct: s.correct + (ok ? 1 : 0),
+    window: [...s.window, ok ? 1 : 0].slice(-WINDOW),
+    level: clamp01(s.level + (ok ? 0.12 : -0.18)),
+    lastAt: now,
+  };
+}
 
 // Legge il testo salvato (anche corrotto o in formato vecchio) e restituisce sempre uno store valido.
 export function parseStore(raw) {
@@ -45,8 +76,8 @@ export function parseStore(raw) {
       if (!n.ok || seen.has(n.key)) continue;
       seen.add(n.key);
       store.players.push({
-        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done),
-        createdAt: num(p.createdAt), updatedAt: num(p.updatedAt),
+        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics),
+        createdAt: ts(p.createdAt), updatedAt: ts(p.updatedAt),
       });
       if (store.players.length >= MAX_PLAYERS) break;
     }
@@ -72,7 +103,7 @@ export function enter(store, rawName, now = Date.now()) {
   if (existing) return { ok: true, isNew: false, store: { ...store, current: existing.key }, player: existing };
   if (store.players.length >= MAX_PLAYERS) return { ok: false, error: `Ci sono già ${MAX_PLAYERS} giocatori: elimina un profilo prima di aggiungerne uno.`, store };
   const inherited = store.legacy && store.players.length === 0 ? store.legacy : { cash: 0, missionsDone: 0 };
-  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, createdAt: now, updatedAt: now };
+  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, createdAt: now, updatedAt: now };
   const next = { ...store, current: player.key, players: [...store.players, player] };
   delete next.legacy;
   return { ok: true, isNew: true, store: next, player };
@@ -80,7 +111,7 @@ export function enter(store, rawName, now = Date.now()) {
 
 // Azzera i progressi di un giocatore (conto, missioni completate), tenendo il nome.
 export function resetPlayer(store, key, now = Date.now()) {
-  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, updatedAt: now }));
+  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, updatedAt: now }));
 }
 
 // Elimina del tutto un giocatore.
@@ -101,4 +132,10 @@ export function recordMission(store, key, missionKey, earned, now = Date.now()) 
     done: { ...p.done, [missionKey]: (p.done[missionKey] ?? 0) + 1 },
     updatedAt: now,
   }));
+}
+
+// Registra l'esito di una domanda su un argomento.
+export function recordResult(store, key, topic, ok, now = Date.now()) {
+  if (!/^[a-z0-9-]{1,32}$/.test(topic)) return store;
+  return replacePlayer(store, key, (p) => ({ ...p, topics: { ...p.topics, [topic]: nextStats(p.topics[topic], ok, now) }, updatedAt: now }));
 }

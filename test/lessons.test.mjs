@@ -58,3 +58,21 @@ test("fatti chiave dal libro: ordine delle fasi, ENIAC non c'è qui ma 1 MB = 10
   assert.equal(LESSONS[2].questions.find((q) => /numero intero più grande/.test(q.prompt)).options[0], "255");
   assert.equal(LESSONS[3].questions.find((q) => /Quanto vale 101/.test(q.prompt)).options[0], "5");
 });
+
+test("la risposta giusta non si indovina dalla lunghezza (distrattori dello stesso registro)", () => {
+  for (const [key, lesson] of Object.entries(LESSONS)) {
+    for (const q of lesson.questions) {
+      const [right, ...wrong] = q.options;
+      if (right.length < 25) continue;
+      const longestWrong = Math.max(...wrong.map((o) => o.length));
+      assert.ok(right.length <= longestWrong * 1.5, `quartiere ${key}: «${q.prompt}» giusta ${right.length} vs distrattore più lungo ${longestWrong}`);
+    }
+  }
+});
+
+test("testi corretti dopo la revisione: computers, battute", () => {
+  const all = Object.values(LESSONS).flatMap((l) => l.questions);
+  assert.ok(all.some((q) => q.prompt === "Che cosa indicava un tempo la parola inglese «computers»?"));
+  const radio = all.map((q) => q.radio).join(" ");
+  assert.doesNotMatch(radio, /birre|ama' e 'maa|neanche una lettera|A voi servono dieci/);
+});

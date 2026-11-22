@@ -70,7 +70,7 @@ export function vaultCode(rng, n) {
 // La serie di riscaldamento: si parte da UNA ruota alla volta e si sale fino a 8 ruote.
 export function buildWarmupMission(rng) {
   const plan = [
-    vaultBuild(rng, 1, "Ogni ruota ha un peso. Ruota accesa = 1: aggiunge il suo peso. Ruota spenta = 0: non aggiunge niente. Per fare 1 accendi solo la ruota dell'1."),
+    vaultBuild(rng, 1, "Ogni ruota ha un peso. Ruota accesa = 1: aggiunge il suo peso. Ruota spenta = 0: non aggiunge niente. Per fare 1 accendi solo la ruota con il peso 1 (la più a destra)."),
     vaultBuild(rng, 2, "I pesi raddoppiano a ogni ruota: 1, 2, 4, 8… Per fare 2 basta la ruota del 2."),
     vaultBuild(rng, 3, "Per fare 3 non c'è una ruota sola: ne servono due insieme, 1 + 2."),
     vaultRead(rng, rint(rng, 3, 7)),
