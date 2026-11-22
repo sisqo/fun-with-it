@@ -15,8 +15,8 @@ export const CHAPTERS = [
   { id: "warm", n: 0, title: "Riscaldamento: la cassaforte", source: "Pesi e ruote: il binario girando le ruote" },
   { id: "c1", n: 1, title: "Ragionare per algoritmi", source: "Libro cap. 1 (pp. 2-4) e scheda della lezione 1" },
   { id: "c2", n: 2, title: "Bit, byte e sistemi di numerazione", source: "Libro cap. 2 (pp. 19-20) e scheda della lezione 1" },
-  { id: "conv", n: 3, title: "Dal decimale al binario", source: "Compito 2: metodo dei pesi e divisioni" },
-  { id: "ops", n: 4, title: "Operazioni in binario", source: "Compiti 3-5: + − × ÷" },
+  { id: "conv", n: 3, title: "Conversioni decimale ⇄ binario", source: "Libro p. 20 e compito 2: pesi, divisioni, quanti bit servono" },
+  { id: "ops", n: 4, title: "Operazioni in binario", source: "Compiti 3-9: + − × :" },
   { id: "basi", n: 5, title: "Ottale ed esadecimale", source: "Compiti 6-8" },
   { id: "virgola", n: 6, title: "Numeri con la virgola e confronti", source: "Compito 9" },
 ];
@@ -162,7 +162,7 @@ export function nextQuestion(player, rng, opts = {}) {
 
 // ---------- Stato di un capitolo ----------
 
-export const PERFECT_ACCURACY = 0.9; // quota di risposte giuste (su tutte le domande del capitolo) per dire "alla perfezione"
+export const PERFECT_LEVEL = 0.9; // per gli argomenti con i numeri: difficoltà arrivata quasi al massimo
 export const CHAPTER_STATE = {
   PERFECT: "perfetto", PASSED: "superato", REVIEW: "da-ripassare", COVERED: "coperto", STARTED: "in-corso", NEW: "da-iniziare",
 };
@@ -171,23 +171,35 @@ export const CHAPTER_LABEL = {
   coperto: "Coperto", "in-corso": "In corso", "da-iniziare": "Da iniziare",
 };
 
-// Superato alla perfezione: tutti gli argomenti superati e almeno il 90% di risposte giuste nel capitolo.
-// Superato non alla perfezione: tutti superati ma con più errori. Da ripassare: almeno un argomento da ripassare.
+// La perfezione misura come si va ADESSO, non la storia: gli errori fatti imparando non si portano dietro per sempre.
+// Argomento perfetto: superato, ultime 5 risposte tutte giuste e, se ci sono i numeri, difficoltà ≥ 0,9.
+// Superato alla perfezione: tutti gli argomenti perfetti. Superato non alla perfezione: tutti superati ma non tutti perfetti.
+// Da ripassare: almeno un argomento da ripassare.
 // Coperto: tutti gli argomenti toccati ma non ancora tutti superati. In corso: qualcuno toccato. Da iniziare: nessuno.
 export function chapterState(ch) {
-  if (ch.complete) return ch.accuracy >= PERFECT_ACCURACY ? CHAPTER_STATE.PERFECT : CHAPTER_STATE.PASSED;
+  if (ch.complete) return ch.mastered ? CHAPTER_STATE.PERFECT : CHAPTER_STATE.PASSED;
   if (ch.failed > 0) return CHAPTER_STATE.REVIEW;
   if (ch.covered) return CHAPTER_STATE.COVERED;
   if (ch.touched > 0) return CHAPTER_STATE.STARTED;
   return CHAPTER_STATE.NEW;
 }
 
+// Un argomento è perfetto se è superato, le ultime 5 risposte sono tutte giuste e (se numerico) la difficoltà è ≥ 0,9.
+export function isPerfect(stats, topic = null) {
+  if (statusOf(stats, topic) !== STATUS.PASSED) return false;
+  const w = stats.window ?? [];
+  return w.length >= WINDOW && w.slice(-WINDOW).every((x) => x === 1) && (topic?.theory || (stats.level ?? 0) >= PERFECT_LEVEL);
+}
+
 // Riga di spiegazione sotto il nome del capitolo, nella home.
 export function chapterDetail(ch) {
-  const pct = Math.round(ch.accuracy * 100);
   switch (ch.state) {
-    case CHAPTER_STATE.PERFECT: return `Tutti gli argomenti superati, ${pct}% di risposte giuste`;
-    case CHAPTER_STATE.PASSED: return `Tutti superati, ma solo ${pct}% di risposte giuste: puoi migliorare`;
+    case CHAPTER_STATE.PERFECT: return "Tutti gli argomenti superati, ultime risposte tutte giuste";
+    case CHAPTER_STATE.PASSED: {
+      const names = ch.topics.filter((t) => !t.perfect).map((t) => `«${t.title}»`);
+      const shown = names.slice(0, 2).join(" e ") + (names.length > 2 ? "…" : "");
+      return `Tutti superati. Per la perfezione: rifai giuste le ultime 5 domande di ${shown}`;
+    }
     case CHAPTER_STATE.REVIEW: return `${ch.failed} ${ch.failed === 1 ? "argomento" : "argomenti"} da ripassare`;
     case CHAPTER_STATE.COVERED: return `Toccati tutti: ${ch.passed} su ${ch.total} superati`;
     case CHAPTER_STATE.STARTED: return `${ch.touched} su ${ch.total} argomenti toccati`;
@@ -201,7 +213,7 @@ export function summarize(player) {
   const topics = player.topics ?? {};
   const rows = TOPICS.map((t) => {
     const st = topics[t.id];
-    return { ...t, status: statusOf(st, t), attempts: st?.attempts ?? 0, correct: st?.correct ?? 0, level: st?.level ?? 0, unlocked: isUnlocked(t, topics) };
+    return { ...t, status: statusOf(st, t), perfect: isPerfect(st, t), attempts: st?.attempts ?? 0, correct: st?.correct ?? 0, level: st?.level ?? 0, unlocked: isUnlocked(t, topics) };
   });
   const chapters = CHAPTERS.map((c) => {
     const list = rows.filter((r) => r.chapter === c.id);
@@ -210,7 +222,7 @@ export function summarize(player) {
     const failed = list.filter((r) => r.status === STATUS.FAILED).length;
     const attempts = list.reduce((a, r) => a + r.attempts, 0);
     const correct = list.reduce((a, r) => a + r.correct, 0);
-    const ch = { ...c, topics: list, total: list.length, touched, passed, failed, covered: touched === list.length, complete: passed === list.length, accuracy: attempts ? correct / attempts : 0, attempts };
+    const ch = { ...c, topics: list, total: list.length, touched, passed, failed, covered: touched === list.length, complete: passed === list.length, mastered: list.every((r) => r.perfect), accuracy: attempts ? correct / attempts : 0, attempts };
     ch.state = chapterState(ch);
     ch.label = CHAPTER_LABEL[ch.state];
     ch.detail = chapterDetail(ch);

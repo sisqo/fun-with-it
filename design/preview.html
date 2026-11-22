@@ -351,7 +351,7 @@
 </ul>
           <button class="btn btn--ghost btn--block" type="button" style="max-width:28rem">Ripassa: Sottrazione con prestito</button>
           <ol class="metro" aria-label="Capitoli: 1 superato, 1 coperto, 1 iniziato, 2 da iniziare">
-  <li class="metro__stop is-complete"><span class="metro__node" aria-hidden="true">✓</span><span class="metro__label">Algoritmi</span></li>
+  <li class="metro__stop is-complete"><span class="metro__node" aria-hidden="true">1</span><span class="metro__label">Algoritmi</span></li>
   <li class="metro__stop is-covered"><span class="metro__node" aria-hidden="true">2</span><span class="metro__label">Codifica</span></li>
   <li class="metro__stop is-started is-hub"><span class="metro__node" aria-hidden="true">3</span><span class="metro__label">Operazioni</span></li>
   <li class="metro__stop is-new"><span class="metro__node" aria-hidden="true">4</span><span class="metro__label">Ottale / esa</span></li>
@@ -367,7 +367,7 @@
         <section class="board">
           <h1 class="board__title">I miei progressi</h1>
           <ol class="metro" aria-label="Capitoli: 1 superato, 1 coperto, 1 iniziato, 2 da iniziare">
-  <li class="metro__stop is-complete"><span class="metro__node" aria-hidden="true">✓</span><span class="metro__label">Algoritmi</span></li>
+  <li class="metro__stop is-complete"><span class="metro__node" aria-hidden="true">1</span><span class="metro__label">Algoritmi</span></li>
   <li class="metro__stop is-covered"><span class="metro__node" aria-hidden="true">2</span><span class="metro__label">Codifica</span></li>
   <li class="metro__stop is-started is-hub"><span class="metro__node" aria-hidden="true">3</span><span class="metro__label">Operazioni</span></li>
   <li class="metro__stop is-new"><span class="metro__node" aria-hidden="true">4</span><span class="metro__label">Ottale / esa</span></li>
@@ -412,6 +412,41 @@
       <p class="pv-caption">Fine partita: giuste/sbagliate come pallini (✓ pieno, ✕ vuoto), stato prima → dopo. Bordo verde se sale, rosso se scende.</p>
     </div>
 
+  </div>
+</section>
+
+<section class="pv-section">
+  <h2>Capitoli in home · 6 stati</h2>
+  <div class="pv-screens">
+    <div>
+      <div class="pv-phone"><main class="screen">
+        <section style="display:flex;flex-direction:column;align-items:center;gap:12px">
+          <button class="btn btn--primary home__play" type="button">Gioca</button>
+          <ol class="course" aria-label="Capitoli del corso, in ordine"><li><button class="course__item course__item--perfetto" type="button" aria-label="0 · Riscaldamento: la cassaforte: Superato alla perfezione. Tutti gli argomenti superati, 96% di risposte giuste. Apri il dettaglio."><span class="course__n" aria-hidden="true">0</span><span class="course__main"><span class="course__title">Riscaldamento: la cassaforte</span><span class="course__detail">Tutti gli argomenti superati, 96% di risposte giuste</span></span><span class="course__state course__state--perfetto"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></svg><span>Superato alla perfezione</span></span></button></li><li><button class="course__item course__item--superato" type="button" aria-label="1 · Ragionare per algoritmi: Superato, non alla perfezione. Tutti superati, ma solo 78% di risposte giuste: puoi migliorare. Apri il dettaglio."><span class="course__n" aria-hidden="true">1</span><span class="course__main"><span class="course__title">Ragionare per algoritmi</span><span class="course__detail">Tutti superati, ma solo 78% di risposte giuste: puoi migliorare</span></span><span class="course__state course__state--superato"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Superato, non alla perfezione</span></span></button></li><li><button class="course__item course__item--da-ripassare" type="button" aria-label="2 · Bit, byte e sistemi di numerazione: Da ripassare. 1 argomento da ripassare. Apri il dettaglio."><span class="course__n" aria-hidden="true">2</span><span class="course__main"><span class="course__title">Bit, byte e sistemi di numerazione</span><span class="course__detail">1 argomento da ripassare</span></span><span class="course__state course__state--da-ripassare"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v7M12 17.5v.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span>Da ripassare</span></span></button></li><li><button class="course__item course__item--coperto" type="button" aria-label="3 · Dal decimale al binario: Coperto. Toccati tutti: 2 su 4 superati. Apri il dettaglio."><span class="course__n" aria-hidden="true">3</span><span class="course__main"><span class="course__title">Dal decimale al binario</span><span class="course__detail">Toccati tutti: 2 su 4 superati</span></span><span class="course__state course__state--coperto"><i class="state-dot state-dot--half" aria-hidden="true"></i><span>Coperto</span></span></button></li><li><button class="course__item course__item--in-corso" type="button" aria-label="4 · Operazioni in binario: In corso. 2 su 5 argomenti toccati. Apri il dettaglio."><span class="course__n" aria-hidden="true">4</span><span class="course__main"><span class="course__title">Operazioni in binario</span><span class="course__detail">2 su 5 argomenti toccati</span></span><span class="course__state course__state--in-corso"><i class="state-dot state-dot--ring" aria-hidden="true"></i><span>In corso</span></span></button></li><li><button class="course__item course__item--da-iniziare" type="button" aria-label="5 · Ottale ed esadecimale: Da iniziare. Non ancora iniziato. Apri il dettaglio."><span class="course__n" aria-hidden="true">5</span><span class="course__main"><span class="course__title">Ottale ed esadecimale</span><span class="course__detail">Non ancora iniziato</span></span><span class="course__state course__state--da-iniziare"><i class="state-dot state-dot--dash" aria-hidden="true"></i><span>Da iniziare</span></span></button></li><li><button class="course__item course__item--da-iniziare" type="button" aria-label="6 · Numeri con la virgola e confronti: Da iniziare. Non ancora iniziato. Apri il dettaglio."><span class="course__n" aria-hidden="true">6</span><span class="course__main"><span class="course__title">Numeri con la virgola e confronti</span><span class="course__detail">Non ancora iniziato</span></span><span class="course__state course__state--da-iniziare"><i class="state-dot state-dot--dash" aria-hidden="true"></i><span>Da iniziare</span></span></button></li></ol>
+        </section>
+      </main></div>
+      <p class="pv-caption">Gerarchia: oro (perfetto) &gt; verde pieno (superato) &gt; rosso tenue (da ripassare) &gt; viola pieno (coperto) &gt; viola contorno (in corso) &gt; tratteggio (da iniziare).</p>
+    </div>
+    <div>
+      <div class="pv-phone"><main class="screen">
+        <section class="board">
+          <h1 class="board__title">I miei progressi</h1>
+          <ol class="metro" style="--stops:7" aria-label="Capitoli: 1 perfetto, 1 superato, 1 da ripassare, 1 coperto, 1 in corso, 2 da iniziare">
+  <li class="metro__stop is-perfect"><span class="metro__node" aria-hidden="true">0</span><span class="metro__label">Cassaforte</span></li>
+  <li class="metro__stop is-complete"><span class="metro__node" aria-hidden="true">1</span><span class="metro__label">Algoritmi</span></li>
+  <li class="metro__stop is-review"><span class="metro__node" aria-hidden="true">2</span><span class="metro__label">Bit e byte</span></li>
+  <li class="metro__stop is-covered"><span class="metro__node" aria-hidden="true">3</span><span class="metro__label">Dec → bin</span></li>
+  <li class="metro__stop is-started is-hub"><span class="metro__node" aria-hidden="true">4</span><span class="metro__label">Operazioni</span></li>
+  <li class="metro__stop is-new"><span class="metro__node" aria-hidden="true">5</span><span class="metro__label">Ottale / esa</span></li>
+  <li class="metro__stop is-new"><span class="metro__node" aria-hidden="true">6</span><span class="metro__label">Virgola</span></li>
+</ol>
+          <p style="display:flex;flex-wrap:wrap;gap:8px;margin:0">
+            <span class="chapter__badge is-perfect">Perfetto</span><span class="chapter__badge is-complete">Superato</span><span class="chapter__badge is-review">Da ripassare</span><span class="chapter__badge is-covered">Coperto</span><span class="chapter__badge is-started">In corso</span><span class="chapter__badge">Da iniziare</span>
+          </p>
+        </section>
+      </main></div>
+      <p class="pv-caption">Progressi: la metro a 7 fermate con i nuovi stati (★ oro, ! rosso), e i badge del capitolo.</p>
+    </div>
   </div>
 </section>
 

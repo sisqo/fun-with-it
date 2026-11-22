@@ -476,30 +476,67 @@ test("stato del capitolo: da iniziare, in corso, coperto, da ripassare", () => {
   assert.match(r.detail, /1 argomento da ripassare/);
 });
 
-test("superato alla perfezione contro superato non alla perfezione (soglia 90%)", () => {
-  const perfect = { topics: passedAll(C1, 5, 5) };
-  const p = chapterOf(perfect, "c1");
-  assert.deepEqual([p.state, p.complete, p.accuracy], ["perfetto", true, 1]);
-  assert.equal(p.label, "Superato alla perfezione");
-  assert.match(p.detail, /100% di risposte giuste/);
-  // 9 giuste su 10 in ogni argomento: 90% esatto, ancora perfetto
-  assert.equal(chapterOf({ topics: passedAll(C1, 10, 9) }, "c1").state, "perfetto");
-  // 17 su 20 = 85%: tutti superati ma non alla perfezione
-  const non = chapterOf({ topics: passedAll(C1, 20, 17) }, "c1");
-  assert.deepEqual([non.state, non.complete], ["superato", true]);
-  assert.equal(non.label, "Superato, non alla perfezione");
-  assert.match(non.detail, /85% di risposte giuste: puoi migliorare/);
-  // un solo argomento non superato: non è "superato" nemmeno con ottime risposte
-  const almost = chapterOf({ topics: { ...passedAll(C1.slice(1), 6, 6), "istruzioni-robot": stats([1, 1, 1], 3, 1) } }, "c1");
-  assert.equal(almost.state, "coperto");
-  assert.match(almost.detail, /4 su 5 superati/);
+// Argomenti di un capitolo con le ultime risposte e la difficoltà indicate (la storia passata è un'altra cosa).
+const mastery = (ids, { window = [1, 1, 1, 1, 1], level = 1, attempts = 12, correct = 8 } = {}) =>
+  Object.fromEntries(ids.map((id) => [id, { attempts, correct, window, level, lastAt: 1 }]));
+const NUM_OPS = ["addizione", "sottrazione", "moltiplicazione", "divisione"];
+
+test("superato alla perfezione: tutti superati, ultime 5 giuste e difficoltà ≥ 0,9", () => {
+  const perfect = chapterOf({ topics: mastery(C1) }, "c1");
+  assert.deepEqual([perfect.state, perfect.complete, perfect.mastered], ["perfetto", true, true]);
+  assert.equal(perfect.label, "Superato alla perfezione");
+  assert.match(perfect.detail, /ultime risposte tutte giuste/);
+  const ops = chapterOf({ topics: mastery(NUM_OPS, { level: 0.9 }) }, "ops");
+  assert.equal(ops.state, "perfetto");
 });
 
-test("la precisione del capitolo si migliora giocando: da non perfetto a perfetto", () => {
-  let topics = passedAll(C1, 20, 16); // 80%
-  assert.equal(chapterOf({ topics }, "c1").state, "superato");
-  topics = passedAll(C1, 40, 38); // 95%
-  assert.equal(chapterOf({ topics }, "c1").state, "perfetto");
+test("superato non alla perfezione: dice quale argomento rifare, senza 'solo'", () => {
+  // una risposta sbagliata nelle ultime 5 di un argomento: superato (4 su 5) ma non perfetto
+  const topics = { ...mastery(C1), "istruzioni-robot": { attempts: 12, correct: 9, window: [1, 1, 0, 1, 1], level: 1, lastAt: 1 } };
+  const ch = chapterOf({ topics }, "c1");
+  assert.deepEqual([ch.state, ch.complete, ch.mastered], ["superato", true, false]);
+  assert.equal(ch.label, "Superato, non alla perfezione");
+  assert.match(ch.detail, /Per la perfezione: rifai giuste le ultime 5 domande di «Istruzioni per il robot»/);
+  assert.doesNotMatch(ch.detail, /solo/);
+  assert.doesNotMatch(ch.detail, /%/, "niente percentuali: conta come si va adesso");
+  // più argomenti da rifare: ne cita due e poi puntini
+  const many = chapterOf({ topics: mastery(C1, { window: [1, 1, 0, 1, 1] }) }, "c1");
+  assert.match(many.detail, /«Istruzioni per il robot» e «Dati e informazioni»…$/);
+});
+
+test("per le operazioni con i numeri serve anche la difficoltà ≥ 0,9; per la teoria no", () => {
+  assert.equal(chapterOf({ topics: mastery(NUM_OPS, { level: 0.8 }) }, "ops").state, "superato");
+  assert.equal(chapterOf({ topics: mastery(NUM_OPS, { level: 0.7 }) }, "ops").state, "superato");
+  assert.equal(chapterOf({ topics: mastery(NUM_OPS, { level: 0.9 }) }, "ops").state, "perfetto");
+  assert.equal(chapterOf({ topics: mastery(C1, { level: 0.1 }) }, "c1").state, "perfetto", "la teoria non ha livello");
+  // con meno di 5 risposte nella finestra non si può essere perfetti
+  assert.equal(chapterOf({ topics: mastery(C1, { window: [1, 1, 1, 1], attempts: 4 }) }, "c1").state, "superato");
+});
+
+test("gli errori fatti imparando non impediscono la perfezione: si recupera ripassando", () => {
+  // storia lunga con tanti errori all'inizio: 12 domande, 6 giuste in tutto…
+  let s;
+  for (const ok of [false, false, true, false, true, false, true, true, true, true, true, true]) s = P.nextStats(s, ok);
+  const before = { topics: Object.fromEntries(C1.map((id) => [id, s])) };
+  assert.equal(s.correct, 8);
+  assert.equal(chapterOf(before, "c1").state, "perfetto", "…ma le ultime 5 sono tutte giuste: perfetto");
+  // partendo da un argomento superato ma non perfetto, bastano 3 giuste di fila: l'errore esce dalla finestra delle ultime 5
+  let t = { attempts: 10, correct: 6, window: [1, 1, 0, 1, 1], level: 1, lastAt: 1 };
+  const stateWith = (x) => chapterOf({ topics: { ...mastery(C1.slice(1)), "istruzioni-robot": x } }, "c1").state;
+  assert.equal(stateWith(t), "superato");
+  const states = [];
+  for (let i = 0; i < 5; i++) { t = P.nextStats(t, true); states.push(stateWith(t)); }
+  assert.deepEqual(states, ["superato", "superato", "perfetto", "perfetto", "perfetto"]);
+});
+
+test("lo stato segue come si va adesso: due errori e un capitolo perfetto torna superato o coperto", () => {
+  let t = { attempts: 12, correct: 12, window: [1, 1, 1, 1, 1], level: 1, lastAt: 1 };
+  const topics = (x) => ({ ...mastery(C1.slice(1)), "istruzioni-robot": x });
+  assert.equal(chapterOf({ topics: topics(t) }, "c1").state, "perfetto");
+  t = P.nextStats(t, false);
+  assert.equal(chapterOf({ topics: topics(t) }, "c1").state, "superato", "1 errore: ancora superato, non più perfetto");
+  t = P.nextStats(t, false);
+  assert.equal(chapterOf({ topics: topics(t) }, "c1").state, "coperto", "2 errori: torna coperto");
 });
 
 test("stato dei capitoli nella simulazione: il giocatore bravo li completa tutti, uno incerto no", () => {

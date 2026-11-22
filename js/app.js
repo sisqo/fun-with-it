@@ -581,7 +581,7 @@ function progressScreen(focusChapter = null) {
     <section class="board">
       <h1 class="board__title">I miei progressi</h1>
       ${statsHTML(c)}
-      <p class="home__rules">Superato: almeno 4 giuste nelle ultime 5, con numeri da compito. Da ripassare: meno della metà giuste nelle ultime 5 (dopo almeno 5 domande). Negli esercizi a passaggi conta quanti passaggi hai fatto giusti. Puoi sempre migliorare: lo stato cambia quando ci riprovi.</p>
+      <p class="home__rules">Superato: almeno 4 giuste nelle ultime 5, con numeri da compito. Da ripassare: meno della metà giuste nelle ultime 5 (dopo almeno 5 domande). Negli esercizi a passaggi conta quanti passaggi hai fatto giusti. Puoi sempre migliorare: lo stato segue come stai andando adesso, quindi un capitolo superato può tornare coperto se sbagli di nuovo. Superato alla perfezione: tutti gli argomenti superati e le ultime 5 risposte tutte giuste.</p>
       ${chapters}
       <button class="btn btn--primary btn--block" id="back" type="button">Torna a giocare</button>
     </section>`));

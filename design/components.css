@@ -614,10 +614,16 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
        <span class="metro__node" aria-hidden="true">✓</span><span class="metro__label">Algoritmi</span></li> … </ol>
    5 fermate stanno anche a 320px (etichette brevi, max ~12 caratteri, vanno a capo). */
 /* etichette alternate sotto/sopra il binario (come le mappe della metro): ognuna ha lo spazio di due colonne */
-.metro { list-style: none; margin: 0; padding: 2.9em 0; width: 100%; display: grid; grid-template-columns: repeat(var(--stops, 5), 1fr); font-size: var(--fs-xs); }
-.metro__stop { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.metro { container-type: inline-size; list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(var(--stops, 5), 1fr); font-size: var(--fs-xs); }
+.metro__stop { --lab: 2.9em; position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; padding-block: var(--lab); }
+/* Sotto i ~ 30rem (7 fermate su telefono) le etichette non stanno: si nascondono e restano i numeri
+   (l'aria-label dell'<ol> e l'elenco dei capitoli dicono il resto). */
+@container (max-width: 30rem) {
+  .metro__stop { --lab: 6px; }
+  .metro__label { display: none; }
+}
 .metro__stop::before { /* binario verso la fermata precedente */
-  content: ""; position: absolute; top: 16px; right: 50%; width: 100%; height: 4px; margin-top: -2px;
+  content: ""; position: absolute; top: calc(var(--lab) + 16px); right: 50%; width: 100%; height: 4px; margin-top: -2px;
   background: var(--c-secondary); z-index: 0;
 }
 .metro__stop:first-child::before { display: none; }
@@ -724,6 +730,116 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .topic.is-up { box-shadow: 0 0 0 2px var(--c-success); }
 .topic.is-up .topic__change > .chip:last-child { animation: star-in var(--dur-slow) var(--ease-pop); }
 .topic.is-down { box-shadow: 0 0 0 2px var(--c-danger); }
+
+/* ---------- Elenco ordinato dei capitoli (home) ---------- */
+/* Sei stati, in gerarchia: i due "superati" sono PIENI (nodo e pillola), il perfetto in più è
+   oro con bordo a gradiente, stella e bagliore; "da ripassare" chiama l'attenzione in rosso tenue;
+   "coperto"/"in corso" sono viola (pieno a metà / contorno); "da iniziare" è tratteggiato e quieto.
+   Ogni stato = icona + parola (mai solo colore).
+   <ol class="course"><li><button class="course__item course__item--<stato>" …>
+     <span class="course__n" aria-hidden="true">4</span>
+     <span class="course__main"><span class="course__title">…</span><span class="course__detail">…</span></span>
+     <span class="course__state course__state--<stato>">ICONA<span>Etichetta</span></span>
+   </button></li></ol>
+   <stato> = perfetto | superato | da-ripassare | coperto | in-corso | da-iniziare */
+.course { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 28rem; display: flex; flex-direction: column; gap: var(--sp-2); text-align: left; }
+.course__item {
+  position: relative; width: 100%; min-height: var(--tap-lg);
+  display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "n main go" "n state go";
+  gap: var(--sp-1) var(--sp-3); align-items: center;
+  padding: var(--sp-3); border-radius: var(--r-md);
+  border: var(--border-w) solid var(--c-border); background: var(--c-surface); box-shadow: var(--shadow-1);
+  color: var(--c-text); text-align: left;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.course__item:active { transform: scale(.98); }
+.course__item::after { grid-area: go; content: "›"; font-size: 1.6rem; line-height: 1; color: var(--c-text-muted); } /* si apre il dettaglio */
+.course__n {
+  grid-area: n; position: relative; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800;
+  border: 3px solid currentColor; color: var(--c-text-muted); background: var(--c-surface);
+}
+.course__main { grid-area: main; display: flex; flex-direction: column; min-width: 0; }
+.course__title { font-weight: 700; line-height: var(--lh-tight); }
+.course__detail { font-size: var(--fs-xs); color: var(--c-text-muted); }
+.course__state {
+  grid-area: state; justify-self: start; display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px var(--sp-3); border-radius: var(--r-pill); border: var(--border-w) solid currentColor;
+  font-size: var(--fs-xs); font-weight: 800; line-height: 1.3; background: var(--c-surface);
+}
+.course__state svg { width: 14px; height: 14px; flex: none; }
+
+/* icone a pallino (coperto / in corso / da iniziare) */
+.state-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; display: inline-block; flex: none; box-sizing: border-box; }
+.state-dot--half { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.state-dot--ring { background: none; }
+.state-dot--dash { border-style: dashed; }
+
+/* 1 · Superato alla perfezione: oro */
+.course__item--perfetto {
+  border: 3px solid transparent;
+  background:
+    linear-gradient(color-mix(in srgb, var(--c-cash) 8%, var(--c-surface)), color-mix(in srgb, var(--c-cash) 8%, var(--c-surface))) padding-box,
+    linear-gradient(120deg, var(--neon-gold), var(--neon-orange), var(--neon-gold)) border-box;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--c-cash) 25%, transparent), 0 6px 22px color-mix(in srgb, var(--neon-gold) 28%, transparent);
+}
+.course__item--perfetto .course__n { color: var(--c-on-dial-on); background: var(--neon-gold); border-color: var(--c-cash); }
+.course__item--perfetto .course__n::after { /* stellina sul medaglione */
+  content: "★"; position: absolute; top: -8px; right: -8px; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 12px; line-height: 1;
+  background: var(--c-cash); color: var(--c-surface); border: 2px solid var(--c-surface);
+}
+.course__item--perfetto .course__title { color: var(--c-cash); }
+.course__state--perfetto { background: var(--c-cash); border-color: var(--c-cash); color: var(--c-surface); }
+.course__item--perfetto.is-new-state .course__n { animation: star-in var(--dur-slow) var(--ease-pop); } /* appena conquistato */
+
+/* 2 · Superato, non alla perfezione: verde pieno */
+.course__item--superato { border-color: var(--c-success); }
+.course__item--superato .course__n { color: var(--c-surface); background: var(--c-success); border-color: var(--c-success); }
+.course__state--superato { background: var(--c-success); border-color: var(--c-success); color: var(--c-surface); }
+
+/* 3 · Da ripassare: rosso tenue, chiama il ripasso */
+.course__item--da-ripassare { border-color: var(--c-danger); background: var(--c-danger-bg); }
+.course__item--da-ripassare .course__n { color: var(--c-danger); }
+.course__state--da-ripassare { color: var(--c-danger); background: var(--c-surface); }
+
+/* 4 · Coperto: viola, nodo pieno */
+.course__item--coperto { border-color: var(--c-secondary); }
+.course__item--coperto .course__n { color: var(--c-surface); background: var(--c-secondary); border-color: var(--c-secondary); }
+.course__state--coperto { color: var(--c-secondary); }
+
+/* 5 · In corso: viola, solo contorno */
+.course__item--in-corso { border-color: var(--c-secondary); }
+.course__item--in-corso .course__n { color: var(--c-secondary); }
+.course__state--in-corso { color: var(--c-secondary); }
+
+/* 6 · Da iniziare: tratteggio, niente ombra */
+.course__item--da-iniziare { border-style: dashed; background: transparent; box-shadow: none; }
+.course__item--da-iniziare .course__n { border-style: dashed; }
+.course__state--da-iniziare { color: var(--c-text-muted); border-style: dashed; background: transparent; }
+
+/* badge del capitolo nella schermata dei progressi: stessi stati */
+.chapter__badge.is-perfect { border-style: solid; border-color: var(--c-cash); background: var(--c-cash); color: var(--c-surface); }
+.chapter__badge.is-perfect::before { content: "★ "; }
+.chapter__badge.is-review { border-style: solid; border-color: var(--c-danger); background: var(--c-danger-bg); color: var(--c-danger); }
+.chapter__badge.is-review::before { content: "! "; }
+.chapter__badge.is-started { border-style: solid; border-color: var(--c-secondary); color: var(--c-secondary); background: transparent; }
+
+/* metro (in cima ai progressi): i due stati nuovi */
+.metro__stop.is-perfect::before { background: var(--c-success); }
+.metro__stop.is-perfect .metro__node { background: var(--neon-gold); border-color: var(--c-cash); color: var(--c-on-dial-on); box-shadow: 0 0 10px color-mix(in srgb, var(--neon-gold) 55%, transparent); }
+.metro__stop.is-review .metro__node { background: var(--c-danger-bg); border-color: var(--c-danger); color: var(--c-danger); }
+.metro__stop.is-perfect .metro__label, .metro__stop.is-review .metro__label { color: var(--c-text); font-weight: 700; }
+/* il nodo mostra sempre il numero del capitolo; lo stato "fatto" è una spilla nell'angolo */
+.metro__stop:is(.is-perfect, .is-complete, .is-review) .metro__node::after {
+  position: absolute; top: -7px; right: -9px; width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 11px; font-weight: 900; line-height: 1;
+  border: 2px solid var(--c-surface);
+}
+.metro__stop.is-perfect .metro__node::after { content: "★"; background: var(--c-cash); color: var(--c-surface); }
+.metro__stop.is-complete .metro__node::after { content: "✓"; background: var(--c-success); color: var(--c-surface); }
+.metro__stop.is-review .metro__node::after { content: "!"; background: var(--c-danger); color: var(--c-surface); }
 
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }
