@@ -686,3 +686,89 @@ test("etichette dei capitoli semplificate", () => {
   assert.equal(new Set(Object.values(G.CHAPTER_LABEL)).size, 6);
   assert.ok(Object.values(G.CHAPTER_LABEL).every((l) => !/non alla perfezione|coperto/i.test(l)));
 });
+
+// ---------- Un capitolo alla volta ----------
+
+function playChapter(chapterId, n, skill, seed = 1, startPlayer = newPlayer()) {
+  const rng = mulberry(seed), dice = mulberry(seed + 999);
+  let player = startPlayer, last = null;
+  const history = [];
+  for (let i = 0; i < n; i++) {
+    const q = G.nextQuestion(player, rng, { chapter: chapterId, last, now: 1_000_000 + i });
+    const units = q.kind === "guided" ? q.steps.length : 1;
+    let right = 0;
+    for (let u = 0; u < units; u++) if (dice() < skill) right++;
+    player = { topics: { ...player.topics, [q.topic]: P.nextStats(player.topics[q.topic], right / units, 1_000_000 + i) } };
+    history.push(q);
+    last = q.topic;
+  }
+  return { player, history };
+}
+
+test("capitolo scelto: le domande vengono solo dagli argomenti di quel capitolo", () => {
+  for (const ch of G.CHAPTERS) {
+    const ids = new Set(G.chapterTopics(ch.id).map((t) => t.id));
+    const { history } = playChapter(ch.id, 60, 0.85, 3);
+    for (const q of history) assert.ok(ids.has(q.topic), `${ch.id}: domanda di ${q.topic}`);
+  }
+});
+
+test("capitolo scelto: il giocatore può entrare in qualunque capitolo, anche da nuovo", () => {
+  for (const ch of G.CHAPTERS) {
+    const q = G.nextQuestion(newPlayer(), mulberry(1), { chapter: ch.id });
+    assert.equal(G.topicById[q.topic].chapter, ch.id);
+    assert.ok(q.prompt && q.explain.length);
+  }
+  assert.equal(G.nextQuestion(newPlayer(), mulberry(2), { chapter: "ops" }).topic, "addizione", "le operazioni cominciano dall'addizione");
+});
+
+test("capitolo scelto: dentro il capitolo vale l'ordine, fuori no", () => {
+  assert.deepEqual(G.initialTopics("ops").map((t) => t.id), ["addizione"]);
+  assert.deepEqual(G.initialTopics("c1").map((t) => t.id).sort(), ["dati-informazioni", "istruzioni-robot"]);
+  assert.deepEqual(G.initialTopics("c2").map((t) => t.id).sort(), ["bit-byte", "sistemi-posizionali"]);
+  assert.deepEqual(G.initialTopics("conv").map((t) => t.id), ["dec-bin", "bin-dec"]);
+  assert.deepEqual(G.initialTopics("warm").map((t) => t.id), ["cassaforte"]);
+  assert.deepEqual(G.initialTopics("virgola").map((t) => t.id).sort(), ["confronto-basi", "virgola"]);
+  // la sottrazione si apre solo dopo 3 domande sull'addizione
+  const topics = (st) => ({ addizione: st });
+  assert.ok(!G.isUnlockedIn(G.topicById.sottrazione, topics(stats([1, 1], 2))));
+  assert.ok(G.isUnlockedIn(G.topicById.sottrazione, topics(stats([1, 1, 1], 3))));
+  assert.ok(!G.isUnlockedIn(G.topicById.sottrazione, topics(stats([0, 0, 1], 3))), "se l'addizione va male resta chiusa");
+  // i prerequisiti di altri capitoli non bloccano: dec-bin non chiede la cassaforte quando si entra nel capitolo 3
+  assert.ok(G.isUnlockedIn(G.topicById["dec-bin"], {}));
+  assert.ok(G.isUnlockedIn(G.topicById.addizione, {}), "addizione apribile subito scegliendo il capitolo 4");
+});
+
+test("capitolo scelto: nelle operazioni la sottrazione compare dopo l'addizione, non prima", () => {
+  const { history } = playChapter("ops", 40, 1, 5);
+  const firstAdd = history.findIndex((q) => q.topic === "addizione");
+  const firstSub = history.findIndex((q) => q.topic === "sottrazione");
+  assert.equal(firstAdd, 0);
+  assert.ok(firstSub >= 3, `prima sottrazione alla domanda ${firstSub + 1}`);
+  const topics = new Set(history.map((q) => q.topic));
+  for (const t of ["addizione", "sottrazione", "moltiplicazione", "divisione"]) assert.ok(topics.has(t), t);
+});
+
+test("capitolo scelto: un giocatore bravo supera il capitolo, uno che sbaglia resta all'inizio", () => {
+  const strong = playChapter("ops", 120, 1, 7).player;
+  assert.equal(G.summarize(strong).chapters.find((c) => c.id === "ops").state, "perfetto");
+  const weak = playChapter("ops", 60, 0.1, 7).player;
+  assert.deepEqual(Object.keys(weak.topics), ["addizione"], "se l'addizione va male le altre restano chiuse");
+});
+
+test("capitolo di riscaldamento: segue il piano delle casseforti dall'uno in poi", () => {
+  const { history } = playChapter("warm", 10, 1, 9);
+  assert.deepEqual(history.slice(0, 3).map((q) => q.value), [1, 2, 3]);
+  assert.ok(history.every((q) => q.topic === "cassaforte"));
+  assert.equal(history[3].vault.show, "read");
+  assert.equal(history[5].vault.show, "ruler");
+});
+
+test("capitolo scelto con allenamento su un argomento: force vince", () => {
+  const q = G.nextQuestion(newPlayer(), mulberry(1), { chapter: "ops", force: "moltiplicazione" });
+  assert.equal(q.topic, "moltiplicazione");
+});
+
+test("capitolo sconosciuto: errore chiaro", () => {
+  assert.throws(() => G.pickTopicInChapter(newPlayer(), mulberry(1), "inventato"), RangeError);
+});

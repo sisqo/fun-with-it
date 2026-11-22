@@ -100,6 +100,31 @@ export function topicWeight(topic, stats, { last = null, now = Date.now() } = {}
   return w;
 }
 
+// ---------- Un capitolo alla volta ----------
+// Il giocatore sceglie il capitolo: dentro conta l'ordine dei prerequisiti, ma quelli di altri capitoli no
+// (è lui che ha deciso di entrare qui). Il capitolo comincia con la teoria degli argomenti da cui si parte.
+
+export const chapterTopics = (chapterId) => TOPICS.filter((t) => t.chapter === chapterId);
+const sameChapterNeeds = (topic) => topic.needs.filter((n) => topicById[n].chapter === topic.chapter);
+export const isUnlockedIn = (topic, topics) =>
+  (topics[topic.id]?.attempts ?? 0) > 0 || sameChapterNeeds(topic).every((id) => (topics[id]?.attempts ?? 0) >= 3 && !isStruggling(topics[id]));
+// Gli argomenti da cui il capitolo parte: nessun prerequisito dentro il capitolo.
+export const initialTopics = (chapterId) => chapterTopics(chapterId).filter((t) => sameChapterNeeds(t).length === 0);
+
+export function pickTopicInChapter(player, rng, chapterId, { last = null, now = Date.now() } = {}) {
+  const topics = player.topics ?? {};
+  const open = chapterTopics(chapterId).filter((t) => isUnlockedIn(t, topics));
+  if (!open.length) throw new RangeError(`capitolo sconosciuto o vuoto: ${chapterId}`);
+  const weights = open.map((t) => topicWeight(t, topics[t.id], { last: open.length > 1 ? last : null, now }));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = rng() * total;
+  for (let i = 0; i < open.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return open[i].id;
+  }
+  return open[open.length - 1].id;
+}
+
 export function pickTopic(player, rng, { last = null, force = null, now = Date.now() } = {}) {
   if (force) return force;
   const topics = player.topics ?? {};
@@ -157,7 +182,7 @@ export function buildQuestion(topicId, rng, player, { exclude = new Set() } = {}
 }
 
 export function nextQuestion(player, rng, opts = {}) {
-  const topic = pickTopic(player, rng, opts);
+  const topic = !opts.force && opts.chapter ? pickTopicInChapter(player, rng, opts.chapter, opts) : pickTopic(player, rng, opts);
   return buildQuestion(topic, rng, player, opts);
 }
 

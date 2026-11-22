@@ -1,6 +1,7 @@
 import { checkAnswer } from "./questions.mjs";
 import { judgeStep } from "./operations.mjs";
 import * as G from "./progress.mjs";
+import * as T from "./teach.mjs";
 import * as FX from "./fx.mjs";
 import * as P from "./profiles.mjs";
 import { WEIGHTS, bits8, nibbles, onWeights } from "./vault.mjs";
@@ -28,6 +29,9 @@ let store = P.parseStore(save.read());
 const commit = (next) => { store = next; save.write(P.serialize(store)); };
 const me = () => P.currentPlayer(store) ?? { name: "", cash: 0, missionsDone: 0, done: {} };
 let game = null;
+// Lezioni già mostrate in questa sessione (per giocatore): non si ripetono se si ricomincia una partita non iniziata.
+const lessonsSeen = new Set();
+const lessonKey = (topic) => `${store.current}:${topic}`;
 
 const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -125,18 +129,18 @@ function home(greeting = "") {
   const sum = G.summarize(player);
   const c = sum.counts;
   const started = c.touched > 0;
-  const toReview = sum.rows.find((r) => r.status === G.STATUS.FAILED);
+  // il primo capitolo non ancora superato è il consiglio per il prossimo passo
+  const next = sum.chapters.find((ch) => !ch.complete);
   render(el(`
     <section class="home">
       <img class="home__mascot" src="${MASCOT("neutro")}" alt="">
       <h1 class="home__title">Neon <span>Bay</span></h1>
       <p class="home__hello" role="status">${esc(greeting || `Ciao, ${player.name}!`)}</p>
       <p class="home__line">Il tuo conto: <b>${money(player.cash)}</b> · Partite completate: <b>${player.missionsDone}</b></p>
-      <button class="btn btn--primary home__play" id="play" type="button">${started ? "Gioca" : "Inizia a giocare"}</button>
-      ${started ? statsHTML(c) : `<p class="home__rules">Si parte con una serie di casseforti per capire come funziona il binario. Poi il gioco sceglie le domande per te.</p>`}
-      ${toReview ? `<button class="btn btn--ghost btn--block" id="review" type="button">Ripassa: ${esc(toReview.title)}</button>` : ""}
-      <h2 class="board__sub">I capitoli</h2>
-      ${coursesHTML(sum)}
+      ${started ? statsHTML(c) : ""}
+      <h2 class="board__sub">Scegli un capitolo</h2>
+      <p class="home__rules">${started ? (next ? `Consigliato: <b>${esc(chapterTitle(next))}</b>.` : "Hai superato tutti i capitoli!") : "Ogni capitolo comincia con una breve teoria, poi arrivano le domande. Si parte dal riscaldamento con le casseforti."}</p>
+      ${coursesHTML(sum, next?.id)}
       <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi, argomento per argomento</button>
       <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la partita è finita. Tre risposte giuste di fila ne spengono una.</p>
       ${radioFull(DJ_LINES[0])}
@@ -150,10 +154,8 @@ function home(greeting = "") {
         </div>
       </details>
     </section>`));
-  document.getElementById("play").onclick = () => startGame();
   document.getElementById("progress").onclick = () => progressScreen();
-  app.querySelectorAll("[data-chapter]").forEach((b) => (b.onclick = () => progressScreen(b.dataset.chapter)));
-  document.getElementById("review")?.addEventListener("click", () => startGame({ force: toReview.id }));
+  app.querySelectorAll("[data-chapter]").forEach((b) => (b.onclick = () => chapterScreen(b.dataset.chapter)));
   document.getElementById("switch").onclick = () => { commit(P.signOut(store)); nameScreen(); };
   document.getElementById("reset").onclick = async () => {
     const yes = await confirmDialog({
@@ -178,15 +180,73 @@ function home(greeting = "") {
 }
 
 // Una partita = 10 domande scelte dal gioco in base ai risultati (o 8 su un solo argomento, per allenarsi).
-function startGame({ force = null } = {}) {
-  game = { force, count: force ? 8 : 10, q: null, last: null, seen: new Set(), touched: new Map(), qWrong: false, qUnits: 0, qOkUnits: 0, recorded: false, index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [], delta: 0, lit: false };
+function startGame({ force = null, chapter = null, theory = false } = {}) {
+  const ch = chapter ?? (force ? G.topicById[force]?.chapter : null);
+  game = { force, chapter: ch, count: force ? 8 : 10, q: null, last: null, seen: new Set(), touched: new Map(), qWrong: false, qUnits: 0, qOkUnits: 0, recorded: false, index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [], delta: 0, lit: false };
   game.chBefore = Object.fromEntries(G.summarize(P.currentPlayer(store)).chapters.map((c) => [c.id, c.state]));
   nextQ();
-  showQuestion();
+  // Un capitolo nuovo comincia con la breve teoria degli argomenti da cui parte; poi le domande.
+  const intro = theory && ch ? G.initialTopics(ch).filter((t) => T.hasLesson(t.id)).map((t) => t.id) : [];
+  if (intro.length) {
+    intro.forEach((id) => lessonsSeen.add(lessonKey(id)));
+    showLessonSequence(intro, () => present(), "Salta la teoria");
+  } else {
+    present();
+  }
+}
+
+// La prima volta che un argomento compare si mostra la lezione (si può saltare); poi la domanda.
+function present() {
+  const topic = game.q.topic;
+  const first = (P.currentPlayer(store).topics?.[topic]?.attempts ?? 0) === 0;
+  if (first && !lessonsSeen.has(lessonKey(topic)) && T.hasLesson(topic)) {
+    lessonsSeen.add(lessonKey(topic));
+    showLesson(topic, () => showQuestion());
+  } else {
+    showQuestion();
+  }
+}
+
+// ---------- Lezione in micro-pagine ----------
+
+function lessonHTML(topicId, i, skipLabel = "Salta la lezione") {
+  const pages = T.lessonFor(topicId);
+  const pg = pages[i];
+  const topic = G.topicById[topicId];
+  const chapter = G.CHAPTERS.find((c) => c.id === topic.chapter);
+  const last = i === pages.length - 1;
+  const paras = (pg.paras ?? []).map((p) => `<p>${esc(p)}</p>`).join("");
+  const key = pg.key ? `<p class="lesson__key">${esc(pg.key)}</p>` : "";
+  const algo = pg.algo?.length ? `<ol class="algo">${pg.algo.map((a) => `<li${a.hl || a.iff ? ` class="${[a.hl && "is-highlight", a.iff && "is-if"].filter(Boolean).join(" ")}"` : ""}>${esc(a.t)}</li>`).join("")}</ol>` : "";
+  const pager = pages.map((_, k) => `<i class="${k < i ? "is-done" : k === i ? "is-current" : ""}"></i>`).join("");
+  return `<div class="lesson-wrap" data-lesson-topic="${esc(topicId)}"><article class="lesson">
+    <header class="lesson__head"><p class="lesson__kicker">Lezione · ${esc(chapter.title)}</p><h1 class="lesson__title">${esc(topic.title)}</h1></header>
+    <div class="lesson__scene"><img class="lesson__mascot" src="${MASCOT(pg.mascot ?? "neutro")}" alt=""><p class="bubble">${esc(pg.bubble)}</p></div>
+    <div class="lesson__body">${paras}${key}${algo}</div>
+    <footer class="lesson__foot"><span class="pager" aria-label="Pagina ${i + 1} di ${pages.length}">${pager}</span>
+      ${i > 0 ? '<button class="btn btn--ghost" id="lesson-back" type="button">Indietro</button>' : ""}
+      <button class="btn btn--primary" id="lesson-next" type="button">${last ? "Ho capito" : "Avanti"}</button></footer>
+  </article><p class="lesson__skip"><button class="btn btn--ghost" id="lesson-skip" type="button">${esc(skipLabel)}</button></p></div>`;
+}
+
+function showLesson(topicId, done, i = 0, skip = done, skipLabel = "Salta la lezione") {
+  const pages = T.lessonFor(topicId);
+  if (!pages) return done();
+  render(el(lessonHTML(topicId, i, skipLabel)));
+  document.getElementById("lesson-next").focus({ preventScroll: true });
+  document.getElementById("lesson-next").onclick = () => (i < pages.length - 1 ? showLesson(topicId, done, i + 1, skip, skipLabel) : done());
+  document.getElementById("lesson-back")?.addEventListener("click", () => showLesson(topicId, done, i - 1, skip, skipLabel));
+  document.getElementById("lesson-skip").onclick = () => skip();
+}
+
+// Più lezioni di fila (la teoria di un capitolo): "Salta la teoria" le salta tutte.
+function showLessonSequence(ids, done, skipLabel = "Salta la teoria") {
+  const run = (k) => (k >= ids.length ? done() : showLesson(ids[k], () => run(k + 1), 0, done, ids.length > 1 ? skipLabel : "Salta la lezione"));
+  run(0);
 }
 
 function nextQ() {
-  const q = G.nextQuestion(P.currentPlayer(store), Math.random, { last: game.last, force: game.force, exclude: game.seen });
+  const q = G.nextQuestion(P.currentPlayer(store), Math.random, { last: game.last, force: game.force, chapter: game.chapter, exclude: game.seen });
   game.seen.add(q.prompt);
   game.last = q.topic;
   game.q = q;
@@ -278,10 +338,10 @@ function wireMissionTools(root) {
   const started = game.totalUnits > 0;
   const ask = async (title, text, ok) => !started || (await confirmDialog({ title, text, ok }));
   root.querySelector("#restart").onclick = async () => {
-    if (await ask("Ricominciare la partita?", "Contanti e stelle di questa partita si azzerano e si riparte dalla prima domanda. I risultati già registrati sugli argomenti restano.", "Sì, ricomincia")) startGame({ force: game.force });
+    if (await ask("Ricominciare la partita?", "Contanti e stelle di questa partita si azzerano e si riparte dalla prima domanda. I risultati già registrati sugli argomenti restano.", "Sì, ricomincia")) startGame({ force: game.force, chapter: game.chapter });
   };
   root.querySelector("#quit").onclick = async () => {
-    if (await ask("Uscire dalla partita?", "I contanti di questa partita andranno persi. I risultati già registrati sugli argomenti restano.", "Sì, esci")) home();
+    if (await ask("Uscire dalla partita?", "I contanti di questa partita andranno persi. I risultati già registrati sugli argomenti restano.", "Sì, esci")) (game.chapter ? chapterScreen(game.chapter) : home());
   };
 }
 
@@ -324,7 +384,7 @@ function showQuestion() {
       ? `<div class="q__code">${q.vault.value}<sub>10</sub></div>
         <form class="ruler-form" id="form" novalidate><div class="ruler" role="group" aria-label="Pesi delle ruote e cifre della combinazione, da sinistra a destra">
           ${WEIGHTS.map((w) => `<span class="ruler__w">${w}</span>`).join("")}
-          ${WEIGHTS.map((w) => `<input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" aria-label="Cifra sotto il peso ${w}">`).join("")}
+          ${WEIGHTS.map((w) => `<input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" placeholder=" " autocomplete="off" aria-label="Cifra sotto il peso ${w}">`).join("")}
         </div><button class="btn btn--primary btn--block" type="submit">Rispondi</button></form>`
       : vaultHTML({ bits: q.vault.bits, lcd: "?", sum: false, code: false });
     body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>${locked}${q.vault?.show === "ruler" ? "" : answerForm(q, "La tua risposta")}</section><div id="fb"></div>`;
@@ -459,6 +519,10 @@ function submit(unit, given, clicked, afterJudge) {
   root.querySelectorAll("input, .dial, #submit, .choice, #form .btn").forEach((n) => (n.disabled = true));
   const form = root.querySelector("#form");
   if (form) form.classList.add(verdict.ok ? "is-correct" : verdict.discovered && !verdict.star ? "is-hint" : "is-wrong");
+  if (q.vault?.show === "ruler" && !verdict.ok) {
+    const want = bits8(q.vault.value);
+    root.querySelectorAll(".ruler__cell").forEach((cell, i) => { if (cell.value !== want[i]) cell.classList.add("is-wrong"); });
+  }
   if (q.kind === "choice") {
     root.querySelectorAll(".choice").forEach((b) => {
       if (b.dataset.v === q.answer) b.classList.add("is-correct");
@@ -484,7 +548,7 @@ function submit(unit, given, clicked, afterJudge) {
     if (moreSteps) { game.step += 1; return showQuestion(); }
     if (last) return finish(false);
     game.index += 1; game.step = 0; game.givens = []; game.marks = []; game.qWrong = false; game.qUnits = 0; game.qOkUnits = 0; game.recorded = false;
-    nextQ(); showQuestion();
+    nextQ(); present();
   };
   nb.focus({ preventScroll: true });
   root.querySelector(".feedback").scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -522,14 +586,16 @@ const STATE_ICON = {
   "da-iniziare": '<i class="state-dot state-dot--dash" aria-hidden="true"></i>',
 };
 const justPerfect = new Set(); // capitoli diventati perfetti nell'ultima partita (il medaglione salta una volta)
+// Nota del traguardo in pausa: testo sicuro con la data (12/11) in grassetto.
+const wasHTML = (text) => esc(text).replace(/(\d{1,2}\/\d{1,2})/, "<b>$1</b>");
 const chapterTitle = (ch) => (ch.n > 0 ? `${ch.n} · ${ch.title}` : ch.title);
 
 // Elenco ordinato dei capitoli con lo stato di ciascuno: si vede subito dalla home.
-function coursesHTML(sum) {
+function coursesHTML(sum, nextId = null) {
   const html = `<ol class="course" aria-label="Capitoli del corso, in ordine">${sum.chapters.map((ch) => `<li>
-    <button class="course__item course__item--${ch.state}${justPerfect.has(ch.id) ? " is-new-state" : ""}" type="button" data-chapter="${ch.id}" aria-label="${esc(chapterTitle(ch))}: ${esc(ch.label)}. ${esc(ch.detail)}. Apri il dettaglio.">
+    <button class="course__item course__item--${ch.state}${justPerfect.has(ch.id) ? " is-new-state" : ""}" type="button" data-chapter="${ch.id}" aria-label="${esc(chapterTitle(ch))}: ${esc(ch.label)}. ${esc(ch.detail)}.${ch.id === nextId ? " Consigliato." : ""} Apri il capitolo.">
       <span class="course__n" aria-hidden="true">${ch.n > 0 ? ch.n : "0"}</span>
-      <span class="course__main"><span class="course__title">${esc(ch.title)}</span><span class="course__detail">${esc(ch.detail)}</span>${ch.wasNote ? `<span class="course__was">${esc(ch.wasNote)}</span>` : ""}</span>
+      <span class="course__main"><span class="course__title">${esc(ch.title)}${ch.id === nextId ? ' <span class="course__next">Consigliato</span>' : ""}</span><span class="course__detail">${esc(ch.detail)}</span>${ch.wasNote ? `<span class="course__was">${wasHTML(ch.wasNote)}</span>` : ""}</span>
       <span class="course__state course__state--${ch.state}">${STATE_ICON[ch.state]}<span>${esc(ch.label)}</span></span>
     </button></li>`).join("")}</ol>`;
   justPerfect.clear(); // il salto del medaglione avviene una volta sola
@@ -562,44 +628,53 @@ function finish(failed) {
       ${newlyPerfect.length ? `<p class="home__hello" role="status">★ ${newlyPerfect.map((c) => esc(c.title)).join(" · ")}: superato alla perfezione!</p>` : ""}
       ${rows ? `<h2 class="board__sub">Argomenti toccati in questa partita</h2><ul class="topics topics--summary">${rows}</ul>` : ""}
       ${radioFull()}
-      <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : "Gioca ancora"}</button>
+      <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : game.force ? "Allenati ancora" : "Altre domande del capitolo"}</button>
+      ${game.chapter ? `<button class="btn btn--ghost btn--block" id="to-chapter" type="button">Torna al capitolo</button>` : ""}
       <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi</button>
-      <button class="btn btn--ghost btn--block" id="menu" type="button">Menu</button>
+      <button class="btn btn--ghost btn--block" id="menu" type="button">Tutti i capitoli</button>
     </section>`));
-  document.getElementById("again").onclick = () => startGame({ force: game.force });
+  document.getElementById("again").onclick = () => startGame({ force: game.force, chapter: game.chapter });
+  document.getElementById("to-chapter")?.addEventListener("click", () => chapterScreen(game.chapter));
   document.getElementById("progress").onclick = () => progressScreen();
   document.getElementById("menu").onclick = () => home();
 }
 
 // ---------- I miei progressi: capitoli coperti e argomenti toccati, superati, da ripassare ----------
 
+// Un capitolo con la sua barra e l'elenco degli argomenti (usato nei progressi e nella schermata del capitolo).
+function chapterBlockHTML(ch, player, { compact = false } = {}) {
+  const title = (id) => G.topicById[id]?.title ?? id;
+  const pct = (n) => Math.round((n / ch.total) * 100);
+  const inProgress = ch.touched - ch.passed - ch.failed;
+  const BADGE = { perfetto: " is-perfect", superato: " is-complete", "da-ripassare": " is-review", coperto: " is-covered", "in-corso": " is-started", "da-iniziare": "" };
+  const items = ch.topics.map((r) => {
+    const needs = G.blockingNeeds(G.topicById[r.id], player.topics ?? {}).map(title);
+    const can = r.unlocked || r.attempts > 0;
+    const score = r.attempts ? `${r.correct} su ${r.attempts} ${r.attempts === 1 ? "giusta" : "giuste"}` : can ? "Mai provato" : `Si apre dopo: ${esc(needs.join(", "))}`;
+    return `<li class="topic topic--${cls(r.status)}${can ? "" : " is-locked"}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${score}</span>${G.wasPassedNote(r) ? `<span class="topic__was">${wasHTML(G.wasPassedNote(r))}</span>` : ""}</div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}${T.hasLesson(r.id) ? `<button class="btn btn--ghost topic__train" type="button" data-lesson="${r.id}" aria-label="Rivedi la lezione: ${esc(r.title)}">Lezione</button>` : ""}</li>`;
+  }).join("");
+  const head = compact ? "" : `<header class="chapter__head"><h2 class="chapter__title">${esc(chapterTitle(ch))}</h2><span class="chapter__badge${BADGE[ch.state]}">${esc(ch.label)}</span></header>
+    <p class="chapter__src">${esc(ch.source)}</p>`;
+  return `<article class="chapter" id="chapter-${ch.id}">${head}
+    <div class="chapter__bar" role="img" aria-label="${ch.passed} superati, ${inProgress} in corso, ${ch.failed} da ripassare su ${ch.total}"><i class="is-passed" style="width:${pct(ch.passed)}%"></i><i class="is-touched" style="width:${pct(inProgress)}%"></i><i class="is-failed" style="width:${pct(ch.failed)}%"></i></div>
+    <p class="chapter__count"><b>${ch.touched}</b> toccati su ${ch.total} · <b>${ch.passed}</b> ${ch.passed === 1 ? "superato" : "superati"}</p>${ch.wasNote ? `<p class="chapter__was">${wasHTML(ch.wasNote)}</p>` : ""}
+    <ul class="topics">${items}</ul></article>`;
+}
+
+// I pulsanti "Allenati" e "Lezione" degli argomenti: servono sia nei progressi sia nella schermata del capitolo.
+function wireTopicButtons(back) {
+  app.querySelectorAll("[data-train]").forEach((b) => (b.onclick = () => startGame({ force: b.dataset.train })));
+  app.querySelectorAll("[data-lesson]").forEach((b) => (b.onclick = () => showLesson(b.dataset.lesson, () => back(b.dataset.lesson))));
+}
+
 function progressScreen(focusChapter = null) {
   const player = P.currentPlayer(store);
   if (!player) return nameScreen();
   const sum = G.summarize(player);
-  const c = sum.counts;
-  const title = (id) => G.topicById[id]?.title ?? id;
-  const chapters = sum.chapters.map((ch) => {
-    const pct = (n) => Math.round((n / ch.total) * 100);
-    const inProgress = ch.touched - ch.passed - ch.failed;
-    const BADGE = { perfetto: " is-perfect", superato: " is-complete", "da-ripassare": " is-review", coperto: " is-covered", "in-corso": " is-started", "da-iniziare": "" };
-    const badge = `<span class="chapter__badge${BADGE[ch.state]}">${STATE_ICON[ch.state].startsWith("<svg") ? "" : ""}${esc(ch.label)}</span>`;
-    const items = ch.topics.map((r) => {
-      const needs = G.blockingNeeds(G.topicById[r.id], player.topics ?? {}).map(title);
-      const can = r.unlocked || r.attempts > 0;
-      const score = r.attempts ? `${r.correct} su ${r.attempts} ${r.attempts === 1 ? "giusta" : "giuste"}` : can ? "Mai provato" : `Si apre dopo: ${esc(needs.join(", "))}`;
-      return `<li class="topic topic--${cls(r.status)}${can ? "" : " is-locked"}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${score}</span>${G.wasPassedNote(r) ? `<span class="topic__was">${esc(G.wasPassedNote(r))}</span>` : ""}</div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}</li>`;
-    }).join("");
-    return `<article class="chapter" id="chapter-${ch.id}"><header class="chapter__head"><h2 class="chapter__title">${esc(chapterTitle(ch))}</h2>${badge}</header>
-      <p class="chapter__src">${esc(ch.source)}</p>
-      <div class="chapter__bar" role="img" aria-label="${ch.passed} superati, ${inProgress} in corso, ${ch.failed} da ripassare su ${ch.total}"><i class="is-passed" style="width:${pct(ch.passed)}%"></i><i class="is-touched" style="width:${pct(inProgress)}%"></i><i class="is-failed" style="width:${pct(ch.failed)}%"></i></div>
-      <p class="chapter__count"><b>${ch.touched}</b> toccati su ${ch.total} · <b>${ch.passed}</b> ${ch.passed === 1 ? "superato" : "superati"}</p>${ch.wasNote ? `<p class="chapter__was">${esc(ch.wasNote)}</p>` : ""}
-      <ul class="topics">${items}</ul></article>`;
-  }).join("");
   render(el(`
     <section class="board">
       <h1 class="board__title">I miei progressi</h1>
-      ${statsHTML(c)}
+      ${statsHTML(sum.counts)}
       ${metroHTML(sum)}
       <ul class="rules" aria-label="Come funzionano gli stati">
         <li><b>Superato:</b> almeno 4 giuste nelle ultime 5, con numeri da compito.</li>
@@ -608,12 +683,42 @@ function progressScreen(focusChapter = null) {
         <li>Negli esercizi a passaggi conta quanti passaggi fai giusti.</li>
         <li>Lo stato segue come vai adesso: se sbagli di nuovo un capitolo può scendere, ma la data in cui l'avevi superato resta segnata.</li>
       </ul>
-      ${chapters}
-      <button class="btn btn--primary btn--block" id="back" type="button">Torna a giocare</button>
+      ${sum.chapters.map((ch) => chapterBlockHTML(ch, player)).join("")}
+      <button class="btn btn--primary btn--block" id="back" type="button">Torna ai capitoli</button>
     </section>`));
   document.getElementById("back").onclick = () => home();
   if (focusChapter) document.getElementById(`chapter-${focusChapter}`)?.scrollIntoView({ block: "start" });
-  app.querySelectorAll("[data-train]").forEach((b) => (b.onclick = () => startGame({ force: b.dataset.train })));
+  wireTopicButtons((topic) => progressScreen(G.topicById[topic].chapter));
+}
+
+// ---------- Schermata di un capitolo: teoria, domande, argomenti ----------
+
+function chapterScreen(id) {
+  const player = P.currentPlayer(store);
+  if (!player) return nameScreen();
+  const ch = G.summarize(player).chapters.find((c) => c.id === id);
+  if (!ch) return home();
+  const fresh = ch.touched === 0;
+  const intro = G.initialTopics(id).filter((t) => T.hasLesson(t.id)).map((t) => t.id);
+  const all = G.chapterTopics(id).filter((t) => T.hasLesson(t.id)).map((t) => t.id);
+  const startLabel = fresh ? "Inizia il capitolo" : ch.complete ? "Rigioca il capitolo" : "Continua con le domande";
+  render(el(`
+    <section class="board">
+      <p class="lesson__kicker">${ch.n > 0 ? `Capitolo ${ch.n}` : "Riscaldamento"}</p>
+      <h1 class="board__title">${esc(ch.title)}</h1>
+      <p class="chapter__src">${esc(ch.source)}</p>
+      <p class="home__rules">${esc(ch.detail)}</p>
+      <button class="btn btn--primary btn--block" id="start-chapter" type="button">${startLabel}</button>
+      <p class="home__rules">${fresh ? "Si comincia con una breve teoria, poi le domande." : "Le domande si adattano a come stai andando: ogni argomento nuovo parte con la sua lezione."}</p>
+      ${all.length ? `<button class="btn btn--ghost btn--block" id="review-theory" type="button">Rivedi la teoria del capitolo (${all.length} ${all.length === 1 ? "lezione" : "lezioni"})</button>` : ""}
+      <span class="chapter__badge${{ perfetto: " is-perfect", superato: " is-complete", "da-ripassare": " is-review", coperto: " is-covered", "in-corso": " is-started", "da-iniziare": "" }[ch.state]}" id="chapter-state">${esc(ch.label)}</span>
+      ${chapterBlockHTML(ch, player, { compact: true })}
+      <button class="btn btn--ghost btn--block" id="back" type="button">Torna ai capitoli</button>
+    </section>`));
+  document.getElementById("start-chapter").onclick = () => startGame({ chapter: id, theory: fresh });
+  document.getElementById("review-theory")?.addEventListener("click", () => showLessonSequence(all, () => chapterScreen(id), "Salta la teoria"));
+  document.getElementById("back").onclick = () => home();
+  wireTopicButtons(() => chapterScreen(id));
 }
 
 home();

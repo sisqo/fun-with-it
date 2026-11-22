@@ -845,11 +845,11 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 /* Tono: il trofeo non si perde, è in pausa. Stella d'oro VUOTA + testo normale (non corsivo,
    a 13px il corsivo si legge male) con la data in grassetto: <span class="topic__was">Superato il <b>19/11</b>: …</span> */
 .course__was, .topic__was, .chapter__was {
-  display: flex; gap: 6px; align-items: baseline; margin: 4px 0 0;
+  display: block; position: relative; padding-left: 1.45em; margin: 4px 0 0;
   font-size: var(--fs-xs); line-height: 1.35; color: var(--c-text-muted); font-style: normal;
 }
 .course__was::before, .topic__was::before, .chapter__was::before {
-  content: "★"; flex: none; font-size: 1.15em; line-height: 1;
+  content: "★"; position: absolute; left: 0; top: .05em; font-size: 1.15em; line-height: 1;
   color: transparent; -webkit-text-stroke: 1.5px var(--c-cash); /* stella vuota: il posto è tenuto */
 }
 .course__was b, .topic__was b, .chapter__was b { color: var(--c-cash); }
@@ -904,15 +904,16 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 }
 .lesson__kicker { margin: 0; font-family: var(--font-sign); font-size: var(--fs-xs); letter-spacing: .06em; color: var(--c-accent); }
 .lesson__title { margin: 2px 0 0; font-size: var(--fs-xl); line-height: var(--lh-tight); text-wrap: balance; }
-.lesson__scene { display: grid; grid-template-columns: 96px 1fr; gap: var(--sp-3); align-items: center; }
-.lesson__mascot { width: 96px; height: auto; }
+.lesson__scene { display: grid; grid-template-columns: clamp(64px, 22%, 96px) 1fr; gap: var(--sp-3); align-items: center; }
+.lesson__mascot { width: 100%; height: auto; }
 
 /* fumetto: la coda punta verso R0b (a sinistra) */
 .bubble {
   position: relative; margin: 0; padding: var(--sp-3) var(--sp-4);
   background: var(--c-surface-2); border: var(--border-w) solid var(--c-border); border-radius: var(--r-lg);
-  font-weight: 700; line-height: 1.35;
+  font-weight: 700; line-height: 1.35; min-width: 0;
 }
+@media (max-width: 400px) { .bubble { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); } }
 .bubble::before {
   content: ""; position: absolute; left: -9px; top: 50%; width: 16px; height: 16px; margin-top: -8px;
   background: inherit; border: inherit; border-width: 0 0 var(--border-w) var(--border-w);

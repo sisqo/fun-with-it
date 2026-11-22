@@ -119,7 +119,7 @@ export function guidedOperation(rng, op, t = 1) {
 
   if (op === "+") {
     const r = E.addBinary(A, B);
-    const st = E.addSteps(A, B).map((s) => `${E.colName(2 ** s.column)}: ${s.text}`);
+    const st = E.addSteps(A, B).map((s) => (s.text.startsWith("Riporto finale") ? s.text : `${E.colName(2 ** s.column)}: ${s.text}`));
     steps.push({ label: `Addizione in binario: ${A} + ${B}`, answer: r.result, base: 2, explain: st });
     column = { op, a: A, b: B, result: r.result, carries: r.carries, steps: st };
     explain.push(...st, `${A} + ${B} = ${r.result}`);

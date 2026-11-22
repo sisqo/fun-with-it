@@ -429,6 +429,44 @@ Altre regole:
 - Le etichette brevi suggerite sono Cassaforte, Algoritmi, Bit e byte, Dec → bin, Operazioni,
   Ottale / esa e Virgola.
 
+### Traguardo in pausa (`.topic__was`, `.course__was`, `.chapter__was`)
+
+Quando un argomento o un capitolo già superato scende di stato, resta una riga piccola:
+"Superato il **19/11**: 3 errori recenti, rifai giuste le prossime per tornarci".
+
+- **Tono:** il trofeo non si perde, è in pausa. Per questo c'è una **stella d'oro vuota**
+  (solo contorno, il posto è tenuto) e la data è in oro.
+- Il testo è in muted, **non corsivo**: il corsivo a 13px su telefono si legge male.
+- Metti la data in `<b>` per farla diventare oro.
+
+### Lezione (`.lesson`)
+
+È la teoria in micro-pagine:
+1. Scena: R0b con un fumetto, `.bubble` (la coda punta verso di lui). Nella lezione 1 R0b è
+   `r0b-sete.svg`.
+2. Contenuto (`.lesson__body`) con:
+   - `.lesson__key`: la definizione da ricordare, in un riquadro viola;
+   - `ol.algo`: un algoritmo scritto come istruzioni per il robot, numerate `01`, `02`…;
+     `li.is-if` rientra i passi dentro un "se…", `li.is-highlight` evidenzia il passo di cui
+     si parla.
+3. Piede (`.lesson__foot`):
+   - `.pager` con un puntino per pagina (`.is-done`, `.is-current`, allungato);
+   - Indietro (ghost) e Avanti (primario).
+
+L'ultima pagina può avere "Ho capito", che porta alle domande. Markup completo nel commento di
+`components.css`.
+
+### Combinazione sotto i pesi (`.ruler-form`)
+
+Il markup è quello di David: `.ruler` con gli 8 `span.ruler__w` e poi gli 8
+`input.ruler__cell`.
+- **Layout.** Sotto i 26rem va in **2 file da 4**, un nibble per fila, con ogni peso sopra
+  la sua cifra: 8 caselle in fila a 320px sarebbero larghe ~32px. Sopra i 26rem va in 1×8,
+  con uno spazio tra i nibble. La posizione la fa la CSS, il markup non cambia.
+- **Casella vuota.** È tratteggiata se ha `placeholder=" "`.
+- **Esiti.** `.ruler-form.is-correct` (tutte verdi) e `.ruler__cell.is-wrong`, insieme a
+  `.ruler-form.is-wrong`, per le singole cifre sbagliate.
+
 ### Radio in auto (`.radio`)
 
 **Radio Overflow, 101.1010 FM.** La frequenza è un indovinello: 101.1010₂ = 5,625₁₀, una
@@ -586,8 +624,7 @@ Ora è un componente di supporto.
 
 Nell'ordine di David:
 
-1. Card "lezione" per la teoria, con R0b "sete" nella lezione 1.
-2. Caveau del boss.
-3. Notifiche-badge stile feed.
-4. Menu "smartphone".
-5. Negozio (skin di R0b, auto, sfondi).
+1. Caveau del boss: un bonus a fine partita quando un capitolo diventa perfetto.
+2. Notifiche-badge stile feed.
+3. Menu "smartphone".
+4. Negozio (skin di R0b, auto, sfondi).

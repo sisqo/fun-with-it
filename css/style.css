@@ -83,25 +83,22 @@
 .mission-tools .btn { min-height: var(--tap); font-size: var(--fs-sm); padding-inline: var(--sp-4); }
 
 
-/* righe dei pesi (domanda "scrivi la combinazione"): si vedono i pesi, non le ruote */
-.ruler { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-.ruler__w { text-align: center; padding: var(--sp-2) 0; border-radius: var(--r-sm); background: var(--c-surface-2); border: var(--border-w, 1.5px) solid var(--c-border); font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 700; font-size: var(--fs-sm); color: var(--c-text); }
 
-/* combinazione: una cifra sotto ogni peso */
-.ruler-form { display: flex; flex-direction: column; gap: var(--sp-3); }
-.ruler__cell { width: 100%; min-width: 0; min-height: var(--tap-lg, 56px); padding: 0; text-align: center; font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800; font-size: var(--fs-lg); color: var(--c-digit); background: var(--c-surface); border: var(--border-w, 1.5px) solid var(--c-border); border-radius: var(--r-md); }
-.ruler__cell:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 1px; border-color: transparent; }
-.ruler__cell:disabled { opacity: 1; }
 
 /* elenco dei giocatori nella schermata del nome */
 .home__missions { width: 100%; margin-top: var(--sp-3); max-width: 28rem; }
 .home__missions .choice { justify-content: flex-start; text-align: left; }
 
 
-/* il traguardo già raggiunto resta visibile anche se lo stato di adesso è sceso */
-.course__was, .topic__was, .chapter__was { display: block; font-size: var(--fs-xs); font-style: italic; color: var(--c-secondary); }
-.chapter__was { margin: 0; }
 
 /* come funzionano gli stati: elenco breve */
 .rules { margin: 0; padding-left: 1.2em; text-align: left; font-size: var(--fs-sm); color: var(--c-text-muted); display: flex; flex-direction: column; gap: var(--sp-1); }
 .rules b { color: var(--c-text); }
+
+/* lezione: contenitore e "salta" */
+.lesson-wrap { display: flex; flex-direction: column; gap: var(--sp-3); }
+.lesson__skip { margin: 0; text-align: center; }
+.lesson__skip .btn { min-height: var(--tap); font-size: var(--fs-sm); }
+
+/* capitolo consigliato nella home */
+.course__next { display: inline-block; margin-left: var(--sp-1); padding: 1px var(--sp-2); border-radius: var(--r-pill); font-size: var(--fs-xs); font-weight: 800; background: var(--c-primary); color: var(--c-on-primary); vertical-align: middle; white-space: nowrap; }
