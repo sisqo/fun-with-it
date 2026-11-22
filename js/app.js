@@ -1,5 +1,6 @@
 import { buildMission, checkAnswer } from "./questions.mjs";
 import { buildOperationsMission, judgeStep } from "./operations.mjs";
+import { LESSONS, buildLessonMission } from "./lessons.mjs";
 import { colopHTML, starsHTML, progressHTML, baseBadge, nTag } from "./colop.mjs";
 
 const MAX_STARS = 5;
@@ -9,8 +10,9 @@ const app = document.getElementById("app");
 const MASCOT = (name) => `design/mascot/r0b-${name}.svg`;
 
 const MISSIONS = {
-  ops: { title: "Operazioni", sub: "Somme, differenze, prodotti e divisioni nelle varie basi", build: () => buildOperationsMission(Math.random) },
-  conv: { title: "Decimale ⇄ Binario", sub: "Pesi, divisioni per 2 e cassaforte a 8 ruote", build: () => buildMission(Math.random, 8) },
+  ops: { title: "5 · Operazioni", sub: "Somme, differenze, prodotti e divisioni nelle varie basi", build: () => buildOperationsMission(Math.random) },
+  ...Object.fromEntries(Object.entries(LESSONS).map(([k, l]) => [`lez${k}`, { title: `${k} · ${l.title}`, sub: l.sub, build: () => buildLessonMission(Math.random, Number(k)) }])),
+  conv: { title: "4 · Decimale ⇄ Binario", sub: "Pesi, divisioni per 2 e cassaforte a 8 ruote", build: () => buildMission(Math.random, 8) },
 };
 
 const save = {

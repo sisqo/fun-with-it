@@ -6,7 +6,7 @@
 //   step.verify = { q: i, r: j, divisor }          → quoziente × divisore + resto, con i TUOI q (passo i) e r (passo j)
 
 import * as E from "./engine.mjs";
-import { rint } from "./questions.mjs";
+import { rint, rampInt, lerp } from "./questions.mjs";
 
 // Simbolo mostrato all'utente: nei compiti e nel libro la divisione è ":".
 const OPS = {
@@ -20,18 +20,21 @@ const POW2 = [16, 32, 64, 128, 256];
 
 // Operandi nelle fasce dei compiti (41+29, 256−105, 15×13, 26:3).
 // Sottrazioni: metà delle volte il minuendo è una potenza di 2 (prestito a catena) e c'è sempre almeno un prestito.
-function operands(rng, op) {
-  if (op === "+") return [rint(rng, 7, 61), rint(rng, 7, 61)];
+function operands(rng, op, t = 1) {
+  if (op === "+") return [rampInt(rng, t, [3, 12], [7, 61]), rampInt(rng, t, [3, 12], [7, 61])];
   if (op === "−") {
+    if (t < 0.35) { const a = rint(rng, 6, 15); return [a, rint(rng, 1, a - 1)]; } // riscaldamento: anche senza prestiti
+    const maxA = lerp(31, 256, t);
+    const pool = POW2.filter((p) => p <= maxA);
     for (let tries = 0; tries < 50; tries++) {
-      const a = rng() < 0.5 ? POW2[rint(rng, 0, POW2.length - 1)] : rint(rng, 16, 256);
+      const a = rng() < 0.5 && t >= 0.6 ? pool[rint(rng, 0, pool.length - 1)] : rint(rng, 16, maxA);
       const b = rint(rng, 1, a - 1);
       if (E.subBinary(E.toBin(a), E.toBin(b)).borrows.includes("1")) return [a, b];
     }
-    return [64, 13];
+    return [16, 5];
   }
-  if (op === "×") return [rint(rng, 3, 15), rint(rng, 3, 15)];
-  return [rint(rng, 9, 60), rint(rng, 3, 9)];
+  if (op === "×") return [rampInt(rng, t, [2, 4], [3, 15]), rampInt(rng, t, [2, 4], [3, 15])];
+  return [rampInt(rng, t, [6, 15], [9, 60]), rampInt(rng, t, [2, 3], [3, 9])];
 }
 
 const convExplain = (n) => [
@@ -103,8 +106,8 @@ export function judgeStep(step, givens, given) {
     note: `Riconvertendo il tuo ${r.userBin} dovevi ottenere ${r.expected}${expand}, hai scritto ${shown}. E ${r.expected} non è ${summary}: quindi era sbagliata anche l'operazione in binario.` };
 }
 
-export function guidedOperation(rng, op) {
-  const [a, b] = operands(rng, op);
+export function guidedOperation(rng, op, t = 1) {
+  const [a, b] = operands(rng, op, t);
   const A = E.toBin(a), B = E.toBin(b);
   const steps = [
     { label: `Converti ${a} in base 2`, answer: A, base: 2, explain: convExplain(a) },
@@ -176,9 +179,9 @@ export function guidedOperation(rng, op) {
 }
 
 // Divisione data già in binario (compito 5: 111100 : 110): niente conversione iniziale.
-export function binaryDivision(rng) {
-  const d = rint(rng, 3, 9);
-  const q = rint(rng, 2, 15);
+export function binaryDivision(rng, t = 1) {
+  const d = rampInt(rng, t, [2, 3], [3, 9]);
+  const q = rampInt(rng, t, [2, 4], [2, 15]);
   const r = rint(rng, 0, d - 1);
   const n = q * d + r;
   const A = E.toBin(n), B = E.toBin(d);
@@ -205,11 +208,11 @@ export function binaryDivision(rng) {
 }
 
 // Operazioni dirette in base 8 o 16 (si passa dal decimale).
-export function baseOperation(rng, base) {
+export function baseOperation(rng, base, t = 1) {
   const op = ["+", "−", "×"][rint(rng, 0, 2)];
-  let a = rint(rng, 8, 90), b = rint(rng, 3, 40);
+  let a = rampInt(rng, t, [5, 20], [8, 90]), b = rampInt(rng, t, [2, 9], [3, 40]);
   if (op === "−" && b >= a) [a, b] = [b + 1, a];
-  if (op === "×") { a = rint(rng, 3, 20); b = rint(rng, 3, 12); }
+  if (op === "×") { a = rampInt(rng, t, [2, 6], [3, 20]); b = rampInt(rng, t, [2, 4], [3, 12]); }
   const A = E.toBase(a, base), B = E.toBase(b, base);
   const res = OPS[op].dec(a, b);
   return {
@@ -223,10 +226,10 @@ export function baseOperation(rng, base) {
 }
 
 // Conversioni ottale/esadecimale <-> binario (compiti 6-9).
-export function groupConversion(rng) {
+export function groupConversion(rng, t = 1) {
   const base = rng() < 0.5 ? 8 : 16;
   const toBin = rng() < 0.5;
-  const n = rint(rng, 40, 4000);
+  const n = rampInt(rng, t, [8, 60], [40, 4000]);
   if (toBin) {
     const s = E.toBase(n, base);
     const { chunks, bin } = E.groupsToBin(s, base);
@@ -254,10 +257,10 @@ export function groupConversion(rng) {
 const comma = (s) => String(s).replace(/\./g, ",");
 
 // Numeri con la virgola (compito 9). Tutto in virgola italiana.
-export function pointConversion(rng) {
+export function pointConversion(rng, t = 1) {
   if (rng() < 0.5) {
-    const i = rint(rng, 1, 40);
-    const k = rint(rng, 1, 15); // k/16 ha sempre una scrittura decimale finita e una binaria esatta
+    const i = rampInt(rng, t, [1, 6], [1, 40]);
+    const k = t < 0.4 ? [4, 8, 12][rint(rng, 0, 2)] : rint(rng, 1, 15); // k/16 ha sempre una scrittura decimale finita e una binaria esatta
     const digits = String(k * 625).padStart(4, "0").replace(/0+$/, "");
     const info = E.decimalToBinaryPointDetailed(`${i}.${digits}`);
     return {
@@ -274,7 +277,7 @@ export function pointConversion(rng) {
       radio: "Parte intera: divisioni per 2. Parte decimale: moltiplicazioni per 2.",
     };
   }
-  const i = rint(rng, 1, 31), f = rint(rng, 1, 7);
+  const i = rampInt(rng, t, [1, 7], [1, 31]), f = t < 0.4 ? [2, 4, 6][rint(rng, 0, 2)] : rint(rng, 1, 7);
   const bin = `${E.toBin(i)}.${E.toBin(f).padStart(3, "0")}`;
   const st = E.binaryPointSteps(bin);
   const weight = (t) => (t.exp >= 0 ? String(2 ** t.exp) : `1/${2 ** -t.exp}`);
@@ -293,7 +296,7 @@ export function pointConversion(rng) {
 }
 
 // Ordinare numeri in basi diverse (compito 9). Etichette 1-4: non si confondono con le cifre esadecimali.
-export function orderMixed(rng) {
+export function orderMixed(rng, t = 1) {
   const vals = [];
   const used = new Set();
   const forms = [
@@ -304,7 +307,7 @@ export function orderMixed(rng) {
   ];
   for (const f of forms) {
     let n;
-    do { n = rint(rng, 10, 140); } while (used.has(n));
+    do { n = rampInt(rng, t, [5, 25], [10, 140]); } while (used.has(n));
     used.add(n);
     vals.push(f(n));
   }
@@ -325,15 +328,16 @@ export function orderMixed(rng) {
 // Missione "Operazioni": il focus dell'app. Il binario pesa più delle altre basi.
 export function buildOperationsMission(rng) {
   const plan = [
-    () => guidedOperation(rng, "+"),
-    () => guidedOperation(rng, "−"),
-    () => guidedOperation(rng, "×"),
-    () => binaryDivision(rng),
-    () => groupConversion(rng),
-    () => guidedOperation(rng, ":"),
-    () => baseOperation(rng, rng() < 0.5 ? 8 : 16),
-    () => pointConversion(rng),
-    () => orderMixed(rng),
+    (t) => guidedOperation(rng, "+", t),
+    (t) => guidedOperation(rng, "−", t),
+    (t) => guidedOperation(rng, "×", t),
+    (t) => binaryDivision(rng, t),
+    (t) => groupConversion(rng, t),
+    (t) => guidedOperation(rng, ":", t),
+    (t) => baseOperation(rng, rng() < 0.5 ? 8 : 16, t),
+    (t) => pointConversion(rng, t),
+    (t) => orderMixed(rng, t),
   ];
-  return plan.map((g, i) => ({ id: i + 1, ...g() }));
+  // Si parte con numeri facili (riscaldamento) e si sale fino ai valori dei compiti.
+  return plan.map((g, i) => ({ id: i + 1, ...g(i / (plan.length - 1)) }));
 }

@@ -5,8 +5,11 @@
 import * as E from "./engine.mjs";
 
 export const rint = (rng, a, b) => a + Math.floor(rng() * (b - a + 1));
+// Rampa di difficoltà: t = 0 (facile) … 1 (difficile). lerp interpola, rampInt estrae un intero in un intervallo che si allarga con t.
+export const lerp = (easy, hard, t) => Math.round(easy + (hard - easy) * t);
+export const rampInt = (rng, t, easy, hard) => rint(rng, lerp(easy[0], hard[0], t), lerp(easy[1], hard[1], t));
 const pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
-const shuffle = (rng, arr) => {
+export const shuffle = (rng, arr) => {
   const a = arr.slice();
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
@@ -30,8 +33,8 @@ function explainBinToDec(bin) {
   return [all.map((t) => `(${t.bit} × 2^${t.exp})`).join(" + "), all.map((t) => t.bit * t.value).join(" + "), `= ${total}`];
 }
 
-export function decToBin(rng, max = 255) {
-  const n = rint(rng, 3, max);
+export function decToBin(rng, t = 1) {
+  const n = rint(rng, 3, lerp(15, 255, t));
   return {
     kind: "text",
     prompt: `Scrivi ${n} in binario.`,
@@ -42,7 +45,8 @@ export function decToBin(rng, max = 255) {
   };
 }
 
-export function binToDec(rng, bits = 6) {
+export function binToDec(rng, t = 1) {
+  const bits = lerp(3, 6, t);
   const n = rint(rng, 2 ** (bits - 2), 2 ** bits - 1);
   const bin = E.toBin(n);
   return {
@@ -55,8 +59,8 @@ export function binToDec(rng, bits = 6) {
   };
 }
 
-export function safeCrack(rng, max = 255) {
-  const n = rint(rng, 5, max);
+export function safeCrack(rng, t = 1) {
+  const n = rint(rng, 3, lerp(15, 255, t));
   return {
     kind: "safe",
     prompt: `Scassina la cassaforte: accendi gli interruttori giusti per ottenere ${n}.`,
@@ -67,8 +71,8 @@ export function safeCrack(rng, max = 255) {
   };
 }
 
-export function bitsFor(rng) {
-  const n = pick(rng, [10, 100, 255, 256, 500, 1000, 1023, 1024]);
+export function bitsFor(rng, t = 1) {
+  const n = pick(rng, t < 0.4 ? [10, 100] : [10, 100, 255, 256, 500, 1000, 1023, 1024]);
   const need = E.bitsNeeded(n);
   const opts = shuffle(rng, [...new Set([need, need - 1, need + 1, need + 2])].filter((x) => x > 0));
   return {
@@ -203,7 +207,8 @@ export function buildMission(rng, count = 8) {
   const usedTheory = new Set();
   for (let i = 0; i < count; i++) {
     const gen = plan[i % plan.length];
-    const q = gen === theory ? theory(rng, usedTheory) : gen(rng);
+    const t = count > 1 ? i / (count - 1) : 1; // si parte facile e si sale
+    const q = gen === theory ? theory(rng, usedTheory) : gen(rng, t);
     out.push({ id: i + 1, ...q });
   }
   return out;
