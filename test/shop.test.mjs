@@ -255,3 +255,59 @@ test("ritmo (3): giocando anche solo un capitolo di teoria, senza caveau, si com
   assert.ok(games <= 3, `1.000 dollari in ${games} partite al 50% nel capitolo più povero`);
   for (const i of S.CATALOG.filter((x) => x.price > 0 && x.price <= 1000)) assert.equal(S.chaptersNeeded(i), 0, i.id);
 });
+
+// ---------- il traguardo raggiunto resta valido per il negozio (Rebecca) ----------
+
+const everPassedChapters = (player) => G.summarize(player).chapters.filter((c) => c.everPassed).length;
+const slippedTopic = { attempts: 12, correct: 10, window: [1, 1, 0, 0, 1], level: 1, lastAt: 1, passedAt: 5 }; // era superato, ora non più
+const passedTopic = { attempts: 12, correct: 12, window: [1, 1, 1, 1, 1], level: 1, lastAt: 1, passedAt: 5 };
+const ids = (ch) => G.chapterTopics(ch).map((t) => t.id);
+
+test("capitoli per il negozio: contano anche quelli superati in passato e poi scivolati", () => {
+  const topics = {};
+  for (const id of [...ids("warm"), ...ids("c1")]) topics[id] = passedTopic;
+  assert.equal(everPassedChapters({ topics, trophies: {}, vaultsOpened: {} }), 2);
+  // due errori in c1: lo stato di adesso scende, ma il traguardo resta
+  const slipped = { ...topics, ...Object.fromEntries(ids("c1").map((id) => [id, slippedTopic])) };
+  const chapters = G.summarize({ topics: slipped, trophies: {}, vaultsOpened: {} }).chapters;
+  assert.equal(chapters.find((c) => c.id === "c1").complete, false, "adesso non è più superato");
+  assert.equal(everPassedChapters({ topics: slipped, trophies: {}, vaultsOpened: {} }), 2, "ma resta contato");
+});
+
+test("superato → scivola → l'oggetto resta acquistabile (e dà ancora i capitoli giusti)", () => {
+  const slipped = { ...Object.fromEntries([...ids("warm"), ...ids("c1")].map((id) => [id, slippedTopic])) };
+  const player = { ...me(newStore(1500)), topics: slipped };
+  const chapters = everPassedChapters(player);
+  assert.equal(chapters, 2);
+  assert.equal(S.itemState(S.itemById("skin:terminale"), player, { chapters }).state, "buy", "Terminale resta comprabile");
+  const store = { ...newStore(1500) };
+  store.players = [{ ...store.players[0], topics: slipped }];
+  assert.equal(S.buy(store, "neri", "skin:terminale", { chapters }).ok, true);
+});
+
+test("un capitolo mai superato per intero non conta; con un argomento mai superato nemmeno", () => {
+  const topics = Object.fromEntries(ids("c1").map((id) => [id, passedTopic]));
+  delete topics.storia; // un argomento mai toccato
+  assert.equal(everPassedChapters({ topics, trophies: {}, vaultsOpened: {} }), 0);
+  topics.storia = { attempts: 3, correct: 3, window: [1, 1, 1], level: 0.3, lastAt: 1, passedAt: 0 }; // toccato ma mai superato
+  assert.equal(everPassedChapters({ topics, trophies: {}, vaultsOpened: {} }), 0);
+});
+
+test("salvataggi senza passedAt: un capitolo superato adesso conta comunque", () => {
+  const legacy = Object.fromEntries(ids("c1").map((id) => [id, { ...passedTopic, passedAt: 0 }]));
+  assert.equal(everPassedChapters({ topics: legacy, trophies: {}, vaultsOpened: {} }), 1);
+});
+
+test("un oggetto comprato resta tuo e indossabile anche se i capitoli scendono dopo", () => {
+  let st = newStore(6000);
+  let r = S.buy(st, "neri", "skin:oro", { chapters: 4 });
+  assert.equal(r.ok, true);
+  st = S.equip(r.store, "neri", "skin:oro");
+  const p = me(st);
+  // ora il giocatore non ha più nessun capitolo superato
+  assert.equal(S.itemState(S.itemById("skin:oro"), p, { chapters: 0 }).state, "equipped", "resta in uso");
+  const off = S.equip(S.equip(st, "neri", "skin:classico"), "neri", "skin:oro");
+  assert.equal(S.lookOf(me(off)).skin, "oro", "si può rimettere anche senza capitoli");
+  assert.equal(S.itemState(S.itemById("skin:oro"), me(S.equip(st, "neri", "skin:classico")), { chapters: 0 }).state, "owned");
+  assert.equal(S.buy(st, "neri", "skin:oro", { chapters: 0 }).ok, false, "ma non si ricompra");
+});

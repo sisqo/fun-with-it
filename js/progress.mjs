@@ -300,6 +300,8 @@ export function summarize(player) {
     ch.wasPassedAt = everAll ? Math.max(...list.map((r) => r.passedAt)) : 0;
     ch.vault = vaultState(ch, player);
     ch.trophyAt = player.trophies?.[ch.id] ?? 0;
+    // superato almeno una volta (ogni argomento ha passedAt) o lo è adesso: il traguardo raggiunto non si perde, nemmeno per il negozio
+    ch.everPassed = everAll || ch.complete;
     ch.wasNote = everAll && !ch.complete ? `Era superato il ${formatDay(ch.wasPassedAt)}: rifai giuste le prossime domande per tornarci` : "";
     ch.label = CHAPTER_LABEL[ch.state];
     ch.detail = chapterDetail(ch);

@@ -1132,6 +1132,9 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 }
 :is(.boss, .chapter-vault, .vault, .radio) .btn--ghost:hover { border-color: var(--c-vault-text); }
 :is(.boss, .chapter-vault, .vault, .radio) :focus-visible { outline-color: var(--neon-cyan); }
+/* …ma dentro il riquadro chiaro della prova del boss torna normale (a meno che sia di nuovo su scuro) */
+.boss__task .btn--ghost { color: var(--c-text); border-color: color-mix(in srgb, var(--c-text-muted) 70%, var(--c-surface)); }
+.boss__task :is(.vault, .radio) .btn--ghost { color: var(--c-vault-text); border-color: var(--c-vault-muted); }
 
 /* =========================================================================
    NEGOZIO: skin di R0b e sfondi
@@ -1145,6 +1148,9 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .skin--tramonto { --mascot-body: #ffc9a8; --mascot-shade: #ff8f7a; --mascot-screen: #2b1050; --mascot-face: #ffd166; --mascot-led: #a985ff; }
 .skin--terminale{ --mascot-body: #e6e6e6; --mascot-shade: #9a9a9a; --mascot-screen: #000000; --mascot-face: #4ff0a8; --mascot-led: #4ff0a8; --mascot-led-off: #4d4d4d; }
 .skin--oro      { --mascot-body: #ffd166; --mascot-shade: #e0a82e; --mascot-screen: #2a1a00; --mascot-face: #3ee6ff; --mascot-led: #ff4fa3; --mascot-ink: #3a2600; }
+/* Classico: rimette i colori di partenza anche dentro un contenitore con un'altra skin
+   (es. l'anteprima nel negozio, con .skin--x sul body). */
+.skin--classico { --mascot-ink: #1a1030; --mascot-body: #ece6f7; --mascot-shade: #c4b7e2; --mascot-screen: #170f30; --mascot-face: #3ee6ff; --mascot-led: #ff4fa3; --mascot-led-off: #7d7396; --mascot-water: #3ee6ff; --mascot-gold: #ffd166; }
 
 /* ---------- Sfondi ---------- */
 /* Cambiano solo il cielo (--c-bg-sky), sfumato verso il fondo del tema: le card restano su
@@ -1215,6 +1221,69 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .item__bar { height: 6px; border-radius: 3px; background: var(--c-surface-2); overflow: hidden; }
 .item__bar > i { display: block; height: 100%; background: var(--c-cash); }
 .item.is-bought { animation: star-in var(--dur-slow) var(--ease-pop); }
+
+/* ---------- Negozio: bloccato dai capitoli, novità ---------- */
+/* Due blocchi diversi, due segni diversi:
+   - contanti: .item--locked con .item__bar oro (quanto hai del prezzo) + "Ti mancano $ …"
+   - capitoli: .item--locked.item--needs-chapters con lucchetto sull'anteprima, .item__pips
+     (un pallino per capitolo richiesto, pieni quelli superati) + "Servono <b>4 capitoli superati</b> (ne hai 2)".
+   Se mancano entrambi, mostra i capitoli (si sbloccano giocando, i contanti arrivano da soli). */
+.item--needs-chapters .item__preview { position: relative; filter: saturate(.4); }
+.item--needs-chapters .item__preview::after {
+  content: ""; position: absolute; inset: 0; margin: auto; width: 40px; height: 40px; border-radius: 50%;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='11' width='14' height='10' rx='2' fill='white'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3' fill='none' stroke='white' stroke-width='2.5'/%3E%3C/svg%3E") center / 22px no-repeat,
+    var(--c-secondary);
+  box-shadow: 0 0 0 3px var(--c-surface);
+}
+.item--needs-chapters .item__price { color: var(--c-text-muted); }
+.item__pips { display: flex; gap: 4px; flex-wrap: wrap; }
+.item__pips i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--c-secondary); }
+.item__pips i.is-on { background: var(--c-secondary); }
+
+/* "Novità": oggetti che ora puoi comprare (o che si sono appena sbloccati) */
+.item.is-new { border-color: var(--c-cash); }
+.item.is-new .item__tag { background: var(--c-cash); color: var(--c-surface); }
+/* sul tasto Negozio della home: <button class="btn …">Negozio · $ 1.250 <span class="btn__badge">2 novità</span></button> */
+.btn__badge {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: var(--sp-2); padding: 1px 8px; border-radius: var(--r-pill);
+  background: var(--c-cash); color: var(--c-surface); font-size: var(--fs-xs); font-weight: 800; white-space: nowrap;
+}
+.btn__badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: siren 1.8s ease-in-out infinite; }
+.btn:has(.btn__badge) { border-color: var(--c-cash); flex-wrap: wrap; white-space: nowrap; row-gap: 2px; } /* il testo resta su una riga; se non c'è posto va a capo il segno */
+
+/* ---------- Ordinamento a schede (.order) ---------- */
+/* Markup di David: button.order__item[aria-pressed] con .order__pos, .order__num (+sub base), .order__base, .order__dec.
+   Ogni scheda mostra uno "slot" tratteggiato vuoto in alto a sinistra: si capisce che va numerata.
+   Dopo la risposta: .is-correct / .is-wrong sulle schede (posizione giusta o no) e .order__dec visibile. */
+.order { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.order__item {
+  container-type: inline-size; position: relative; min-height: 112px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 42px var(--sp-2) var(--sp-3); border-radius: var(--r-md);
+  border: var(--border-w) solid var(--c-border); background: var(--c-surface); box-shadow: var(--shadow-1); color: var(--c-text);
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast);
+}
+.order__item:active { transform: scale(.97); }
+.order__item:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
+.order__item[aria-pressed="true"] { border-color: var(--c-primary); background: color-mix(in srgb, var(--c-primary) 8%, var(--c-surface)); box-shadow: 0 0 0 1px var(--c-primary); }
+.order__item:disabled { opacity: 1; cursor: default; }
+.order__pos {
+  position: absolute; top: 8px; left: 8px; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--font-mono); font-weight: 800; font-size: var(--fs-sm);
+  border: 2px dashed var(--c-text-muted); color: transparent;
+}
+.order__item[aria-pressed="true"] .order__pos { border-style: solid; border-color: var(--c-primary); background: var(--c-primary); color: var(--c-on-primary); animation: star-in var(--dur-med) var(--ease-pop); }
+/* numero: si rimpicciolisce con la scheda (9 cifre stanno anche a 320px) */
+.order__num { font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800; line-height: 1; text-align: center; white-space: nowrap;
+  font-size: min(var(--fs-xl), 16cqi); color: var(--c-digit); }
+.order__num sub { font-size: max(11px, .45em); color: var(--c-text-muted); margin-left: 2px; }
+.order__dec { padding: 1px 8px; border-radius: var(--r-pill); background: var(--c-surface-2); font-family: var(--font-mono); font-feature-settings: var(--num-features); font-size: var(--fs-xs); font-weight: 700; color: var(--c-text); }
+.order__item.is-correct { border-color: var(--c-success); background: var(--c-success-bg); box-shadow: none; }
+.order__item.is-correct .order__pos { background: var(--c-success); border-color: var(--c-success); color: var(--c-surface); }
+.order__item.is-wrong { border-color: var(--c-danger); background: var(--c-danger-bg); box-shadow: none; }
+.order__item.is-wrong .order__pos { background: var(--c-danger); border-color: var(--c-danger); color: var(--c-surface); }
+.order__hint { margin: 0; font-size: var(--fs-sm); color: var(--c-text-muted); }
 
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }

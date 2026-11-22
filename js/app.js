@@ -1056,11 +1056,11 @@ function shopItemHTML(it, player, ctx, boughtId) {
 function shopScreen(boughtId = null, walletFrom = null) {
   const player = P.currentPlayer(store);
   if (!player) return nameScreen();
-  const ctx = { chapters: G.summarize(player).chapters.filter((c) => c.complete).length };
+  const ctx = { chapters: G.summarize(player).chapters.filter((c) => c.everPassed).length }; // superati almeno una volta, riscaldamento compreso
   render(el(`
     <section class="shop">
       <header class="shop__head"><h1 class="shop__title">Negozio</h1><span class="cash shop__wallet" aria-label="Contanti: ${player.cash} dollari"><span class="cash__n">${money(walletFrom ?? player.cash)}</span></span></header>
-      <p class="shop__hint">${money(Economy.CASH_PER_RIGHT)} a risposta giusta, ${money(Economy.CASH_PER_STEP)} a passaggio di un esercizio, un premio a caveau aperto. Gli oggetti più cari richiedono anche capitoli superati.</p>
+      <p class="shop__hint">${money(Economy.CASH_PER_RIGHT)} a risposta giusta, ${money(Economy.CASH_PER_STEP)} a passaggio di un esercizio, un premio a caveau aperto. Gli oggetti più cari richiedono anche capitoli superati (anche il riscaldamento).</p>
       <div class="tabs" role="tablist" aria-label="Reparti">${Object.entries(S.SLOTS).map(([slot, label]) => `<button class="tabs__tab" role="tab" type="button" data-tab="${slot}" aria-selected="${slot === shopTab}">${esc(label)}</button>`).join("")}</div>
       <ul class="shop__grid" role="tabpanel">${S.itemsIn(shopTab).map((it) => shopItemHTML(it, player, ctx, boughtId)).join("")}</ul>
       <button class="btn btn--ghost btn--block" id="back" type="button">Torna ai capitoli</button>
