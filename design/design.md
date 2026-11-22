@@ -535,12 +535,80 @@ in alto a destra con icona e parola.
   oro. Sotto metti `figure.trophy.trophy--big` con `trophy.svg`, la coppa che entra con un
   salto, più R0b sul podio e "+ $ 500 e un trofeo nel profilo".
 - **Ritirata o sconfitta.** Usa un `.feedback--hint`, non `--ko`: non si perde niente.
+- **Bottoni ghost sul buio.** Dentro `.boss`, `.chapter-vault`, `.vault` e `.radio`,
+  `.btn--ghost` è chiaro in automatico: testo chiaro, bordo visibile, focus ciano. Puoi
+  togliere `.boss .lesson__skip .btn` da `style.css`.
 - **La porta va messa inline** (contenuto di `vault-door.svg`), altrimenti la CSS non
   raggiunge il volantino e i bulloni. Non ha `id`.
 
 **Trofei nel profilo.** `ul.trophies` è uno scaffale con un `li` per capitolo, ognuno con
 `figure.trophy` > `svg.trophy__cup` (inline) + `figcaption` (`<b>Caveau 4</b>` e la data).
 `.trophy.is-empty` mostra la sagoma grigia con "da aprire".
+
+### Negozio (`.shop`)
+
+I contanti finalmente si spendono, in skin di R0b e sfondi.
+
+**Listino.** Si guadagnano $ 100 a risposta giusta e $ 500 a caveau; una partita da 10
+domande vale fino a $ 1.000.
+
+| Reparto | Oggetto | Prezzo | Quanto ci vuole |
+|---|---|---|---|
+| R0b | Classico (`.skin` nessuna) | gratis | è quella di partenza |
+| R0b | Notte al neon (`.skin--notte`) | $ 400 | mezza partita: il primo acquisto arriva presto |
+| R0b | Menta (`.skin--menta`) | $ 400 | |
+| R0b | Tramonto (`.skin--tramonto`) | $ 800 | |
+| R0b | Terminale (`.skin--terminale`) | $ 1.500 | |
+| R0b | Oro 24 carati (`.skin--oro`) | $ 4.000 | il traguardo: circa 3 caveau più qualche partita |
+| Sfondi | Tramonto sulla baia (nessun `data-bg`) | gratis | |
+| Sfondi | Molo di notte (`data-bg="molo"`) | $ 300 | |
+| Sfondi | Aurora (`data-bg="aurora"`) | $ 600 | |
+| Sfondi | Griglia (`data-bg="griglia"`) | $ 600 | |
+| Sfondi | Pioggia di bit (`data-bg="codice"`) | $ 1.500 | |
+| Sfondi | Caveau d'oro (`data-bg="oro"`) | $ 3.000 | |
+
+I prezzi sono una proposta: si cambiano solo nei dati, la CSS non li contiene.
+
+**Skin.** Sono set di variabili `--mascot-*`, quindi funzionano **solo con R0b inline**,
+come la porta del caveau. Metti `.skin--<nome>` su un contenitore alto (per esempio la
+radice dell'app): tutte le copie di R0b la prendono, nei feedback, nella home e nelle
+lezioni.
+
+**Sfondi.** Metti `data-bg="<nome>"` su `<html>`.
+- Cambiano solo il cielo in alto (`--c-bg-sky`), sfumato nel fondo del tema: le card restano
+  sulle superfici normali, quindi il testo non perde contrasto.
+- In scuro le tinte sono più tenui (`--sky-k: .55`). Verificato: i titoli rosa restano ≥3:1
+  (testo grande) e il testo muted ≥4.5:1 su tutti gli sfondi.
+
+**Schermata**
+
+- `.shop__head` contiene il titolo e `.cash.shop__wallet`.
+- `.shop__hint` è la riga "come si guadagna".
+- Le schede `.tabs` sono `role="tablist"`, con `button.tabs__tab[aria-selected]`.
+- `ul.shop__grid` ha 2 colonne su telefono. Ogni oggetto è `li.item.item--<stato>`:
+
+```html
+<li class="item item--buy">
+  <span class="item__tag">Tuo</span>                    <!-- solo per equipped/owned -->
+  <div class="item__preview">R0b inline dentro .skin--x  |  <span class="bg-swatch" data-bg="x"></span></div>
+  <p class="item__name">Menta</p>
+  <span class="item__price">$ 400</span>
+  <button class="btn">Compra</button>
+</li>
+```
+
+| Stato | Bordo | Etichetta | Azione |
+|---|---|---|---|
+| `item--equipped` | verde | "✓ In uso" | tasto disabilitato "In uso" |
+| `item--owned` | normale | "Tuo" | tasto ghost "Usa" |
+| `item--buy` (te lo puoi permettere) | normale | | prezzo in oro, tasto oro "Compra" |
+| `item--locked` (troppo caro) | normale | | anteprima un po' spenta; `.item__bar` (quanto hai del prezzo) e `.item__gap` "Ti mancano `<b>$ 250</b>`" |
+
+**Acquisto.**
+1. Chiedi conferma con `dialog.confirm`: "Comprare Menta per $ 400?".
+2. Metti `.is-bought` sulla card, che fa un piccolo salto.
+3. Aggiorna `.cash` (hai già il conteggio).
+4. Se vuoi, mostra R0b `esulta` con la skin nuova.
 
 ### Radio in auto (`.radio`)
 
@@ -701,4 +769,4 @@ Nell'ordine di David:
 
 1. Notifiche-badge stile feed.
 2. Menu "smartphone".
-3. Negozio (skin di R0b, auto, sfondi).
+3. Negozio: le auto nel garage (skin e sfondi sono fatti).

@@ -2,7 +2,7 @@
 // Funzioni pure: lavorano su un oggetto `store` e ne restituiscono uno nuovo; la lettura/scrittura sul disco sta in app.js.
 //
 // store = { v: 2, current: "chiave"|null, legacy?: {cash, missionsDone}, players: [player] }
-// player = { key, name, cash, missionsDone, done: { [missione]: volte }, topics: { [argomento]: stats }, trophies: { [capitolo]: quando }, createdAt, updatedAt }
+// player = { key, name, cash, missionsDone, done: { [missione]: volte }, topics: { [argomento]: stats }, trophies: { [capitolo]: quando }, vaultsOpened: { [capitolo]: quando }, createdAt, updatedAt }
 // stats  = { attempts, correct, window: [0|1 … ultimi 5 esiti], level: 0..1 (difficoltà), lastAt, passedAt (quando è stato superato la prima volta, 0 = mai; non si cancella) }
 
 export const MAX_NAME = 20;
@@ -87,7 +87,7 @@ export function parseStore(raw) {
       if (!n.ok || seen.has(n.key)) continue;
       seen.add(n.key);
       store.players.push({
-        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics), trophies: safeTrophies(p.trophies),
+        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics), trophies: safeTrophies(p.trophies), vaultsOpened: safeTrophies(p.vaultsOpened),
         createdAt: ts(p.createdAt), updatedAt: ts(p.updatedAt),
       });
       if (store.players.length >= MAX_PLAYERS) break;
@@ -114,7 +114,7 @@ export function enter(store, rawName, now = Date.now()) {
   if (existing) return { ok: true, isNew: false, store: { ...store, current: existing.key }, player: existing };
   if (store.players.length >= MAX_PLAYERS) return { ok: false, error: `Ci sono già ${MAX_PLAYERS} giocatori: elimina un profilo prima di aggiungerne uno.`, store };
   const inherited = store.legacy && store.players.length === 0 ? store.legacy : { cash: 0, missionsDone: 0 };
-  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, trophies: {}, createdAt: now, updatedAt: now };
+  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, createdAt: now, updatedAt: now };
   const next = { ...store, current: player.key, players: [...store.players, player] };
   delete next.legacy;
   return { ok: true, isNew: true, store: next, player };
@@ -122,7 +122,7 @@ export function enter(store, rawName, now = Date.now()) {
 
 // Azzera i progressi di un giocatore (conto, missioni completate), tenendo il nome.
 export function resetPlayer(store, key, now = Date.now()) {
-  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, updatedAt: now }));
+  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, updatedAt: now }));
 }
 
 // Elimina del tutto un giocatore.
@@ -160,12 +160,22 @@ export function markPassed(store, key, topic, now = Date.now()) {
   return replacePlayer(store, key, (p) => ({ ...p, topics: { ...p.topics, [topic]: { ...current, passedAt: now } } }));
 }
 
-export const VAULT_REWARD = 500;
+// Il premio cresce con il capitolo: una partita normale porta $ 1.000-2.500, il caveau deve valere di più.
+export const VAULT_REWARDS = { warm: 1000, c1: 1500, c2: 1500, conv: 2000, ops: 3000, basi: 2500, virgola: 2500 };
+export const vaultReward = (chapterId) => VAULT_REWARDS[chapterId] ?? 1000;
 
 // Vince il caveau di un capitolo: contanti e trofeo, una volta sola (rivincere non paga di nuovo).
-export function winVault(store, key, chapterId, now = Date.now(), reward = VAULT_REWARD) {
+export function winVault(store, key, chapterId, now = Date.now()) {
   if (!/^[a-z0-9]{1,12}$/.test(chapterId)) return store;
   const player = store.players.find((p) => p.key === key);
   if (!player || player.trophies?.[chapterId]) return store;
-  return replacePlayer(store, key, (p) => ({ ...p, cash: num(p.cash + reward), trophies: { ...p.trophies, [chapterId]: now }, updatedAt: now }));
+  return replacePlayer(store, key, (p) => ({ ...p, cash: num(p.cash + vaultReward(chapterId)), trophies: { ...p.trophies, [chapterId]: now }, updatedAt: now }));
+}
+
+// Il caveau di un capitolo si è aperto (capitolo alla perfezione): resta da tentare finché non si vince, anche se poi la perfezione si perde.
+export function markVaultOpened(store, key, chapterId, now = Date.now()) {
+  if (!/^[a-z0-9]{1,12}$/.test(chapterId)) return store;
+  const p = store.players.find((x) => x.key === key);
+  if (!p || p.vaultsOpened?.[chapterId] || p.trophies?.[chapterId]) return store;
+  return replacePlayer(store, key, (x) => ({ ...x, vaultsOpened: { ...x.vaultsOpened, [chapterId]: now }, updatedAt: now }));
 }

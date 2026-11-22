@@ -260,9 +260,20 @@ export function chapterDetail(ch) {
 
 // Stato del caveau di un capitolo: vinto (trofeo, per sempre), da tentare (capitolo alla perfezione), chiuso.
 export const VAULT_STATE = { WON: "won", READY: "ready", CLOSED: "closed" };
+// Una volta aperto (capitolo alla perfezione) resta da tentare finché non si vince, anche se poi la perfezione si perde.
 export function vaultState(chapter, player) {
   if (player?.trophies?.[chapter.id]) return VAULT_STATE.WON;
-  return chapter.state === CHAPTER_STATE.PERFECT ? VAULT_STATE.READY : VAULT_STATE.CLOSED;
+  if (player?.vaultsOpened?.[chapter.id] || chapter.state === CHAPTER_STATE.PERFECT) return VAULT_STATE.READY;
+  return VAULT_STATE.CLOSED;
+}
+
+// Ricorda i caveau che si sono aperti (capitoli ora alla perfezione). Restituisce lo stesso store se non c'è niente da fare.
+export function syncVaults(store, key, now = Date.now()) {
+  const player = store.players.find((p) => p.key === key);
+  if (!player) return store;
+  let next = store;
+  for (const ch of summarize(player).chapters) if (ch.state === CHAPTER_STATE.PERFECT) next = P.markVaultOpened(next, key, ch.id, now);
+  return next;
 }
 
 // ---------- Riepilogo per la schermata "I miei progressi" ----------

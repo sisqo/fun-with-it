@@ -1150,10 +1150,10 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 /* Cambiano solo il cielo (--c-bg-sky), sfumato verso il fondo del tema: le card restano su
    superfici normali, quindi testo e contrasti non cambiano. Funzionano in chiaro e scuro.
    <html data-bg="molo"> ; per l'anteprima nel negozio: <span class="bg-swatch" data-bg="molo"></span> */
-/* --sky-k: intensità delle tinte. Di notte le tinte chiare abbasserebbero il contrasto dei titoli rosa: si dimezzano. */
+/* --sky-k: intensità delle tinte. Di notte le tinte chiare abbasserebbero il contrasto dei titoli rosa: si riducono. */
 :root { --sky-k: 1; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sky-k: .4; } }
-:root[data-theme="dark"] { --sky-k: .4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sky-k: .55; } }
+:root[data-theme="dark"] { --sky-k: .55; }
 [data-bg="molo"]     { --c-bg-sky: linear-gradient(180deg, color-mix(in srgb, #3ee6ff calc(30% * var(--sky-k)), var(--c-bg)) 0%, color-mix(in srgb, #2f6bff calc(16% * var(--sky-k)), var(--c-bg)) 40%, var(--c-bg) 85%); }
 [data-bg="aurora"]   { --c-bg-sky: linear-gradient(170deg, color-mix(in srgb, #4ff0a8 calc(30% * var(--sky-k)), var(--c-bg)) 0%, color-mix(in srgb, #a985ff calc(24% * var(--sky-k)), var(--c-bg)) 45%, var(--c-bg) 90%); }
 [data-bg="griglia"]  { --c-bg-sky:
@@ -1163,7 +1163,7 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 [data-bg="codice"]   { --c-bg-sky:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='64'%3E%3Ctext x='4' y='20' font-family='monospace' font-size='14' fill='%23a985ff' fill-opacity='.18'%3E1011 0110%3C/text%3E%3Ctext x='-20' y='52' font-family='monospace' font-size='14' fill='%233ee6ff' fill-opacity='.14'%3E0100 1101 01%3C/text%3E%3C/svg%3E"),
     linear-gradient(180deg, color-mix(in srgb, #a985ff calc(20% * var(--sky-k)), var(--c-bg)) 0%, var(--c-bg) 75%); }
-[data-bg="oro"]      { --c-bg-sky: radial-gradient(90% 50% at 50% 0%, color-mix(in srgb, #ffd166 calc(42% * var(--sky-k)), var(--c-bg)) 0%, color-mix(in srgb, #ff9a3c calc(14% * var(--sky-k)), var(--c-bg)) 50%, var(--c-bg) 90%); }
+[data-bg="oro"]      { --c-bg-sky: radial-gradient(90% 50% at 50% 0%, color-mix(in srgb, #ffd166 calc(38% * var(--sky-k)), var(--c-bg)) 0%, color-mix(in srgb, #ff9a3c calc(14% * var(--sky-k)), var(--c-bg)) 50%, var(--c-bg) 90%); }
 .bg-swatch { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--r-sm); background: var(--c-bg-sky), var(--c-bg); border: 1px solid var(--c-border); }
 
 /* ---------- Schermata del negozio ---------- */
@@ -1183,7 +1183,7 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .tabs__tab { min-height: var(--tap); border: 0; border-radius: var(--r-pill); background: transparent; font-weight: 800; color: var(--c-text-muted); }
 .tabs__tab[aria-selected="true"] { background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-1); }
 
-.shop__grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); gap: var(--sp-3); }
+.shop__grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 118px), 1fr)); gap: var(--sp-3) var(--sp-2); }
 .item {
   position: relative; display: flex; flex-direction: column; gap: var(--sp-2);
   padding: var(--sp-3); border-radius: var(--r-md);
@@ -1208,9 +1208,10 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 .item--owned .item__tag { background: var(--c-surface-2); color: var(--c-text); }
 .item--buy .btn { background: var(--c-cash); color: var(--c-surface); }
 .item--locked { box-shadow: none; }
-.item--locked .item__preview { filter: saturate(.35); }
+.item--locked .item__preview { filter: saturate(.7); }
 .item--locked .item__price { color: var(--c-text-muted); }
-.item__gap { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); } /* "Ti mancano $ 350" */
+.item__gap { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); } /* "Ti mancano <b>$ 350</b>" */
+.item__gap b { white-space: nowrap; color: var(--c-text); }
 .item__bar { height: 6px; border-radius: 3px; background: var(--c-surface-2); overflow: hidden; }
 .item__bar > i { display: block; height: 100%; background: var(--c-cash); }
 .item.is-bought { animation: star-in var(--dur-slow) var(--ease-pop); }

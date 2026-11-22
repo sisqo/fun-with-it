@@ -101,5 +101,6 @@
 .lesson__skip .btn { min-height: var(--tap); font-size: var(--fs-sm); }
 
 
-/* "Esci dal caveau": il caveau è scuro in entrambi i temi, il tasto deve restare leggibile */
-.boss .lesson__skip .btn { color: #f4efff; border-color: rgb(244 239 255 / .5); background: transparent; }
+
+/* dentro il riquadro chiaro della prova il tasto ghost deve restare scuro (fuori, sul fondo scuro del caveau, lo schiarisce la CSS di Doris) */
+.boss__task .btn--ghost { color: var(--c-text); border-color: var(--c-border); }
