@@ -273,48 +273,70 @@ export function addSteps(a, b) {
   return steps;
 }
 
-// Sottrazione: un passo per colonna. Se la cifra sopra non basta, la colonna a sinistra "presta" 1 (che qui vale 2).
+// Sottrazione "come alla lavagna": se la cifra sopra non basta, si cerca a sinistra il primo 1.
+// Quell'1 diventa 0, gli zeri attraversati diventano 1 e nella colonna corrente si hanno 2 (= 10 in binario).
 export function subSteps(a, b) {
   const x = assertDigits(a, 2), y = assertDigits(b, 2);
   if (fromBin(x) < fromBin(y)) throw new RangeError("risultato negativo");
   const len = Math.max(x.length, y.length);
-  const xa = x.padStart(len, "0"), ya = y.padStart(len, "0");
+  const orig = [...x.padStart(len, "0")].map(Number);
+  const cur = orig.slice();
+  const low = [...y.padStart(len, "0")].map(Number);
+  const weight = (i) => 2 ** (len - 1 - i);
   const steps = [];
-  let borrow = 0;
   for (let i = len - 1; i >= 0; i--) {
-    const top = Number(xa[i]), bottom = Number(ya[i]);
-    let value = top - bottom - borrow;
-    const borrowOut = value < 0 ? 1 : 0;
-    const shown = value + (borrowOut ? 2 : 0);
-    const gave = borrow ? " − 1 (ho prestato alla colonna a destra)" : "";
-    const text = borrowOut
-      ? `${top} − ${bottom}${gave} non si può: chiedo 1 alla colonna a sinistra (qui vale 2): ${top + 2} − ${bottom}${borrow ? " − 1" : ""} = ${shown}`
-      : `${top} − ${bottom}${gave} = ${shown}`;
-    steps.push({ column: len - 1 - i, top, bottom, borrowIn: borrow, digit: shown, borrowOut, text });
-    borrow = borrowOut;
+    const w = weight(i);
+    const changed = cur[i] !== orig[i];
+    const head = `Colonna dei ${w}: ${changed ? `ora c'è ${cur[i]} (era ${orig[i]}) → ` : ""}`;
+    let digit, text, chain = null;
+    if (cur[i] >= low[i]) {
+      digit = cur[i] - low[i];
+      text = `${head}${cur[i]} − ${low[i]} = ${digit}`;
+    } else {
+      let k = i - 1;
+      while (k >= 0 && cur[k] === 0) k--;
+      const crossed = [];
+      for (let j = k + 1; j < i; j++) crossed.push(j);
+      cur[k] = 0;
+      for (const j of crossed) cur[j] = 1;
+      digit = 2 - low[i];
+      chain = { from: len - 1 - k, crossed: crossed.map((j) => len - 1 - j) };
+      const cross = crossed.length ? `, gli zeri attraversati (colonne dei ${crossed.map(weight).join(", ")}) diventano 1` : "";
+      text = `${head}${cur[i]} − ${low[i]} non si può. Cerco a sinistra il primo 1: è nella colonna dei ${weight(k)}. Quell'1 diventa 0${cross}, e qui ho 2 (= 10 in binario): 2 − ${low[i]} = ${digit}`;
+    }
+    steps.push({ column: len - 1 - i, top: orig[i], bottom: low[i], digit, borrowOut: chain ? 1 : 0, chain, text });
   }
   return steps;
 }
 
-// Divisione lunga in binario: abbasso una cifra alla volta, il divisore ci sta? 1 : 0.
+// Divisione lunga in binario, come a scuola: si prendono le prime cifre finché il divisore ci sta,
+// poi si abbassa una cifra alla volta e nel quoziente si scrive 1 (ci sta) o 0 (non ci sta).
 export function divSteps(a, b) {
   const x = assertDigits(a, 2), y = assertDigits(b, 2);
   const d = fromBin(y);
   if (d === 0) throw new RangeError("divisione per zero");
   const steps = [];
-  let rem = 0, q = "";
-  for (const ch of x) {
-    rem = rem * 2 + Number(ch);
+  let rem = 0, q = "", i = 0;
+  while (i < x.length && rem < d) { rem = rem * 2 + Number(x[i]); i++; }
+  if (rem < d) {
+    steps.push({ bring: null, partial: toBin(rem), fits: false, remainder: toBin(rem), text: `${x} è più piccolo di ${y}: quoziente 0 e resto ${x}` });
+    return { steps, quotient: "0", remainder: toBin(rem) };
+  }
+  steps.push({ bring: null, partial: toBin(rem), fits: true, remainder: toBin(rem - d), text: `Prendo le prime cifre finché ${y} ci sta: ${toBin(rem)}. Ci sta: scrivo 1 nel quoziente, ${toBin(rem)} − ${y} = ${toBin(rem - d)}` });
+  q = "1";
+  rem -= d;
+  for (; i < x.length; i++) {
+    rem = rem * 2 + Number(x[i]);
     const fits = rem >= d;
     const before = rem;
     if (fits) rem -= d;
     q += fits ? "1" : "0";
     steps.push({
-      bring: ch, partial: toBin(before), fits, remainder: toBin(rem),
+      bring: x[i], partial: toBin(before), fits, remainder: toBin(rem),
       text: fits
-        ? `abbasso ${ch}: ${toBin(before)} ≥ ${y}, ci sta → quoziente 1, ${toBin(before)} − ${y} = ${toBin(rem)}`
-        : `abbasso ${ch}: ${toBin(before)} < ${y}, non ci sta → quoziente 0, resto ${toBin(rem)}`,
+        ? `Abbasso ${x[i]}: ${toBin(before)}. ${y} ci sta: scrivo 1 nel quoziente, ${toBin(before)} − ${y} = ${toBin(rem)}`
+        : `Abbasso ${x[i]}: ${toBin(before)}. ${y} non ci sta: scrivo 0 nel quoziente, il resto è ${toBin(rem)}`,
     });
   }
-  return { steps, quotient: q.replace(/^0+(?=.)/, ""), remainder: toBin(rem) };
+  return { steps, quotient: q, remainder: toBin(rem) };
 }

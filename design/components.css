@@ -270,7 +270,6 @@ body {
 }
 .colop > span { height: calc(var(--cell) * 1.25); display: grid; place-items: center; position: relative; z-index: 1; }
 .colop__carry { font-size: .6em; color: var(--c-carry); height: calc(var(--cell) * .9) !important; align-self: end; }
-.colop__carry.is-borrow { text-decoration: line-through; } /* prestito: la cifra sopra viene "spesa" */
 .colop__op { color: var(--c-text-muted); }
 .colop__rule { grid-column: 1 / -1; height: 0; border-top: 3px solid var(--c-text); margin: 4px 0; position: relative; z-index: 1; }
 .colop__res { color: var(--c-digit); }

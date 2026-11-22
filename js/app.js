@@ -1,5 +1,5 @@
 import { buildMission, checkAnswer } from "./questions.mjs";
-import { buildOperationsMission, resolveStep } from "./operations.mjs";
+import { buildOperationsMission, judgeStep } from "./operations.mjs";
 
 const MAX_STARS = 5;
 const CASH_PER_RIGHT = 100;
@@ -43,7 +43,7 @@ function home() {
 }
 
 function startMission(key) {
-  game = { key, questions: MISSIONS[key].build(), index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [] };
+  game = { key, questions: MISSIONS[key].build(), index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [] };
   showQuestion();
 }
 
@@ -58,6 +58,13 @@ function hud() {
     <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>`;
 }
 
+function doneItem(s, i) {
+  const m = game.marks[i] || {};
+  const given = esc(game.givens[i] ?? "");
+  if (m.wrong) return `<li class="done wrong"><span>${esc(s.label)}</span> <b><s>${given}</s> → ${esc(m.correct)}</b></li>`;
+  return `<li class="done"><span>${esc(s.label)}</span> <b>${given}</b></li>`;
+}
+
 function inputRow(q, hint) {
   return `<form class="row" id="form"><input type="text" id="ans" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="La tua risposta" ${hint ? `placeholder="${esc(hint)}"` : ""} /><button class="btn" id="submit">Rispondi</button></form>`;
 }
@@ -69,7 +76,7 @@ function showQuestion() {
   let unit = q;
 
   if (q.kind === "guided") {
-    const done = q.steps.slice(0, game.step).map((s, i) => `<li class="done"><span>${esc(s.label)}</span> <b>${esc(game.givens[i] ?? s.answer)}</b></li>`).join("");
+    const done = q.steps.slice(0, game.step).map((s, i) => `${doneItem(s, i)}`).join("");
     const cur = q.steps[game.step];
     unit = cur;
     body = `<ol class="steps">${done}<li class="cur">${esc(cur.label)}</li></ol>${inputRow(q)}`;
@@ -115,20 +122,24 @@ function submit(unit, given, clicked) {
   game.answered = true;
   const q = game.questions[game.index];
   const isStep = q.kind === "guided";
-  let resolved = { expected: unit.answer, consistent: true, note: "" };
+  let verdict;
   if (isStep) {
-    resolved = resolveStep(unit, game.givens);
     game.givens[game.step] = String(given).trim();
+    verdict = judgeStep(unit, game.givens, given);
+  } else {
+    const ok = checkAnswer(q, given);
+    verdict = { ok, star: !ok, reward: ok, headline: ok ? "" : `Risposta giusta: ${q.kind === "safe" ? q.value : q.answer}`, note: "" };
   }
-  const ok = isStep ? checkAnswer({ kind: "text", answer: resolved.expected, base: unit.base }, given) : checkAnswer(q, given);
+  const ok = verdict.ok;
   game.totalUnits += 1;
+  if (isStep) game.marks[game.step] = { wrong: !verdict.ok && !verdict.discovered, correct: unit.answer };
 
-  if (ok) {
+  if (verdict.reward) {
     game.earned += CASH_PER_RIGHT;
     game.rightCount += 1;
     game.streak += 1;
     if (game.streak % 3 === 0 && game.stars > 0) game.stars -= 1;
-  } else {
+  } else if (verdict.star) {
     game.streak = 0;
     game.stars += 1;
   }
@@ -146,11 +157,12 @@ function submit(unit, given, clicked) {
   const moreSteps = isStep && game.step < q.steps.length - 1;
   const last = game.index === game.questions.length - 1;
   const showExplain = !moreSteps; // per gli esercizi guidati la spiegazione completa arriva alla fine
-  const stepHelp = isStep && !ok && unit.explain ? `<ol>${unit.explain.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : "";
-  const note = resolved.note ? `<p>${esc(resolved.note)}</p>` : "";
+  const stepHelp = isStep && !ok && moreSteps && unit.explain ? `<ol>${unit.explain.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : "";
+  const note = verdict.note ? `<p>${esc(verdict.note)}</p>` : "";
   const steps = showExplain ? `<ol>${q.explain.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>` : "";
-  const shownAnswer = isStep ? resolved.expected : q.kind === "safe" ? q.value : q.answer;
-  const msg = ok ? `<b>Esatto! +${money(CASH_PER_RIGHT)}</b>` : `<b>Ahi. Risposta giusta: ${esc(shownAnswer)}</b>`;
+  const msg = verdict.reward
+    ? `<b>${verdict.headline ? esc(verdict.headline) + " " : "Esatto! "}+${money(CASH_PER_RIGHT)}</b>`
+    : `<b>${esc(verdict.headline)}</b>`;
   const next = failed ? "Vedi come è andata" : moreSteps ? "Prossimo passaggio" : last ? "Fine missione" : "Avanti";
   root.querySelector("#fb").innerHTML = `
     <div class="feedback ${ok ? "ok" : "bad"}" role="status">${msg}${note}${stepHelp}${steps}${showExplain ? `<p class="radio">${esc(q.radio)}</p>` : ""}</div>
@@ -160,7 +172,7 @@ function submit(unit, given, clicked) {
     if (failed) return finish(true);
     if (moreSteps) { game.step += 1; return showQuestion(); }
     if (last) return finish(false);
-    game.index += 1; game.step = 0; game.givens = []; showQuestion();
+    game.index += 1; game.step = 0; game.givens = []; game.marks = []; showQuestion();
   };
   nb.focus({ preventScroll: false });
   root.querySelector(".hud").outerHTML = hud().split('<div class="progress"')[0];

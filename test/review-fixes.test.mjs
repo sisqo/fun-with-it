@@ -197,7 +197,7 @@ test("addSteps/subSteps/divSteps ricostruiscono il risultato", () => {
       assert.equal(E.fromBin(sb), a - b);
     }
   }
-  assert.match(E.subSteps("100", "1")[0].text, /chiedo 1/);
+  assert.match(E.subSteps("100", "1")[0].text, /Cerco a sinistra il primo 1/);
 });
 
 test("ordinamento: risposta con separatori e senza", () => {
@@ -206,4 +206,72 @@ test("ordinamento: risposta con separatori e senza", () => {
   assert.ok(Q.checkAnswer(o, spaced));
   assert.ok(Q.checkAnswer(o, o.answer));
   assert.ok(!Q.checkAnswer(o, [...o.answer].reverse().join("")) || o.answer === [...o.answer].reverse().join(""));
+});
+
+test("verifica: caso di Rebecca 46+9, risultato sbagliato 110110 (=54)", () => {
+  const step = { answer: "55", base: 10, verify: { of: 2, summary: "46 + 9 = 55" } };
+  const givens = ["101110", "1001", "110110"];
+  const wrote54 = O.judgeStep(step, givens, "54");
+  assert.deepEqual([wrote54.ok, wrote54.star, wrote54.reward], [true, false, true]);
+  assert.match(wrote54.note, /54 ≠ 46 \+ 9 = 55/);
+  const wrote55 = O.judgeStep(step, givens, "55");
+  assert.deepEqual([wrote55.ok, wrote55.star], [false, false]);
+  assert.match(wrote55.note, /54/);
+  for (const j of [wrote54, wrote55]) assert.doesNotMatch(j.headline, /Risposta giusta/);
+  const other = O.judgeStep(step, givens, "7");
+  assert.equal(other.star, true);
+  assert.doesNotMatch(other.headline, /Risposta giusta/);
+  // caso normale
+  const fine = O.judgeStep(step, ["101110", "1001", "110111"], "55");
+  assert.deepEqual([fine.ok, fine.star, fine.reward], [true, false, true]);
+  const bad = O.judgeStep({ answer: "5", base: 10 }, [], "6");
+  assert.equal(bad.star, true);
+  assert.equal(bad.headline, "Risposta giusta: 5");
+});
+
+test("verifica: risultato scritto con spazi interni viene riconosciuto", () => {
+  const step = { answer: "55", base: 10, verify: { of: 2, summary: "x" } };
+  const r = O.resolveStep(step, [null, null, "110 110"]);
+  assert.equal(r.expected, "54");
+  assert.equal(r.consistent, false);
+});
+
+test("sottrazione 64−13: una sola riga per la catena, poi colonne brevi", () => {
+  const st = E.subSteps(E.toBin(64), E.toBin(13));
+  assert.equal(E.fromBin(st.map((s) => s.digit).reverse().join("")), 51);
+  assert.match(st[0].text, /Colonna dei 1: 0 − 1 non si può/);
+  assert.match(st[0].text, /colonna dei 64/);
+  assert.match(st[0].text, /colonne dei 32, 16, 8, 4, 2\) diventano 1/);
+  assert.equal(st.filter((s) => /Cerco a sinistra/.test(s.text)).length, 1, "una sola catena");
+  assert.ok(st.every((s) => s.text.length < 260));
+  assert.doesNotMatch(st.map((s) => s.text).join(" "), /\b3 −/);
+});
+
+test("sottrazione: nessun '3' nei testi, risultato giusto per tutte le coppie fino a 130", () => {
+  for (let a = 0; a <= 130; a++) for (let b = 0; b <= a; b++) {
+    const st = E.subSteps(E.toBin(a), E.toBin(b));
+    assert.equal(E.fromBin(st.map((s) => s.digit).reverse().join("")), a - b, `${a}-${b}`);
+    assert.doesNotMatch(st.map((s) => s.text).join(" "), /[2-9] − [01] − 1/);
+  }
+});
+
+test("divisione lunga: prime cifre insieme, 111100 : 110 = 1010", () => {
+  const r = E.divSteps("111100", "110");
+  assert.equal(r.quotient, "1010");
+  assert.equal(r.remainder, "0");
+  assert.match(r.steps[0].text, /^Prendo le prime cifre finché 110 ci sta: 111/);
+  assert.equal(r.steps.length, 4); // 111, poi 3 cifre abbassate
+  assert.doesNotMatch(r.steps.map((s) => s.text).join(" "), /quoziente 0\b(?! e resto)/);
+  for (let a = 0; a < 200; a++) for (let b = 1; b < 20; b++) {
+    const d = E.divSteps(E.toBin(a), E.toBin(b));
+    assert.equal(E.fromBin(d.quotient), Math.floor(a / b), `${a}:${b}`);
+    assert.equal(E.fromBin(d.remainder), a % b, `${a}:${b}`);
+  }
+});
+
+test("colonne indicate col peso e somme parziali per esteso", () => {
+  const add = O.guidedOperation(mulberry(2), "+");
+  assert.match(add.steps[2].explain[0], /^Colonna dei 1:/);
+  const mul = O.guidedOperation(mulberry(2), "×");
+  assert.match(mul.steps[2].explain.join(" "), / \+ .* = /);
 });

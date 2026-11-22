@@ -43,7 +43,10 @@ const convExplain = (n) => [
 // Per i passaggi di verifica il valore atteso dipende dalla risposta data prima:
 // così la verifica scopre davvero un'operazione sbagliata.
 export function resolveStep(step, givens) {
-  const bin = (s) => (/^[01]+$/.test(String(s ?? "").trim()) ? E.fromBin(String(s).trim()) : NaN);
+  const bin = (s) => {
+    const t = String(s ?? "").replace(/\s+/g, "");
+    return /^[01]+$/.test(t) ? E.fromBin(t) : NaN;
+  };
   if (step.verify && "of" in step.verify) {
     const v = bin(givens[step.verify.of]);
     const expected = Number.isNaN(v) ? step.answer : String(v);
@@ -56,6 +59,29 @@ export function resolveStep(step, givens) {
     return { expected, consistent: expected === step.answer, note: expected === step.answer ? "" : `La verifica non torna: quoziente × divisore + resto fa ${expected}, ma il dividendo è ${step.answer}. Ricontrolla quoziente e resto.` };
   }
   return { expected: step.answer, consistent: true, note: "" };
+}
+
+// Giudizio su un passaggio guidato. Nei passaggi di verifica, se il risultato dell'operazione era sbagliato,
+// la verifica non è una domanda da giusto/sbagliato: è il momento in cui l'errore viene scoperto.
+// Il grassetto "Risposta giusta" non mostra mai un valore incoerente e non c'è una seconda stella per lo stesso errore.
+export function judgeStep(step, givens, given) {
+  const r = resolveStep(step, givens);
+  const same = (x) => E.sameNumberString(given, x);
+  const summary = step.verify?.summary ?? step.answer;
+  if (r.consistent) {
+    const ok = same(r.expected);
+    return { ok, star: !ok, reward: ok, headline: ok ? "" : `Risposta giusta: ${r.expected}`, note: "", discovered: false };
+  }
+  if (same(r.expected)) {
+    return { ok: true, star: false, reward: true, discovered: true, headline: "Conversione giusta!",
+      note: `Ma ${r.expected} ≠ ${summary}: la verifica ha scoperto un errore nel passaggio precedente.` };
+  }
+  if (same(step.answer)) {
+    return { ok: false, star: false, reward: false, discovered: true, headline: "Attenzione: la verifica chiede un'altra cosa",
+      note: `Hai usato il valore giusto (${step.answer}), ma qui si controlla il TUO risultato: vale ${r.expected}, non ${step.answer}. Quindi il passaggio precedente era sbagliato.` };
+  }
+  return { ok: false, star: true, reward: false, discovered: true, headline: "Ahi, la riconversione non torna",
+    note: `Il tuo risultato vale ${r.expected} in base 10, ma il valore atteso è ${step.answer}: ricontrolla il passaggio precedente.` };
 }
 
 export function guidedOperation(rng, op) {
@@ -71,13 +97,13 @@ export function guidedOperation(rng, op) {
 
   if (op === "+") {
     const r = E.addBinary(A, B);
-    const st = E.addSteps(A, B).map((s) => `Colonna ${s.column}: ${s.text}`);
+    const st = E.addSteps(A, B).map((s) => `Colonna dei ${2 ** s.column}: ${s.text}`);
     steps.push({ label: `Addizione in binario: ${A} + ${B}`, answer: r.result, base: 2, explain: st });
     column = { op, a: A, b: B, result: r.result, carries: r.carries, steps: st };
     explain.push(...st, `${A} + ${B} = ${r.result}`);
   } else if (op === "−") {
     const r = E.subBinary(A, B);
-    const st = E.subSteps(A, B).map((s) => `Colonna ${s.column}: ${s.text}`);
+    const st = E.subSteps(A, B).map((s) => s.text);
     steps.push({ label: `Sottrazione in binario: ${A} − ${B}`, answer: r.result, base: 2, explain: st });
     column = { op, a: A, b: B, result: r.result, borrows: r.borrows, steps: st };
     explain.push(...st, `${A} − ${B} = ${r.result}`);
@@ -85,7 +111,9 @@ export function guidedOperation(rng, op) {
     const r = E.mulBinary(A, B);
     const st = [
       `Un prodotto parziale per ogni 1 del moltiplicatore (spostato a sinistra): ${r.rows.join(" , ")}`,
-      `Somma a due a due con riporti: ${r.partials.join(" → ")}`,
+      r.rows.length > 1
+        ? `Somma a due a due: ${r.rows.slice(1).map((row, i) => `${r.partials[i]} + ${row} = ${r.partials[i + 1]}`).join("; ")}`
+        : "Un solo prodotto parziale: è già il risultato",
     ];
     steps.push({ label: `Moltiplicazione in binario: ${A} × ${B}`, answer: r.result, base: 2, explain: st });
     column = { op, a: A, b: B, result: r.result, rows: r.rows, partials: r.partials };
@@ -103,7 +131,7 @@ export function guidedOperation(rng, op) {
   if (op === ":") {
     steps.push({
       label: "Verifica in base 10: quoziente × divisore + resto (con i TUOI risultati)",
-      answer: String(a), base: 10, verify: { q: opIdx, r: opIdx + 1, divisor: b },
+      answer: String(a), base: 10, verify: { q: opIdx, r: opIdx + 1, divisor: b, summary: `il dividendo ${a}` },
       explain: [`quoziente × ${b} + resto deve dare il dividendo ${a}`],
     });
     explain.push(`Verifica: ${Math.floor(a / b)} × ${b} + ${a % b} = ${a}`);
@@ -111,7 +139,7 @@ export function guidedOperation(rng, op) {
     const check = OPS[op].dec(a, b);
     steps.push({
       label: "Verifica in base 10: riconverti il TUO risultato",
-      answer: String(check), base: 10, verify: { of: opIdx },
+      answer: String(check), base: 10, verify: { of: opIdx, summary: `${a} ${OPS[op].show} ${b} = ${check}` },
       explain: [`${a} ${OPS[op].show} ${b} = ${check} in base 10: il tuo risultato in binario deve valere lo stesso numero`],
     });
     explain.push(`Verifica: ${a} ${OPS[op].show} ${b} = ${check}`);
@@ -147,7 +175,7 @@ export function binaryDivision(rng) {
       { label: "Resto (in binario, 0 se esatta)", answer: div.remainder, base: 2, explain: [`Il resto è l'ultimo resto parziale: ${div.remainder}`] },
       {
         label: "Verifica in base 10: quoziente × divisore + resto (con i TUOI risultati) deve dare il dividendo",
-        answer: String(n), base: 10, verify: { q: 0, r: 1, divisor: d },
+        answer: String(n), base: 10, verify: { q: 0, r: 1, divisor: d, summary: `il dividendo ${n}` },
         explain: [`Il dividendo ${A} in base 10 vale ${n}; il divisore ${B} vale ${d}`],
       },
     ],

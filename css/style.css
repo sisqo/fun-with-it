@@ -89,6 +89,8 @@ input[type="text"]:focus { outline: 3px solid var(--accent); border-color: trans
 .steps { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; }
 .steps li { padding: 8px 12px; border-radius: 10px; font-variant-numeric: tabular-nums; }
 .steps .done { background: color-mix(in srgb, var(--ok) 14%, transparent); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.steps .done.wrong { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+.steps .done.wrong s { opacity: .7; }
 .steps .cur { border: 2px dashed var(--accent); font-weight: 600; }
 .big { font-size: 3rem; margin: 0; }
 .center { text-align: center; }
