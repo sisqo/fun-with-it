@@ -67,3 +67,33 @@
   .fx-coin, .cash.is-counting, .feedback--ok .feedback__mascot { animation: none; }
   .fx-toast { animation: none; }
 }
+
+/* codice binario sotto il display della cassaforte */
+.vault__code { margin: 0; font-family: var(--font-mono); font-feature-settings: var(--num-features); font-size: var(--fs-sm); letter-spacing: .04em; color: var(--c-lcd-text, var(--c-digit)); }
+.vault__code b { font-size: var(--fs-md); letter-spacing: .16em; }
+.vault .dial:disabled { opacity: 1; cursor: default; }
+
+/* ---------- Nome, profilo, conferme, strumenti della missione ---------- */
+.name-form { width: 100%; max-width: 28rem; }
+.name-error { margin: 0; color: var(--c-danger); font-weight: 700; font-size: var(--fs-sm); }
+.name-error[hidden] { display: none; }
+.home__hello { margin: 0; font-weight: 700; color: var(--c-secondary); }
+.home__done { font-size: var(--fs-xs); font-weight: 700; color: var(--c-success); background: var(--c-success-bg); border-radius: var(--r-pill); padding: 2px var(--sp-2); margin-left: var(--sp-1); }
+
+.profile { width: 100%; max-width: 28rem; text-align: left; border: var(--border-w, 1.5px) solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); padding: 0 var(--sp-3); margin-top: var(--sp-3); }
+.profile > summary { cursor: pointer; font-weight: 700; padding: var(--sp-3) 0; min-height: var(--tap); display: flex; align-items: center; }
+.profile[open] > summary { border-bottom: var(--border-w, 1.5px) solid var(--c-border); }
+.profile__text { color: var(--c-text-muted); font-size: var(--fs-sm); margin: var(--sp-3) 0; }
+.profile__actions { display: flex; flex-direction: column; gap: var(--sp-2); padding-bottom: var(--sp-3); }
+.btn--danger { background: var(--c-danger); color: var(--c-surface); }
+.btn--danger-outline { color: var(--c-danger); border-color: var(--c-danger); }
+
+.mission-tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); justify-content: center; margin-top: var(--sp-4); }
+.mission-tools .btn { min-height: var(--tap); font-size: var(--fs-sm); padding-inline: var(--sp-4); }
+
+dialog.confirm { border: var(--border-w, 1.5px) solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface); color: var(--c-text); padding: var(--sp-5); width: min(92vw, 26rem); box-shadow: 0 12px 40px rgb(0 0 0 / .4); }
+dialog.confirm::backdrop { background: rgb(10 5 30 / .6); }
+.confirm__title { margin: 0 0 var(--sp-2); font-size: var(--fs-lg); line-height: var(--lh-tight); }
+.confirm__text { margin: 0 0 var(--sp-4); color: var(--c-text-muted); }
+.confirm__actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: flex-end; }
+.confirm__actions .btn { flex: 1 1 8rem; }

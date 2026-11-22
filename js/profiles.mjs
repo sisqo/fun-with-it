@@ -1,0 +1,104 @@
+// Giocatori e progressi, salvati solo su questo dispositivo (localStorage). Nessun dato lascia il browser.
+// Funzioni pure: lavorano su un oggetto `store` e ne restituiscono uno nuovo; la lettura/scrittura sul disco sta in app.js.
+//
+// store = { v: 2, current: "chiave"|null, legacy?: {cash, missionsDone}, players: [player] }
+// player = { key, name, cash, missionsDone, done: { [missione]: volte }, createdAt, updatedAt }
+
+export const MAX_NAME = 20;
+export const MAX_PLAYERS = 12;
+export const STORE_KEY = "neonbay";
+
+export const emptyStore = () => ({ v: 2, current: null, players: [] });
+
+// Pulisce un nome: toglie i caratteri di controllo e comprime gli spazi. Restituisce { ok, name, key } oppure { ok:false, error }.
+export function normalizeName(raw) {
+  const name = String(raw ?? "")
+    .normalize("NFC")
+    .replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (name.length === 0) return { ok: false, error: "Scrivi un nome." };
+  if ([...name].length > MAX_NAME) return { ok: false, error: `Massimo ${MAX_NAME} caratteri.` };
+  return { ok: true, name, key: name.toLocaleLowerCase("it-IT") };
+}
+
+const num = (v) => (Number.isFinite(v) && v >= 0 ? Math.min(Math.floor(v), 1e9) : 0);
+const safeDone = (d) => {
+  const out = {};
+  if (d && typeof d === "object") {
+    for (const [k, v] of Object.entries(d)) if (typeof k === "string" && /^[a-z0-9_-]{1,24}$/i.test(k) && k !== "__proto__") out[k] = num(v);
+  }
+  return out;
+};
+
+// Legge il testo salvato (anche corrotto o in formato vecchio) e restituisce sempre uno store valido.
+export function parseStore(raw) {
+  let data;
+  try { data = JSON.parse(raw ?? ""); } catch { return emptyStore(); }
+  if (!data || typeof data !== "object" || Array.isArray(data)) return emptyStore();
+  const store = emptyStore();
+  if (Array.isArray(data.players)) {
+    const seen = new Set();
+    for (const p of data.players.slice(0, MAX_PLAYERS * 3)) {
+      if (!p || typeof p !== "object") continue;
+      const n = normalizeName(p.name);
+      if (!n.ok || seen.has(n.key)) continue;
+      seen.add(n.key);
+      store.players.push({
+        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done),
+        createdAt: num(p.createdAt), updatedAt: num(p.updatedAt),
+      });
+      if (store.players.length >= MAX_PLAYERS) break;
+    }
+    if (typeof data.current === "string" && store.players.some((p) => p.key === data.current)) store.current = data.current;
+  } else if ("cash" in data || "missionsDone" in data) {
+    // formato della prima versione: un solo profilo senza nome. Lo si assegna al primo nome inserito.
+    store.legacy = { cash: num(data.cash), missionsDone: num(data.missionsDone) };
+  }
+  if (data.legacy && typeof data.legacy === "object" && !store.legacy) store.legacy = { cash: num(data.legacy.cash), missionsDone: num(data.legacy.missionsDone) };
+  return store;
+}
+
+export const serialize = (store) => JSON.stringify(store);
+export const currentPlayer = (store) => store.players.find((p) => p.key === store.current) ?? null;
+
+const replacePlayer = (store, key, fn) => ({ ...store, players: store.players.map((p) => (p.key === key ? fn(p) : p)) });
+
+// Entra con un nome: se esiste (senza badare alle maiuscole) riprende quel giocatore, altrimenti lo crea.
+export function enter(store, rawName, now = Date.now()) {
+  const n = normalizeName(rawName);
+  if (!n.ok) return { ok: false, error: n.error, store };
+  const existing = store.players.find((p) => p.key === n.key);
+  if (existing) return { ok: true, isNew: false, store: { ...store, current: existing.key }, player: existing };
+  if (store.players.length >= MAX_PLAYERS) return { ok: false, error: `Ci sono già ${MAX_PLAYERS} giocatori: elimina un profilo prima di aggiungerne uno.`, store };
+  const inherited = store.legacy && store.players.length === 0 ? store.legacy : { cash: 0, missionsDone: 0 };
+  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, createdAt: now, updatedAt: now };
+  const next = { ...store, current: player.key, players: [...store.players, player] };
+  delete next.legacy;
+  return { ok: true, isNew: true, store: next, player };
+}
+
+// Azzera i progressi di un giocatore (conto, missioni completate), tenendo il nome.
+export function resetPlayer(store, key, now = Date.now()) {
+  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, updatedAt: now }));
+}
+
+// Elimina del tutto un giocatore.
+export function deletePlayer(store, key) {
+  const players = store.players.filter((p) => p.key !== key);
+  return { ...store, players, current: store.current === key ? null : store.current };
+}
+
+// Esce dal giocatore corrente, senza cancellare niente (serve per "Cambia giocatore").
+export const signOut = (store) => ({ ...store, current: null });
+
+// Registra una missione completata.
+export function recordMission(store, key, missionKey, earned, now = Date.now()) {
+  return replacePlayer(store, key, (p) => ({
+    ...p,
+    cash: num(p.cash + num(earned)),
+    missionsDone: p.missionsDone + 1,
+    done: { ...p.done, [missionKey]: (p.done[missionKey] ?? 0) + 1 },
+    updatedAt: now,
+  }));
+}

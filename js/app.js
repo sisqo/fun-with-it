@@ -2,6 +2,8 @@ import { buildMission, checkAnswer } from "./questions.mjs";
 import { buildOperationsMission, judgeStep } from "./operations.mjs";
 import { LESSONS, buildLessonMission } from "./lessons.mjs";
 import * as FX from "./fx.mjs";
+import * as P from "./profiles.mjs";
+import { WEIGHTS, bits8, nibbles, onWeights, buildWarmupMission } from "./vault.mjs";
 
 window.__fx = FX; // utile per provare gli effetti dal browser
 import { colopHTML, starsHTML, progressHTML, baseBadge, nTag } from "./colop.mjs";
@@ -13,6 +15,7 @@ const app = document.getElementById("app");
 const MASCOT = (name) => `design/mascot/r0b-${name}.svg`;
 
 const MISSIONS = {
+  warm: { title: "0 · Riscaldamento: la cassaforte", sub: "Parti da qui: gira le ruote e capisci il binario, da 1 a 255", build: () => buildWarmupMission(Math.random) },
   ops: { title: "5 · Operazioni", sub: "Somme, differenze, prodotti e divisioni nelle varie basi", build: () => buildOperationsMission(Math.random) },
   ...Object.fromEntries(Object.entries(LESSONS).map(([k, l]) => [`lez${k}`, { title: `${k} · ${l.title}`, sub: l.sub, build: () => buildLessonMission(Math.random, Number(k)) }])),
   conv: { title: "4 · Decimale ⇄ Binario", sub: "Pesi, divisioni per 2 e cassaforte a 8 ruote", build: () => buildMission(Math.random, 8) },
@@ -20,19 +23,23 @@ const MISSIONS = {
 
 const save = {
   read() {
-    try { return JSON.parse(localStorage.getItem("neonbay") || "{}"); } catch { return {}; }
+    try { return localStorage.getItem(P.STORE_KEY); } catch { return null; }
   },
-  write(data) {
-    try { localStorage.setItem("neonbay", JSON.stringify(data)); } catch { /* storage non disponibile */ }
+  write(text) {
+    try { localStorage.setItem(P.STORE_KEY, text); } catch { /* storage non disponibile: si gioca senza salvare */ }
   },
 };
 
-const profile = { cash: 0, missionsDone: 0, ...save.read() };
+// Giocatori e progressi: restano solo su questo dispositivo.
+let store = P.parseStore(save.read());
+const commit = (next) => { store = next; save.write(P.serialize(store)); };
+const me = () => P.currentPlayer(store) ?? { name: "", cash: 0, missionsDone: 0, done: {} };
 let game = null;
 
 const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const money = (n) => "$ " + n.toLocaleString("it-IT");
+// Punto sulle migliaia sempre, anche a quattro cifre ($ 1.000): toLocaleString("it-IT") lo omette.
+const money = (n) => "$ " + String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 const num = (s) => `<span class="num">${esc(s)}</span>`;
 
 const ICON_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -63,19 +70,109 @@ function render(node) {
 
 // ---------- Schermate ----------
 
-function home() {
+// Finestra di conferma accessibile (<dialog>): annulla è il pulsante predefinito, Esc annulla.
+function confirmDialog({ title, text, ok = "Conferma", cancel = "Annulla", danger = false }) {
+  return new Promise((resolve) => {
+    if (typeof HTMLDialogElement === "undefined" || !document.createElement("dialog").showModal) return resolve(window.confirm(`${title}\n${text}`));
+    const d = document.createElement("dialog");
+    d.className = "confirm";
+    d.innerHTML = `<form method="dialog"><h2 class="confirm__title">${esc(title)}</h2><p class="confirm__text">${esc(text)}</p>
+      <div class="confirm__actions"><button class="btn btn--ghost" value="cancel" id="c-cancel">${esc(cancel)}</button><button class="btn ${danger ? "btn--danger" : "btn--primary"}" value="ok" id="c-ok">${esc(ok)}</button></div></form>`;
+    document.body.appendChild(d);
+    d.addEventListener("close", () => { const yes = d.returnValue === "ok"; d.remove(); resolve(yes); });
+    d.showModal();
+    d.querySelector("#c-cancel").focus();
+  });
+}
+
+// ---------- Nome del giocatore ----------
+
+function nameScreen(message = "") {
+  const others = store.players;
   render(el(`
     <section class="home">
       <img class="home__mascot" src="${MASCOT("neutro")}" alt="">
       <h1 class="home__title">Neon <span>Bay</span></h1>
-      <p class="home__line">Il tuo conto: <b>${money(profile.cash)}</b> · Missioni completate: <b>${profile.missionsDone}</b></p>
+      <p class="home__line"><b>Come ti chiami?</b></p>
+      <p class="home__rules">Scrivi un nome: ci salviamo partita e progressi. Restano solo su questo dispositivo.</p>
+      <form class="answer name-form" id="name-form" novalidate>
+        <label class="sr-only" for="name">Il tuo nome</label>
+        <input class="answer__input" id="name" name="name" maxlength="20" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="es. Neri" aria-describedby="name-error">
+        <button class="btn btn--primary" type="submit" id="name-go">Inizia</button>
+      </form>
+      <p class="name-error" id="name-error" role="alert"${message ? "" : " hidden"}>${esc(message)}</p>
+      ${others.length ? `<p class="home__rules">Oppure riprendi come:</p>
+      <ul class="choices choices--stack home__missions">${others.map((p) => `<li><button class="choice" type="button" data-player="${esc(p.key)}"><span><b>${esc(p.name)}</b><br><span class="home__sub">${money(p.cash)} · ${p.missionsDone} ${p.missionsDone === 1 ? "missione" : "missioni"}</span></span></button></li>`).join("")}</ul>` : ""}
+    </section>`));
+  const input = document.getElementById("name");
+  document.getElementById("name-form").onsubmit = (e) => {
+    e.preventDefault();
+    const r = P.enter(store, input.value);
+    if (!r.ok) {
+      const err = document.getElementById("name-error");
+      err.textContent = r.error; err.hidden = false;
+      input.setAttribute("aria-invalid", "true");
+      input.focus();
+      return;
+    }
+    commit(r.store);
+    home(r.isNew ? `Piacere, ${r.player.name}!` : `Bentornato, ${r.player.name}!`);
+  };
+  app.querySelectorAll("[data-player]").forEach((b) => (b.onclick = () => {
+    const r = P.enter(store, store.players.find((p) => p.key === b.dataset.player)?.name ?? "");
+    if (r.ok) { commit(r.store); home(`Bentornato, ${r.player.name}!`); }
+  }));
+}
+
+// ---------- Home ----------
+
+function home(greeting = "") {
+  const player = P.currentPlayer(store);
+  if (!player) return nameScreen();
+  const done = (k) => player.done[k] ?? 0;
+  render(el(`
+    <section class="home">
+      <img class="home__mascot" src="${MASCOT("neutro")}" alt="">
+      <h1 class="home__title">Neon <span>Bay</span></h1>
+      <p class="home__hello" role="status">${esc(greeting || `Ciao, ${player.name}!`)}</p>
+      <p class="home__line">Il tuo conto: <b>${money(player.cash)}</b> · Missioni completate: <b>${player.missionsDone}</b></p>
       <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la missione è fallita. Tre risposte giuste di fila ne spengono una.</p>
       ${radioFull(DJ_LINES[0])}
       <ul class="choices choices--stack home__missions">
-        ${Object.entries(MISSIONS).map(([k, m]) => `<li><button class="choice" type="button" data-m="${k}"><span><b>${esc(m.title)}</b><br><span class="home__sub">${esc(m.sub)}</span></span></button></li>`).join("")}
+        ${Object.entries(MISSIONS).map(([k, m]) => `<li><button class="choice" type="button" data-m="${k}"><span><b>${esc(m.title)}</b>${done(k) ? ` <span class="home__done">completata ×${done(k)}</span>` : ""}<br><span class="home__sub">${esc(m.sub)}</span></span></button></li>`).join("")}
       </ul>
+      <details class="profile">
+        <summary>Profilo e progressi</summary>
+        <p class="profile__text">Giocatore: <b>${esc(player.name)}</b>. Conto ${money(player.cash)}, ${player.missionsDone} ${player.missionsDone === 1 ? "missione completata" : "missioni completate"}. Partita e progressi sono salvati su questo dispositivo.</p>
+        <div class="profile__actions">
+          <button class="btn btn--ghost" type="button" id="switch">Cambia giocatore</button>
+          <button class="btn btn--ghost" type="button" id="reset">Azzera i progressi</button>
+          <button class="btn btn--ghost btn--danger-outline" type="button" id="delete">Elimina questo giocatore</button>
+        </div>
+      </details>
     </section>`));
   app.querySelectorAll("[data-m]").forEach((b) => (b.onclick = () => startMission(b.dataset.m)));
+  document.getElementById("switch").onclick = () => { commit(P.signOut(store)); nameScreen(); };
+  document.getElementById("reset").onclick = async () => {
+    const yes = await confirmDialog({
+      title: `Azzerare i progressi di ${player.name}?`,
+      text: `Conto (${money(player.cash)}) e missioni completate tornano a zero. Il nome resta. Non si può annullare.`,
+      ok: "Sì, azzera", danger: true,
+    });
+    if (!yes) return;
+    commit(P.resetPlayer(store, player.key));
+    home("Progressi azzerati: si riparte da zero.");
+  };
+  document.getElementById("delete").onclick = async () => {
+    const yes = await confirmDialog({
+      title: `Eliminare ${player.name}?`,
+      text: "Il giocatore e tutti i suoi progressi spariscono da questo dispositivo. Non si può annullare.",
+      ok: "Sì, elimina", danger: true,
+    });
+    if (!yes) return;
+    commit(P.deletePlayer(store, player.key));
+    nameScreen();
+  };
 }
 
 function startMission(key) {
@@ -88,7 +185,7 @@ const SPEAKER = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4
 function hudHTML() {
   const delta = game.delta ? ` <span class="cash__delta">+${game.delta}</span>` : "";
   const on = !FX.isMuted();
-  return `<div class="hud">${starsHTML(game.stars, MAX_STARS, game.lit)}<span class="hud__end"><button class="sound-toggle" type="button" aria-pressed="${on}" aria-label="${on ? "Suoni attivi: tocca per disattivarli" : "Suoni disattivati: tocca per attivarli"}">${SPEAKER(on)}</button><span class="cash" aria-label="Contanti: ${profile.cash + game.earned} dollari"><span class="cash__n">${money(profile.cash + game.earned)}</span>${delta}</span></span></div>`;
+  return `<div class="hud">${starsHTML(game.stars, MAX_STARS, game.lit)}<span class="hud__end"><button class="sound-toggle" type="button" aria-pressed="${on}" aria-label="${on ? "Suoni attivi: tocca per disattivarli" : "Suoni disattivati: tocca per attivarli"}">${SPEAKER(on)}</button><span class="cash" aria-label="Contanti: ${me().cash + game.earned} dollari"><span class="cash__n">${money(me().cash + game.earned)}</span>${delta}</span></span></div>`;
 }
 
 function wireSoundToggle(root) {
@@ -123,6 +220,43 @@ function opTitle(q) {
   return `<h1 class="op-title"><span class="op-title__name">${esc(name)}</span><span>${nTag(x, base)} ${esc(sym)} ${nTag(y, base)}</span>${binary ? "" : baseBadge(2, "in ")}</h1>`;
 }
 
+// Cassaforte a 8 ruote. bits = "01000101" la blocca in quella combinazione (domande di lettura).
+function vaultHTML({ bits = null, lcd = "0", sum = true, code = true } = {}) {
+  const locked = bits !== null;
+  const dials = WEIGHTS.map((w, i) => {
+    const on = locked && bits[i] === "1";
+    return `<li><button class="dial" type="button" aria-pressed="${on}" data-w="${w}" aria-label="Ruota ${w}${locked ? (on ? " accesa" : " spenta") : ""}"${locked ? " disabled" : ""}><span class="dial__weight">${w}</span><span class="dial__wheel" aria-hidden="true"><span class="dial__track"><span>0</span><span>1</span></span></span></button></li>`;
+  }).join("");
+  return `<div class="vault" id="vault">
+    <div class="vault__head"><span class="vault__label">Cassaforte</span><output class="vault__lcd" id="lcd" aria-live="polite">${lcd}</output></div>
+    <ul class="vault__dials">${dials}</ul>
+    ${sum ? '<p class="vault__sum" id="sum" aria-hidden="true">tutte a zero</p>' : '<p class="vault__sum" id="sum" aria-hidden="true"></p>'}
+    ${code ? '<p class="vault__code" id="code">Codice binario: <b>0000 0000</b></p>' : ""}
+  </div>`;
+}
+
+// Dopo la risposta, nelle domande con cassaforte bloccata, mostra display e somma.
+function revealVault(q, ok) {
+  const vault = document.getElementById("vault");
+  if (!vault || !q.vault) return;
+  const value = WEIGHTS.reduce((a, w, i) => a + (q.vault.bits[i] === "1" ? w : 0), 0);
+  vault.querySelector("#lcd").textContent = value;
+  vault.querySelector("#sum").textContent = `${onWeights(value).join(" + ")} = ${value}`;
+  vault.classList.toggle("is-open", ok);
+}
+
+// Ricomincia la missione o torna al menu. Se è già iniziata chiede conferma: i progressi salvati non cambiano.
+function wireMissionTools(root) {
+  const started = game.totalUnits > 0;
+  const ask = async (title, text, ok) => !started || (await confirmDialog({ title, text, ok }));
+  root.querySelector("#restart").onclick = async () => {
+    if (await ask("Ricominciare la missione?", "Le risposte di questa missione si azzerano e si riparte dalla prima domanda. I progressi già salvati restano.", "Sì, ricomincia")) startMission(game.key);
+  };
+  root.querySelector("#quit").onclick = async () => {
+    if (await ask("Uscire dalla missione?", "Le risposte di questa missione andranno perse. I progressi già salvati restano.", "Sì, esci")) home();
+  };
+}
+
 function showQuestion() {
   const q = game.questions[game.index];
   game.answered = false;
@@ -153,32 +287,32 @@ function showQuestion() {
     body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>
       <ul class="choices${stack}">${q.options.map((o) => `<li><button class="choice" type="button" data-v="${esc(o)}">${esc(o)}${marks}</button></li>`).join("")}</ul></section><div id="fb"></div>`;
   } else if (q.kind === "safe") {
-    const ws = [128, 64, 32, 16, 8, 4, 2, 1];
     body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>
-      <div class="vault" id="vault">
-        <div class="vault__head"><span class="vault__label">Cassaforte</span><output class="vault__lcd" id="lcd" aria-live="polite">0</output></div>
-        <ul class="vault__dials">${ws.map((w) => `<li><button class="dial" type="button" aria-pressed="false" data-w="${w}" aria-label="Ruota ${w}"><span class="dial__weight">${w}</span><span class="dial__wheel" aria-hidden="true"><span class="dial__track"><span>0</span><span>1</span></span></span></button></li>`).join("")}</ul>
-        <p class="vault__sum" id="sum" aria-hidden="true">tutte a zero</p>
-      </div>
+      ${q.hint ? `<p class="answer__hint">${esc(q.hint)}</p>` : ""}
+      ${vaultHTML()}
       <button class="btn btn--primary btn--block" type="button" id="submit">Apri</button></section><div id="fb"></div>`;
   } else {
-    body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>${answerForm(q, "La tua risposta")}</section><div id="fb"></div>`;
+    const locked = q.vault ? vaultHTML({ bits: q.vault.bits, lcd: q.vault.show === "code" ? WEIGHTS.reduce((a, w, i) => a + (q.vault.bits[i] === "1" ? w : 0), 0) : "?", sum: false, code: false }) : "";
+    body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>${locked}${answerForm(q, "La tua risposta")}</section><div id="fb"></div>`;
   }
 
-  const node = el(`<div data-prompt="${esc(q.prompt)}">${hudHTML()}${progressHTML(game.index, game.questions.length)}${body}</div>`);
+  const tools = `<div class="mission-tools"><button class="btn btn--ghost" type="button" id="restart">Ricomincia la missione</button><button class="btn btn--ghost" type="button" id="quit">Esci al menu</button></div>`;
+  const node = el(`<div data-prompt="${esc(q.prompt)}">${hudHTML()}${progressHTML(game.index, game.questions.length)}${body}${tools}</div>`);
   game.delta = 0; game.lit = false;
   render(node);
   wireSoundToggle(node);
+  wireMissionTools(node);
 
   if (q.kind === "choice") {
     node.querySelectorAll(".choice").forEach((b) => (b.onclick = () => submit(q, b.dataset.v, b)));
   } else if (q.kind === "safe") {
-    const lcd = node.querySelector("#lcd"), sum = node.querySelector("#sum"), vault = node.querySelector("#vault");
+    const lcd = node.querySelector("#lcd"), sum = node.querySelector("#sum"), vault = node.querySelector("#vault"), code = node.querySelector("#code b");
     const recompute = () => {
       const on = [...node.querySelectorAll('.dial[aria-pressed="true"]')].map((d) => Number(d.dataset.w));
       const total = on.reduce((a, b) => a + b, 0);
       lcd.textContent = total;
       sum.textContent = on.length ? `${on.join(" + ")} = ${total}` : "tutte a zero";
+      if (code) code.textContent = nibbles(bits8(total));
       return total;
     };
     node.querySelectorAll(".dial").forEach((d) => (d.onclick = () => {
@@ -265,7 +399,8 @@ function submit(unit, given, clicked, afterJudge) {
     game.lit = true;
   }
   afterJudge?.();
-  const cashBefore = profile.cash + game.earned - (verdict.reward ? CASH_PER_RIGHT : 0);
+  revealVault(q, verdict.ok);
+  const cashBefore = me().cash + game.earned - (verdict.reward ? CASH_PER_RIGHT : 0);
   const starOff = verdict.reward && game.streak % 3 === 0 && game.stars < starsBefore;
   if (verdict.reward) FX.celebrate({ streak: game.streak, starOff });
   else if (verdict.star) FX.alarm(true);
@@ -288,7 +423,7 @@ function submit(unit, given, clicked, afterJudge) {
 
   root.querySelector(".hud").outerHTML = hudHTML();
   wireSoundToggle(root);
-  if (verdict.reward) FX.countUp(root.querySelector(".cash__n"), cashBefore, profile.cash + game.earned, money);
+  if (verdict.reward) FX.countUp(root.querySelector(".cash__n"), cashBefore, me().cash + game.earned, money);
   game.delta = 0; game.lit = false;
   root.querySelector("#fb").innerHTML = feedbackHTML({ q, unit, isStep, verdict, moreSteps, failed, last });
   const nb = root.querySelector("#next");
@@ -303,13 +438,13 @@ function submit(unit, given, clicked, afterJudge) {
 }
 
 function finish(failed) {
-  if (!failed) { profile.cash += game.earned; profile.missionsDone += 1; save.write(profile); FX.bigWin(); } else FX.play("ko");
+  if (!failed) { commit(P.recordMission(store, store.current, game.key, game.earned)); FX.bigWin(); } else FX.play("ko");
   render(el(`
     <section class="home">
       <img class="home__mascot" src="${MASCOT(failed ? "triste" : "podio")}" alt="">
       <h1 class="home__title">${failed ? "Beccato!" : "Missione <span>compiuta</span>"}</h1>
       <p class="home__line">${failed ? "Cinque stelle: la polizia ti ha preso. Il bottino resta sul banco." : `Hai incassato <b>${money(game.earned)}</b>.`}</p>
-      <p class="home__rules">Risposte giuste: ${game.rightCount} su ${game.totalUnits}</p>
+      <p class="home__rules">Risposte giuste: ${game.rightCount} su ${game.totalUnits}${failed ? "" : ` · Il tuo conto: ${money(me().cash)}`}</p>
       ${radioFull()}
       <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : "Un'altra missione"}</button>
       <button class="btn btn--ghost btn--block" id="menu" type="button">Menu</button>
