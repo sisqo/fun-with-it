@@ -341,6 +341,75 @@ function opTitle(q) {
   return `<h1 class="op-title"><span class="op-title__name">${esc(name)}</span><span>${nTag(x, base)} ${esc(sym)} ${nTag(y, base)}</span>${binary ? "" : baseBadge(2, "in ")}</h1>`;
 }
 
+// ---------- Presentazione chiara delle domande con i numeri ----------
+// Invece di una riga di testo con le basi tra parentesi: una frase breve, il numero grande con la sua base e la base della risposta.
+
+const BASE_WORD = { 2: "binario", 8: "ottale", 10: "decimale", 16: "esadecimale" };
+const OP_WORD = { "+": "la somma", "−": "la differenza", "×": "il prodotto", ":": "il quoziente" };
+
+// Titolo breve della domanda: con una vista strutturata sostituisce il testo lungo (che resta in q.prompt per i dati e i test).
+function viewTitle(q) {
+  const v = q.view;
+  if (!v) return q.prompt;
+  if (v.kind === "order") return "Ordina dal più piccolo al più grande";
+  if (v.kind === "calc") return "Fai il calcolo";
+  return v.point ? "Converti il numero con la virgola" : "Converti il numero";
+}
+
+function viewHTML(q) {
+  const v = q.view;
+  if (!v) return "";
+  if (v.kind === "convert") {
+    return `<div class="q__code" aria-label="${esc(v.value)} in base ${v.from}">${esc(v.value)}<sub>${v.from}</sub></div>
+      <p class="qview__to">Scrivilo in ${baseBadge(v.to)} <span class="qview__word">(${BASE_WORD[v.to]})</span></p>`;
+  }
+  if (v.kind === "calc") {
+    return `<div class="q__code" aria-label="${esc(v.a)} ${esc(v.op)} ${esc(v.b)}, in base ${v.base}">${esc(v.a)}<sub>${v.base}</sub> ${esc(v.op)} ${esc(v.b)}<sub>${v.base}</sub></div>
+      <p class="qview__to">Scrivi ${v.what ?? "il risultato"} in ${baseBadge(v.to)} <span class="qview__word">(${BASE_WORD[v.to]})</span></p>`;
+  }
+  return "";
+}
+
+// Ordinamento a schede: si toccano in ordine, dal più piccolo al più grande. La risposta è la sequenza dei numeri delle schede.
+function orderHTML(q) {
+  return `<div class="order" role="group" aria-label="Schede da ordinare">${q.view.items.map((it, k) => `
+      <button class="order__item" type="button" data-i="${k + 1}" aria-pressed="false" aria-label="${esc(it.value)} in base ${it.base}">
+        <span class="order__pos" aria-hidden="true"></span>
+        <span class="order__num">${esc(it.value)}<sub>${it.base}</sub></span>
+        <span class="order__base">${baseBadge(it.base)}</span>
+        <span class="order__dec" hidden>= ${it.dec} in decimale</span>
+      </button>`).join("")}</div>
+    <p class="order__hint" id="order-hint">Tocca le schede in ordine: prima la più piccola, per ultima la più grande. Tocca di nuovo per toglierla.</p>
+    <div class="row"><button class="btn btn--ghost" type="button" id="order-reset">Ricomincia</button><button class="btn btn--primary" type="button" id="order-go" disabled>Rispondi</button></div>`;
+}
+
+function wireOrder(root, onAnswer) {
+  const items = [...root.querySelectorAll(".order__item")];
+  const go = root.querySelector("#order-go");
+  const picks = [];
+  const paint = () => {
+    items.forEach((b) => {
+      const at = picks.indexOf(b.dataset.i);
+      b.setAttribute("aria-pressed", at >= 0 ? "true" : "false");
+      b.querySelector(".order__pos").textContent = at >= 0 ? String(at + 1) : "";
+    });
+    go.disabled = picks.length !== items.length;
+    root.querySelector("#order-hint").textContent = picks.length === items.length ? "Tutte ordinate: controlla e premi «Rispondi»." : `Scelte ${picks.length} su ${items.length}. Tocca la prossima, più grande delle precedenti.`;
+  };
+  items.forEach((b) => (b.onclick = () => {
+    const at = picks.indexOf(b.dataset.i);
+    if (at >= 0) picks.splice(at, 1); else picks.push(b.dataset.i);
+    paint();
+  }));
+  root.querySelector("#order-reset").onclick = () => { picks.length = 0; paint(); };
+  go.onclick = () => { if (picks.length === items.length) onAnswer(picks.join("")); };
+}
+
+// Dopo la risposta: mostra il valore decimale di ogni scheda, così si vede perché quell'ordine.
+function revealOrder(root) {
+  root.querySelectorAll(".order__dec").forEach((d) => (d.hidden = false));
+}
+
 // Cassaforte a 8 ruote. bits = "01000101" la blocca in quella combinazione (domande di lettura).
 function vaultHTML({ bits = null, lcd = "0", sum = true, code = true } = {}) {
   const locked = bits !== null;
@@ -420,7 +489,8 @@ function showQuestion() {
           ${WEIGHTS.map((w) => `<input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" placeholder=" " autocomplete="off" aria-label="Cifra sotto il peso ${w}">`).join("")}
         </div><button class="btn btn--primary btn--block" type="submit">Rispondi</button></form>`
       : vaultHTML({ bits: q.vault.bits, lcd: "?", sum: false, code: false });
-    body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>${locked}${q.vault?.show === "ruler" ? "" : answerForm(q, "La tua risposta")}</section><div id="fb"></div>`;
+    const entry = q.vault?.show === "ruler" ? "" : q.view?.kind === "order" ? orderHTML(q) : answerForm(q, "La tua risposta");
+    body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(viewTitle(q))}</h1>${q.hint ? `<p class="answer__hint">${esc(q.hint)}</p>` : ""}${viewHTML(q)}${locked}${entry}</section><div id="fb"></div>`;
   }
 
   const tools = `<div class="mission-tools"><button class="btn btn--ghost" type="button" id="restart">Ricomincia la partita</button><button class="btn btn--ghost" type="button" id="quit">Esci al menu</button></div>`;
@@ -451,6 +521,8 @@ function showQuestion() {
       const total = recompute();
       submit(q, total, null, () => vault.classList.toggle("is-open", total === q.value));
     };
+  } else if (q.view?.kind === "order") {
+    wireOrder(node, (given) => submit(unit, given));
   } else if (q.vault?.show === "ruler") {
     const cells = [...node.querySelectorAll(".ruler__cell")];
     cells.forEach((c, i) => {
@@ -542,6 +614,7 @@ function submit(unit, given, clicked, afterJudge) {
   }
   afterJudge?.();
   revealVault(q, verdict.ok);
+  if (q.view?.kind === "order") revealOrder(app.firstElementChild);
   const cashBefore = me().cash + game.earned - (verdict.reward ? CASH_PER_RIGHT : 0);
   const starOff = verdict.reward && game.streak % 3 === 0 && game.stars < starsBefore;
   if (verdict.reward) FX.celebrate({ streak: game.streak, starOff });
@@ -549,7 +622,7 @@ function submit(unit, given, clicked, afterJudge) {
   else FX.alarm(false);
 
   const root = app.firstElementChild;
-  root.querySelectorAll("input, .dial, #submit, .choice, #form .btn").forEach((n) => (n.disabled = true));
+  root.querySelectorAll("input, .dial, #submit, .choice, #form .btn, .order__item, #order-go, #order-reset").forEach((n) => (n.disabled = true));
   const form = root.querySelector("#form");
   if (form) form.classList.add(verdict.ok ? "is-correct" : verdict.discovered && !verdict.star ? "is-hint" : "is-wrong");
   if (q.vault?.show === "ruler" && !verdict.ok) {
@@ -682,7 +755,7 @@ function finish(failed) {
 function topicRowsHTML(ch, player) {
   const title = (id) => G.topicById[id]?.title ?? id;
   return ch.topics.map((r) => {
-    const needs = G.blockingNeeds(G.topicById[r.id], player.topics ?? {}).map(title);
+    const needs = G.blockingNeedsIn(G.topicById[r.id], player.topics ?? {}).map(title);
     const can = r.unlocked || r.attempts > 0;
     const score = r.attempts ? `${r.correct} su ${r.attempts} ${r.attempts === 1 ? "giusta" : "giuste"}` : can ? "Mai provato" : `Si apre dopo: ${esc(needs.join(", "))}`;
     return `<li class="topic topic--${cls(r.status)}${can ? "" : " is-locked"}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${score}</span>${G.wasPassedNote(r) ? `<span class="topic__was">${wasHTML(G.wasPassedNote(r))}</span>` : ""}</div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}${T.hasLesson(r.id) ? `<button class="btn btn--ghost topic__train" type="button" data-lesson="${r.id}" aria-label="Rivedi la lezione: ${esc(r.title)}">Lezione</button>` : ""}</li>`;
@@ -813,8 +886,9 @@ const choiceMarks = () => ICON_OK.replace("<svg ", '<svg class="choice__mark cho
 
 // La prova di un passaggio: ruote a display coperto, domanda (scelta, testo o due scelte) o combinazione a 8 cifre.
 function bossTaskHTML(q, i) {
-  const head = `<p class="q__kicker" style="margin:0 0 8px">Passaggio ${i + 1} di 3</p><p class="q__prompt" style="margin:0 0 var(--sp-3)">${esc(q.prompt)}</p>`;
+  const head = `<p class="q__kicker" style="margin:0 0 8px">Passaggio ${i + 1} di 3</p><p class="q__prompt" style="margin:0 0 var(--sp-3)">${esc(viewTitle(q))}</p>${q.hint && q.kind !== "safe" ? `<p class="answer__hint">${esc(q.hint)}</p>` : ""}${viewHTML(q)}`;
   if (q.kind === "safe") return `${head}${vaultHTML({ lcd: "?", sum: false, code: false })}<button class="btn btn--primary btn--block" id="boss-submit" type="button">Apri</button>`;
+  if (q.view?.kind === "order") return `${head}${orderHTML(q)}`;
   if (q.kind === "multi") {
     return `${head}${q.parts.map((p, k) => `<div class="boss-part" data-part="${k}"><p class="q__prompt" style="margin:var(--sp-3) 0 var(--sp-2);font-size:var(--fs-md)">${k + 1}. ${esc(p.prompt)}</p>
       <ul class="choices choices--stack">${p.options.map((o) => `<li><button class="choice" type="button" aria-pressed="false" data-part="${k}" data-v="${esc(o)}">${esc(o)}${choiceMarks()}</button></li>`).join("")}</ul></div>`).join("")}
@@ -856,6 +930,8 @@ function showBossStep() {
     go.onclick = () => answer(picks.slice());
   } else if (q.kind === "choice") {
     root.querySelectorAll(".choice").forEach((b) => (b.onclick = () => answer(b.dataset.v, b)));
+  } else if (q.view?.kind === "order") {
+    wireOrder(root, (given) => answer(given));
   } else if (q.vault?.show === "ruler") {
     const cells = [...root.querySelectorAll(".ruler__cell")];
     cells.forEach((c, k) => {
@@ -874,7 +950,8 @@ function bossAnswer(q, given, clicked) {
   if (root.dataset.done) return;
   root.dataset.done = "1";
   const ok = Boss.bossCheck(q, given);
-  root.querySelectorAll("input, .dial, button.btn--primary, .choice").forEach((n) => (n.disabled = true));
+  root.querySelectorAll("input, .dial, button.btn--primary, .choice, .order__item, #order-reset").forEach((n) => (n.disabled = true));
+  if (q.view?.kind === "order") revealOrder(root);
   if (q.kind === "choice") root.querySelectorAll(".choice").forEach((b) => { if (b.dataset.v === q.answer) b.classList.add("is-correct"); else if (b === clicked) b.classList.add("is-wrong"); });
   if (q.kind === "multi") root.querySelectorAll(".choice").forEach((b) => { const p = q.parts[Number(b.dataset.part)]; if (b.dataset.v === p.answer) b.classList.add("is-correct"); else if (b.getAttribute("aria-pressed") === "true") b.classList.add("is-wrong"); });
   const task = root.querySelector(".boss__task");

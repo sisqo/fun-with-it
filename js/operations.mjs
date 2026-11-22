@@ -218,6 +218,7 @@ export function baseOperation(rng, base, t = 1) {
   return {
     kind: "text",
     prompt: `Calcola in base ${base}: ${A} ${op} ${B}   (scrivi il risultato in base ${base})`,
+    view: { kind: "calc", a: A, op, b: B, base, to: base },
     answer: E.toBase(res, base),
     base,
     explain: [`${A}(${base}) = ${a}`, `${B}(${base}) = ${b}`, `${a} ${op} ${b} = ${res}`, `${res} in base ${base} = ${E.toBase(res, base)}`],
@@ -236,6 +237,7 @@ export function groupConversion(rng, t = 1) {
     return {
       kind: "text",
       prompt: `Da base ${base} a base 2: ${s}`,
+      view: { kind: "convert", value: s, from: base, to: 2 },
       answer: bin,
       base: 2,
       explain: [...chunks.map((c) => `${c.digit} → ${c.bits}`), `Unisci: ${bin} (gli zeri all'inizio si possono togliere)`],
@@ -247,6 +249,7 @@ export function groupConversion(rng, t = 1) {
   return {
     kind: "text",
     prompt: `Da base 2 a base ${base}: ${bin}`,
+    view: { kind: "convert", value: bin, from: 2, to: base },
     answer: groups.map((g) => g.digit).join(""),
     base,
     explain: [`Raggruppa da ${base === 8 ? 3 : 4} bit a partire da destra`, ...groups.map((g) => `${g.bits} → ${g.digit}`)],
@@ -266,6 +269,7 @@ export function pointConversion(rng, t = 1) {
     return {
       kind: "text",
       prompt: `Da base 10 a base 2 (con la virgola): ${i},${digits}`,
+      view: { kind: "convert", value: `${i},${digits}`, from: 10, to: 2, point: true },
       answer: info.text,
       base: 2,
       explain: [
@@ -284,6 +288,7 @@ export function pointConversion(rng, t = 1) {
   return {
     kind: "text",
     prompt: `Da base 2 a base 10 (con la virgola): ${comma(bin)}`,
+    view: { kind: "convert", value: comma(bin), from: 2, to: 10, point: true },
     answer: String(st.total),
     base: 10,
     explain: [
@@ -300,10 +305,10 @@ export function orderMixed(rng, t = 1) {
   const vals = [];
   const used = new Set();
   const forms = [
-    (n) => ({ text: `${n} (base 10)`, n }),
-    (n) => ({ text: `${E.toBase(n, 16)} (base 16)`, n }),
-    (n) => ({ text: `${E.toBin(n)} (base 2)`, n }),
-    (n) => ({ text: `${E.toBase(n, 8)} (base 8)`, n }),
+    (n) => ({ text: `${n} (base 10)`, n, value: String(n), base: 10 }),
+    (n) => ({ text: `${E.toBase(n, 16)} (base 16)`, n, value: E.toBase(n, 16), base: 16 }),
+    (n) => ({ text: `${E.toBin(n)} (base 2)`, n, value: E.toBin(n), base: 2 }),
+    (n) => ({ text: `${E.toBase(n, 8)} (base 8)`, n, value: E.toBase(n, 8), base: 8 }),
   ];
   for (const f of forms) {
     let n;
@@ -318,6 +323,7 @@ export function orderMixed(rng, t = 1) {
     kind: "text",
     alnum: true,
     prompt: `Ordina dal più piccolo al più grande (scrivi i numeri 1-4, es. 3412):  ${vals.map((v, i) => `${i + 1}) ${v.text}`).join("   ")}`,
+    view: { kind: "order", items: vals.map((v) => ({ value: v.value, base: v.base, dec: v.n })) },
     answer: sorted.map((s) => String(vals.indexOf(s) + 1)).join(""),
     base: 10,
     explain: [...vals.map((v, i) => `${i + 1}) ${v.text} = ${v.n} in base 10`), "Ora ordina i valori in base 10."],

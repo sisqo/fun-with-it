@@ -47,6 +47,8 @@ function binaryOp(rng) {
   return {
     kind: "text", base: 2, topic: "ops-boss",
     prompt: `Calcola in binario: ${A} ${op} ${B}   (scrivi ${tail ?? "il risultato"} in binario). Usa il quaderno: fai l'operazione in colonna.`,
+    view: { kind: "calc", a: A, op, b: B, base: 2, to: 2, what: tail ?? "il risultato" },
+    hint: "Usa il quaderno: fai l'operazione in colonna.",
     answer: E.toBin(want),
     explain: [`${A} = ${a}, ${B} = ${b}`, ...steps, `Risultato: ${E.toBin(want)} (${want} in decimale)`],
     radio: "Converti, opera, verifica: le tre mosse non cambiano nemmeno davanti a un caveau.",

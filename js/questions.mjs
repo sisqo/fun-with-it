@@ -38,6 +38,7 @@ export function decToBin(rng, t = 1) {
   return {
     kind: "text",
     prompt: `Scrivi ${n} in binario.`,
+    view: { kind: "convert", value: String(n), from: 10, to: 2 },
     answer: E.toBin(n),
     base: 2,
     explain: explainDecToBin(n),
@@ -52,6 +53,7 @@ export function binToDec(rng, t = 1) {
   return {
     kind: "text",
     prompt: `Quanto vale ${bin} in decimale?`,
+    view: { kind: "convert", value: bin, from: 2, to: 10 },
     answer: String(n),
     base: 10,
     explain: explainBinToDec(bin),

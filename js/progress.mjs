@@ -106,6 +106,8 @@ export function topicWeight(topic, stats, { last = null, now = Date.now() } = {}
 
 export const chapterTopics = (chapterId) => TOPICS.filter((t) => t.chapter === chapterId);
 const sameChapterNeeds = (topic) => topic.needs.filter((n) => topicById[n].chapter === topic.chapter);
+// Prerequisiti ancora mancanti DENTRO il capitolo (per dire "Si apre dopo: …" nella schermata del capitolo).
+export const blockingNeedsIn = (topic, topics) => sameChapterNeeds(topic).filter((id) => (topics[id]?.attempts ?? 0) < 3 || isStruggling(topics[id]));
 export const isUnlockedIn = (topic, topics) =>
   (topics[topic.id]?.attempts ?? 0) > 0 || sameChapterNeeds(topic).every((id) => (topics[id]?.attempts ?? 0) >= 3 && !isStruggling(topics[id]));
 // Gli argomenti da cui il capitolo parte: nessun prerequisito dentro il capitolo.
@@ -282,7 +284,7 @@ export function summarize(player) {
   const topics = player.topics ?? {};
   const rows = TOPICS.map((t) => {
     const st = topics[t.id];
-    return { ...t, status: statusOf(st, t), perfect: isPerfect(st, t), passedAt: st?.passedAt ?? 0, window: st?.window ?? [], attempts: st?.attempts ?? 0, correct: st?.correct ?? 0, level: st?.level ?? 0, unlocked: isUnlocked(t, topics) };
+    return { ...t, status: statusOf(st, t), perfect: isPerfect(st, t), passedAt: st?.passedAt ?? 0, window: st?.window ?? [], attempts: st?.attempts ?? 0, correct: st?.correct ?? 0, level: st?.level ?? 0, unlocked: isUnlockedIn(t, topics) };
   });
   const chapters = CHAPTERS.map((c) => {
     const list = rows.filter((r) => r.chapter === c.id);
