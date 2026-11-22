@@ -333,6 +333,88 @@
   </div>
 </section>
 
+<section class="pv-section">
+  <h2>Gioca e basta · progressi</h2>
+  <div class="pv-screens">
+
+    <div>
+      <div class="pv-phone"><main class="screen">
+        <section class="home" style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center">
+          <img src="mascot/r0b-neutro.svg" alt="" style="width:120px">
+          <p style="margin:0;font-weight:700;color:var(--c-secondary)">Bentornato, Neri.</p>
+          <button class="btn btn--primary home__play" type="button">Gioca</button>
+          <ul class="stats" aria-label="Argomenti">
+  <li class="stats__item stats__item--superato"><b>4</b>superati</li>
+  <li class="stats__item stats__item--toccato"><b>3</b>in corso</li>
+  <li class="stats__item stats__item--bocciato"><b>1</b>da ripassare</li>
+  <li class="stats__item stats__item--non-toccato"><b>11</b>da toccare</li>
+</ul>
+          <button class="btn btn--ghost btn--block" type="button" style="max-width:28rem">Ripassa: Sottrazione con prestito</button>
+          <ol class="metro" aria-label="Capitoli: 1 superato, 1 coperto, 1 iniziato, 2 da iniziare">
+  <li class="metro__stop is-complete"><span class="metro__node" aria-hidden="true">✓</span><span class="metro__label">Algoritmi</span></li>
+  <li class="metro__stop is-covered"><span class="metro__node" aria-hidden="true">2</span><span class="metro__label">Codifica</span></li>
+  <li class="metro__stop is-started is-hub"><span class="metro__node" aria-hidden="true">3</span><span class="metro__label">Operazioni</span></li>
+  <li class="metro__stop is-new"><span class="metro__node" aria-hidden="true">4</span><span class="metro__label">Ottale / esa</span></li>
+  <li class="metro__stop is-new"><span class="metro__node" aria-hidden="true">5</span><span class="metro__label">Virgola</span></li>
+</ol>
+        </section>
+      </main></div>
+      <p class="pv-caption">Home: un tasto solo, i numeri in 4 riquadri (forma + numero + parola), il ripasso se c'è un bocciato, la linea dei capitoli come colpo d'occhio (non si tocca).</p>
+    </div>
+
+    <div>
+      <div class="pv-phone"><main class="screen">
+        <section class="board">
+          <h1 class="board__title">I miei progressi</h1>
+          <ol class="metro" aria-label="Capitoli: 1 superato, 1 coperto, 1 iniziato, 2 da iniziare">
+  <li class="metro__stop is-complete"><span class="metro__node" aria-hidden="true">✓</span><span class="metro__label">Algoritmi</span></li>
+  <li class="metro__stop is-covered"><span class="metro__node" aria-hidden="true">2</span><span class="metro__label">Codifica</span></li>
+  <li class="metro__stop is-started is-hub"><span class="metro__node" aria-hidden="true">3</span><span class="metro__label">Operazioni</span></li>
+  <li class="metro__stop is-new"><span class="metro__node" aria-hidden="true">4</span><span class="metro__label">Ottale / esa</span></li>
+  <li class="metro__stop is-new"><span class="metro__node" aria-hidden="true">5</span><span class="metro__label">Virgola</span></li>
+</ol>
+          <article class="chapter">
+            <header class="chapter__head"><h2 class="chapter__title">Operazioni in binario</h2><span class="chapter__badge is-covered">Coperto</span></header>
+            <div class="chapter__bar" role="img" aria-label="1 superato, 2 in corso, 1 da ripassare su 5"><i class="is-passed" style="width:20%"></i><i class="is-touched" style="width:40%"></i><i class="is-failed" style="width:20%"></i></div>
+            <p class="chapter__count"><b>4</b> toccati su 5 · <b>1</b> superato</p>
+            <ul class="topics">
+              <li class="topic topic--superato"><div class="topic__main"><span class="topic__name">Addizione in binario</span><span class="topic__score">7 su 8 giuste</span></div><span class="chip chip--superato">Superato</span><button class="btn btn--ghost topic__train" type="button" aria-label="Allenati su Addizione in binario">Allenati</button></li>
+              <li class="topic topic--bocciato"><div class="topic__main"><span class="topic__name">Sottrazione con prestito</span><span class="topic__score">2 su 6 giuste</span></div><span class="chip chip--bocciato">Bocciato</span><button class="btn btn--ghost topic__train" type="button" aria-label="Allenati su Sottrazione con prestito">Allenati</button></li>
+              <li class="topic topic--toccato"><div class="topic__main"><span class="topic__name">Moltiplicazione</span><span class="topic__score">3 su 4 giuste</span></div><span class="chip chip--toccato">Toccato</span><button class="btn btn--ghost topic__train" type="button" aria-label="Allenati su Moltiplicazione">Allenati</button></li>
+              <li class="topic topic--toccato"><div class="topic__main"><span class="topic__name">Divisione</span><span class="topic__score">1 su 2 giuste</span></div><span class="chip chip--toccato">Toccato</span><button class="btn btn--ghost topic__train" type="button" aria-label="Allenati su Divisione">Allenati</button></li>
+              <li class="topic topic--non-toccato is-locked"><div class="topic__main"><span class="topic__name">Verifica in base 10</span><span class="topic__score">Si apre dopo: Divisione</span></div><span class="chip chip--non-toccato">Non toccato</span></li>
+            </ul>
+          </article>
+          <article class="chapter">
+            <header class="chapter__head"><h2 class="chapter__title">Ragionare per algoritmi</h2><span class="chapter__badge is-complete">Superato</span></header>
+            <div class="chapter__bar" role="img" aria-label="3 superati su 3"><i class="is-passed" style="width:100%"></i></div>
+            <p class="chapter__count"><b>3</b> toccati su 3 · <b>3</b> superati</p>
+          </article>
+        </section>
+      </main></div>
+      <p class="pv-caption">Progressi: barra a tre riempimenti (pieno, righe, puntini), chip a 4 stati, "Allenati" in evidenza solo dove serve ripassare.</p>
+    </div>
+
+    <div>
+      <div class="pv-phone"><main class="screen">
+        <section class="board">
+          <h1 class="board__title">Partita finita</h1>
+          <p class="board__sum"><b>8</b> giuste su <b>10</b> · <b>$ 420</b></p>
+          <h2 class="board__sub">Argomenti toccati in questa partita</h2>
+          <ul class="topics topics--summary">
+            <li class="topic topic--superato is-up"><div class="topic__main"><span class="topic__name">Addizione in binario</span><span class="pips" role="img" aria-label="4 su 4 giuste"><i class="is-ok"></i><i class="is-ok"></i><i class="is-ok"></i><i class="is-ok"></i></span></div><span class="topic__change"><span class="chip chip--toccato chip--was">Toccato</span><span class="topic__arrow" aria-label="diventa">→</span><span class="chip chip--superato">Superato</span></span></li>
+            <li class="topic topic--toccato "><div class="topic__main"><span class="topic__name">Moltiplicazione</span><span class="pips" role="img" aria-label="3 su 4 giuste"><i class="is-ok"></i><i class="is-ok"></i><i class="is-ko"></i><i class="is-ok"></i></span></div><span class="topic__change"><span class="chip chip--non-toccato chip--was">Non toccato</span><span class="topic__arrow" aria-label="diventa">→</span><span class="chip chip--toccato">Toccato</span></span></li>
+            <li class="topic topic--bocciato is-down"><div class="topic__main"><span class="topic__name">Sottrazione con prestito</span><span class="pips" role="img" aria-label="1 su 2 giuste"><i class="is-ko"></i><i class="is-ok"></i></span></div><span class="topic__change"><span class="chip chip--toccato chip--was">Toccato</span><span class="topic__arrow" aria-label="diventa">→</span><span class="chip chip--bocciato">Bocciato</span></span></li>
+          </ul>
+          <button class="btn btn--primary btn--block" type="button">Un'altra partita</button>
+        </section>
+      </main></div>
+      <p class="pv-caption">Fine partita: giuste/sbagliate come pallini (✓ pieno, ✕ vuoto), stato prima → dopo. Bordo verde se sale, rosso se scende.</p>
+    </div>
+
+  </div>
+</section>
+
 <script>
   // --- solo demo: la logica vera è di David ---
   const swatches = ["bg","surface","surface-2","border","text","text-muted","primary","secondary","accent","digit","success","danger","cash","wanted","focus","vault","dial-on","lcd-text"];

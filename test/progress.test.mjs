@@ -17,16 +17,20 @@ function mulberry(seed) {
 const newPlayer = () => ({ topics: {} });
 const stats = (window, attempts = window.length, level = 0) => ({ attempts, correct: window.reduce((a, b) => a + b, 0), window, level, lastAt: 1 });
 
-// Gioca `n` domande con un giocatore che risponde bene con probabilità `skill`; restituisce il giocatore e lo storico.
+// Gioca `n` domande con un giocatore che risponde bene ad ogni PASSAGGIO con probabilità `skill`.
+// Una domanda a passaggi vale la frazione di passaggi giusti; le altre 1 o 0.
 function simulate(n, skill, seed = 1) {
   const rng = mulberry(seed), dice = mulberry(seed + 999);
   let player = newPlayer(), last = null;
   const history = [];
   for (let i = 0; i < n; i++) {
     const q = G.nextQuestion(player, rng, { last, now: 1_000_000 + i });
-    const ok = dice() < skill;
-    player = { topics: { ...player.topics, [q.topic]: P.nextStats(player.topics[q.topic], ok, 1_000_000 + i) } };
-    history.push({ topic: q.topic, kind: q.kind, ok });
+    const units = q.kind === "guided" ? q.steps.length : 1;
+    let right = 0;
+    for (let u = 0; u < units; u++) if (dice() < skill) right++;
+    const outcome = right / units;
+    player = { topics: { ...player.topics, [q.topic]: P.nextStats(player.topics[q.topic], outcome, 1_000_000 + i) } };
+    history.push({ topic: q.topic, kind: q.kind, outcome });
     last = q.topic;
   }
   return { player, history };
@@ -52,29 +56,58 @@ test("ogni domanda di teoria ha un argomento noto", () => {
   for (const l of Object.values(LESSONS)) for (const q of l.questions) assert.ok(known.has(q.topic), `${q.prompt} → ${q.topic}`);
 });
 
-test("statusOf: soglie di superato e bocciato", () => {
+test("statusOf: soglie di superato e da ripassare", () => {
+  const S = (w, att = w.length, lvl = 1) => stats(w, att, lvl);
   assert.equal(G.statusOf(undefined), "non-toccato");
-  assert.equal(G.statusOf(stats([], 0)), "non-toccato");
-  assert.equal(G.statusOf(stats([1])), "toccato");
-  assert.equal(G.statusOf(stats([0, 0])), "toccato", "con sole 2 domande non si boccia");
-  assert.equal(G.statusOf(stats([0, 0, 1])), "bocciato");
-  assert.equal(G.statusOf(stats([0, 0, 0])), "bocciato");
-  assert.equal(G.statusOf(stats([1, 0, 1])), "toccato");
-  assert.equal(G.statusOf(stats([1, 1, 1])), "toccato", "con 3 domande non si supera");
-  assert.equal(G.statusOf(stats([1, 1, 1, 1])), "superato");
-  assert.equal(G.statusOf(stats([1, 1, 1, 0, 1])), "superato");
-  assert.equal(G.statusOf(stats([1, 0, 1, 1, 0])), "toccato");
-  assert.equal(G.statusOf(stats([1, 1, 0, 0, 0])), "bocciato");
-  assert.equal(G.statusOf(stats([0, 1, 1, 1, 1], 9)), "superato", "ci si riprende: contano le ultime 5");
+  assert.equal(G.statusOf(S([], 0)), "non-toccato");
+  assert.equal(G.statusOf(S([1])), "toccato");
+  for (const w of [[0, 0, 1], [0, 0, 0], [0, 0, 0, 0]]) assert.equal(G.statusOf(S(w)), "toccato", `${w}: con meno di 5 domande non si boccia`);
+  assert.equal(G.statusOf(S([0, 0, 0, 0, 0])), "da-ripassare");
+  assert.equal(G.statusOf(S([1, 0, 0, 0, 0])), "da-ripassare");
+  assert.equal(G.statusOf(S([1, 1, 0, 0, 0])), "da-ripassare");
+  assert.equal(G.statusOf(S([1, 1, 0, 1, 0])), "toccato");
+  assert.equal(G.statusOf(S([1, 1, 1])), "toccato", "con 3 domande non si supera");
+  assert.equal(G.statusOf(S([1, 1, 1, 1])), "superato");
+  assert.equal(G.statusOf(S([1, 1, 1, 0, 1])), "superato");
+  assert.equal(G.statusOf(S([1, 0, 1, 1, 0])), "toccato");
+  assert.equal(G.statusOf(S([0, 1, 1, 1, 1], 9)), "superato", "ci si riprende: contano le ultime 5");
+  // numeri da compito: serve arrivare al livello 0,7
+  assert.equal(G.statusOf(S([1, 1, 1, 1], 4, 0.5)), "toccato", "numeri ancora facili");
+  assert.equal(G.statusOf(S([1, 1, 1, 1], 4, 0.7)), "superato");
+  assert.equal(G.statusOf(S([1, 1, 1, 1], 4, 0.1), { theory: true }), "superato", "la teoria non ha un livello da raggiungere");
+  assert.equal(G.statusFor({ topics: { addizione: S([1, 1, 1, 1], 4, 0.3) } }, "addizione"), "toccato");
+  assert.equal(G.statusFor({ topics: { "dati-informazioni": S([1, 1, 1, 1], 4, 0.3) } }, "dati-informazioni"), "superato");
 });
 
-test("uno stato può cambiare nel tempo: bocciato → superato", () => {
+test("uno stato può cambiare nel tempo: da ripassare → superato", () => {
   let s;
-  for (const ok of [false, false, false]) s = P.nextStats(s, ok);
-  assert.equal(G.statusOf(s), "bocciato");
+  for (let i = 0; i < 5; i++) s = P.nextStats(s, false);
+  assert.equal(G.statusOf(s), "da-ripassare");
   for (let i = 0; i < 5; i++) s = P.nextStats(s, true);
   assert.equal(G.statusOf(s), "superato");
-  assert.equal(s.attempts, 8);
+  assert.equal(s.attempts, 10);
+});
+
+test("esito frazionario: giusta se ≥ 75% dei passaggi, difficoltà in proporzione", () => {
+  const a = P.nextStats(undefined, 0.75);
+  assert.deepEqual([a.correct, a.window], [1, [1]]);
+  const b = P.nextStats(undefined, 0.5);
+  assert.deepEqual([b.correct, b.window], [0, [0]]);
+  assert.ok(P.nextStats({ attempts: 3, correct: 3, window: [1, 1, 1], level: 0.5, lastAt: 1 }, 0.75).level > 0.5);
+  assert.ok(P.nextStats({ attempts: 3, correct: 3, window: [1, 1, 1], level: 0.5, lastAt: 1 }, 0.5).level < 0.5 + 0.12);
+  const mid = P.nextStats({ attempts: 1, correct: 0, window: [0], level: 0.5, lastAt: 1 }, 0.5).level;
+  assert.ok(mid > 0.5 - 0.18 && mid < 0.5 + 0.12);
+  assert.equal(P.nextStats(undefined, "x").window[0], 0, "valore non valido = sbagliata");
+  assert.equal(P.nextStats(undefined, 5).window[0], 1, "frazioni oltre 1 limitate a 1");
+});
+
+test("terza risposta giusta di fila: salto più grande della difficoltà", () => {
+  let s;
+  const levels = [];
+  for (let i = 0; i < 4; i++) { s = P.nextStats(s, true); levels.push(s.level); }
+  const d = levels.map((l, i) => l - (levels[i - 1] ?? 0));
+  assert.ok(Math.abs(d[0] - 0.12) < 1e-9 && Math.abs(d[1] - 0.12) < 1e-9);
+  assert.ok(Math.abs(d[2] - 0.2) < 1e-9, `3ª di fila: +${d[2]}`);
 });
 
 test("riscaldamento: le prime 6 domande sono sempre casseforti, in ordine di difficoltà", () => {
@@ -117,22 +150,22 @@ test("mai un argomento bloccato, qualunque sia lo storico (fuzz)", () => {
     for (const h of history) {
       const t = G.topicById[h.topic];
       assert.ok(G.isUnlocked(t, p.topics) || (h.topic === "cassaforte"), `${h.topic} bloccato`);
-      p = { topics: { ...p.topics, [h.topic]: P.nextStats(p.topics[h.topic], h.ok) } };
+      p = { topics: { ...p.topics, [h.topic]: P.nextStats(p.topics[h.topic], h.outcome) } };
     }
     assert.ok(Object.keys(player.topics).every((id) => G.topicById[id]));
   }
 });
 
-test("pesi: i bocciati tornano più spesso, i superati meno, le operazioni pesano di più", () => {
+test("pesi: i da ripassare tornano più spesso, i superati meno, le operazioni pesano di più", () => {
   const base = stats([1, 1], 2);
   const w = (id, st, opts) => G.topicWeight(G.topicById[id], st, opts);
-  assert.ok(w("bit-byte", stats([0, 0, 0])) > w("bit-byte", base), "bocciato > toccato");
-  assert.ok(w("bit-byte", base) > w("bit-byte", stats([1, 1, 1, 1])), "toccato > superato");
-  assert.ok(w("bit-byte", undefined) > w("bit-byte", stats([1, 1, 1, 1])), "nuovo > superato");
+  assert.ok(w("bit-byte", stats([0, 0, 0, 0, 0])) > w("bit-byte", base), "da ripassare > toccato");
+  assert.ok(w("bit-byte", base) > w("bit-byte", stats([1, 1, 1, 1], 4, 1)), "toccato > superato");
+  assert.ok(w("bit-byte", undefined) > w("bit-byte", stats([1, 1, 1, 1], 4, 1)), "nuovo > superato");
   assert.ok(w("addizione", base) > w("bit-byte", base), "focus sulle operazioni");
   assert.ok(w("dec-bin", base) > w("bit-byte", base), "gli esercizi numerici pesano più della teoria");
   assert.ok(w("bit-byte", base, { last: "bit-byte" }) < w("bit-byte", base), "evita lo stesso argomento di fila");
-  const old = { ...stats([1, 1, 1, 1]), lastAt: 1 };
+  const old = { ...stats([1, 1, 1, 1], 4, 1), lastAt: 1 };
   assert.ok(w("bit-byte", old, { now: 1 + 8 * 86_400_000 }) > w("bit-byte", old, { now: 2 }), "ripasso dopo una settimana");
 });
 
@@ -234,12 +267,12 @@ test("la teoria non ripete la stessa domanda dentro la partita", () => {
 
 test("summarize: capitoli coperti e superati", () => {
   const player = { topics: {
-    "istruzioni-robot": stats([1, 1, 1, 1]), "dati-informazioni": stats([1, 1, 1, 1]), "algoritmo-pensiero": stats([1, 0, 1]), "informatica-termini": stats([0, 0, 0]),
-    cassaforte: stats([1, 1, 1, 1, 1, 1]),
+    "istruzioni-robot": stats([1, 1, 1, 1]), "dati-informazioni": stats([1, 1, 1, 1]), "algoritmo-pensiero": stats([1, 0, 1]), "informatica-termini": stats([0, 0, 0, 0, 0]),
+    cassaforte: stats([1, 1, 1, 1, 1, 1], 6, 1),
   } };
   const s = G.summarize(player);
   const c1 = s.chapters.find((c) => c.id === "c1");
-  assert.deepEqual([c1.total, c1.touched, c1.passed, c1.failed, c1.covered, c1.complete], [4, 4, 2, 1, true, false]);
+  assert.deepEqual([c1.total, c1.touched, c1.passed, c1.failed, c1.covered, c1.complete], [5, 4, 2, 1, false, false]);
   const c2 = s.chapters.find((c) => c.id === "c2");
   assert.equal(c2.covered, false);
   assert.deepEqual([s.counts.passed, s.counts.failed], [3, 1]);
@@ -275,4 +308,216 @@ test("ritmo: la teoria non prende il sopravvento e le operazioni arrivano presto
   assert.ok(firstOp >= 0 && firstOp < 45, `prima operazione alla domanda ${firstOp + 1}`);
   const ops = history.filter((h) => G.topicById[h.topic]?.focus).length;
   assert.ok(ops >= 25, `operazioni e basi nelle prime 120: ${ops}`);
+});
+
+// ---------- Revisione 7: sistema adattivo ----------
+
+function runStep(skill, n, seed) {
+  const rng = mulberry(seed), dice = mulberry(seed + 999);
+  let player = newPlayer(), last = null, failedAdd = false, firstSub = -1;
+  for (let i = 0; i < n; i++) {
+    const q = G.nextQuestion(player, rng, { last, now: 1_000_000 + i });
+    const units = q.kind === "guided" ? q.steps.length : 1;
+    let right = 0;
+    for (let u = 0; u < units; u++) if (dice() < skill) right++;
+    player = { topics: { ...player.topics, [q.topic]: P.nextStats(player.topics[q.topic], right / units, 1_000_000 + i) } };
+    last = q.topic;
+    if (q.topic === "sottrazione" && firstSub < 0) firstSub = i + 1;
+    if (G.statusFor(player, "addizione") === "da-ripassare") failedAdd = true;
+  }
+  return { player, failedAdd, firstSub };
+}
+
+test("studente che sbaglia un passaggio ogni tanto (90% per passaggio) non resta mai bloccato sull'addizione", () => {
+  for (let seed = 1; seed <= 25; seed++) {
+    const r = runStep(0.9, 150, seed);
+    assert.equal(r.failedAdd, false, `seed ${seed}: addizione da ripassare`);
+    assert.ok(r.firstSub > 0 && r.firstSub <= 90, `seed ${seed}: sottrazione aperta alla domanda ${r.firstSub}`);
+    assert.notEqual(G.statusFor(r.player, "addizione"), "da-ripassare");
+    assert.ok(r.player.topics.addizione.attempts >= 4);
+  }
+});
+
+test("85% per passaggio: le operazioni si aprono comunque, e l'addizione di solito non è mai da ripassare", () => {
+  let stuck = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const r = runStep(0.85, 200, seed);
+    assert.ok(r.firstSub > 0 && r.firstSub <= 120, `seed ${seed}: sottrazione alla domanda ${r.firstSub}`);
+    if (r.failedAdd) stuck++;
+  }
+  assert.ok(stuck <= 8, `addizione da ripassare in ${stuck}/40 simulazioni`);
+});
+
+test("70% per passaggio: scivola, ma si riprende e arriva alle operazioni", () => {
+  let passedAdd = 0;
+  for (let seed = 1; seed <= 30; seed++) {
+    const r = runStep(0.7, 300, seed);
+    assert.ok(r.firstSub > 0, `seed ${seed}: la sottrazione non si apre mai`);
+    if (G.statusFor(r.player, "addizione") === "superato") passedAdd++;
+  }
+  assert.ok(passedAdd >= 22, `addizione superata in ${passedAdd}/30`);
+});
+
+test("10% per passaggio: resta sulle basi, le operazioni non si aprono", () => {
+  for (let seed = 1; seed <= 15; seed++) {
+    const r = runStep(0.1, 200, seed);
+    assert.equal(r.firstSub, -1);
+    assert.equal(r.player.topics.addizione, undefined);
+  }
+});
+
+test("un argomento già aperto non si richiude se un prerequisito va male", () => {
+  const topics = { "dec-bin": stats([0, 0, 0, 0, 0], 5), "bin-dec": stats([1, 1, 1], 3), addizione: stats([1], 1) };
+  const add = G.topicById.addizione, sub = G.topicById.sottrazione;
+  assert.ok(G.isUnlocked(add, topics), "addizione già iniziata: resta aperta");
+  assert.ok(!G.isUnlocked(G.topicById.moltiplicazione, { ...topics, addizione: stats([0, 0, 0], 3) }), "ma quelli mai provati restano chiusi");
+  assert.ok(!G.isUnlocked(sub, { ...topics, addizione: stats([1, 0, 0, 0], 4) }));
+});
+
+test("da ripassare solo dopo almeno 5 domande", () => {
+  for (let n = 1; n <= 4; n++) assert.notEqual(G.statusOf(stats(Array(n).fill(0), n, 1)), "da-ripassare", `${n} domande`);
+  assert.equal(G.statusOf(stats([0, 0, 0, 0, 0], 5, 1)), "da-ripassare");
+});
+
+test("l'argomento si supera solo arrivando a numeri da compito: con risposte tutte giuste servono più domande", () => {
+  let s, attemptsToPass = 0;
+  for (let i = 1; i <= 12 && !attemptsToPass; i++) { s = P.nextStats(s, true); if (G.statusOf(s) === "superato") attemptsToPass = i; }
+  assert.ok(attemptsToPass >= 5 && attemptsToPass <= 6, `superato dopo ${attemptsToPass} domande`);
+  assert.ok(s.level >= G.PASS_LEVEL);
+  // la teoria invece si supera con 4 giuste
+  let t, theory = 0;
+  for (let i = 1; i <= 8 && !theory; i++) { t = P.nextStats(t, true); if (G.statusOf(t, { theory: true }) === "superato") theory = i; }
+  assert.equal(theory, 4);
+});
+
+test("tutte le domande di teoria sono raggiungibili: ogni argomento esiste e ha prerequisiti aperti dal gioco", async () => {
+  const { LESSONS, EXTRA_QUESTIONS, LEGACY_THEORY } = await import("../js/lessons.mjs");
+  const { THEORY } = await import("../js/questions.mjs");
+  const all = [...Object.values(LESSONS).flatMap((l) => l.questions), ...EXTRA_QUESTIONS];
+  const known = new Set(G.TOPICS.map((t) => t.id));
+  for (const q of all) assert.ok(known.has(q.topic), `${q.prompt} → ${q.topic}`);
+  // ogni vecchia domanda di THEORY è o assegnata a un argomento o dichiarata doppione
+  THEORY.forEach((_, i) => assert.ok(i in LEGACY_THEORY, `domanda ${i} di THEORY non assegnata`));
+  assert.equal(THEORY.length, Object.keys(LEGACY_THEORY).length);
+  // ogni argomento di teoria ha almeno 4 domande per poter essere "superato" senza ripetere
+  for (const t of G.TOPICS.filter((x) => x.theory)) assert.ok(all.filter((q) => q.topic === t.id).length >= 4, `${t.id}: poche domande`);
+  // raggiungibilità: partendo da zero, con risposte sempre giuste, si apre ogni argomento
+  const { history } = simulate(500, 1, 21);
+  const seen = new Set(history.map((h) => h.topic));
+  for (const t of G.TOPICS) assert.ok(seen.has(t.id), `${t.id} non viene mai proposto`);
+  assert.ok(seen.has("storia"));
+});
+
+test("storia dell'informatica: Leibniz, Boole, Shannon ed ENIAC tornano in gioco", async () => {
+  const { lessonQuestionsFor } = await import("../js/lessons.mjs");
+  const prompts = new Set();
+  for (let s = 1; s <= 200; s++) prompts.add(lessonQuestionsFor(mulberry(s), "storia").prompt);
+  assert.equal(prompts.size, 4);
+  assert.ok([...prompts].some((p) => /Seicento/.test(p)) && [...prompts].some((p) => /decimale/.test(p)));
+});
+
+test("ordine dei compiti: ottale/esadecimale e virgola si aprono dopo l'addizione", () => {
+  assert.ok(G.topicById["ott-esa"].needs.includes("addizione"));
+  assert.ok(G.topicById.virgola.needs.includes("addizione"));
+});
+
+test("blockingNeeds: dice sempre quale prerequisito blocca, anche se non è (ancora) da ripassare", () => {
+  const add = G.topicById.addizione;
+  assert.deepEqual(G.blockingNeeds(add, {}), ["dec-bin", "bin-dec"]);
+  assert.deepEqual(G.blockingNeeds(add, { "dec-bin": stats([1, 1, 1]), "bin-dec": stats([1, 1]) }), ["bin-dec"]);
+  assert.deepEqual(G.blockingNeeds(add, { "dec-bin": stats([0, 0, 0, 1]), "bin-dec": stats([1, 1, 1]) }), ["dec-bin"], "1 giusta su 4: va male, anche se non è ancora da ripassare");
+  assert.deepEqual(G.blockingNeeds(add, { "dec-bin": stats([1, 1, 1]), "bin-dec": stats([1, 1, 1]) }), []);
+  for (const t of G.TOPICS) {
+    const topics = {};
+    assert.equal(G.isUnlocked(t, topics), G.blockingNeeds(t, topics).length === 0, t.id);
+  }
+});
+
+// ---------- Capitoli ordinati e stato di ciascuno ----------
+
+const C1 = ["istruzioni-robot", "dati-informazioni", "algoritmo-pensiero", "informatica-termini", "storia"];
+const chapterOf = (player, id) => G.summarize(player).chapters.find((c) => c.id === id);
+const passedAll = (ids, attempts, correct) => Object.fromEntries(ids.map((id) => [id, { attempts, correct, window: [1, 1, 1, 1, 1].slice(0, Math.min(5, attempts)), level: 1, lastAt: 1 }]));
+
+test("capitoli: in ordine, numerati da 0 a 6, e ogni argomento sta in un solo capitolo", () => {
+  assert.deepEqual(G.CHAPTERS.map((c) => c.n), [0, 1, 2, 3, 4, 5, 6]);
+  assert.equal(new Set(G.CHAPTERS.map((c) => c.id)).size, G.CHAPTERS.length);
+  assert.equal(G.CHAPTERS[0].id, "warm");
+  const order = G.CHAPTERS.map((c) => c.id);
+  assert.deepEqual(order, ["warm", "c1", "c2", "conv", "ops", "basi", "virgola"]);
+  const first = (id) => G.TOPICS.findIndex((t) => t.chapter === id);
+  for (let i = 1; i < order.length; i++) assert.ok(first(order[i - 1]) >= 0 && first(order[i]) >= 0);
+  for (const t of G.TOPICS) assert.equal(G.CHAPTERS.filter((c) => c.id === t.chapter).length, 1, t.id);
+  const sum = G.summarize({ topics: {} });
+  assert.equal(sum.chapters.reduce((a, c) => a + c.total, 0), G.TOPICS.length);
+  assert.deepEqual(sum.chapters.map((c) => c.total), [1, 5, 3, 3, 4, 2, 2]);
+});
+
+test("i capitoli contengono gli argomenti giusti, nell'ordine del corso", () => {
+  const ids = (cid) => G.TOPICS.filter((t) => t.chapter === cid).map((t) => t.id).sort();
+  assert.deepEqual(ids("c1"), [...C1].sort());
+  assert.deepEqual(ids("c2"), ["bit-byte", "bit-valori", "sistemi-posizionali"]);
+  assert.deepEqual(ids("conv"), ["bin-dec", "bit-necessari", "dec-bin"]);
+  assert.deepEqual(ids("ops"), ["addizione", "divisione", "moltiplicazione", "sottrazione"]);
+  assert.deepEqual(ids("basi"), ["ops-basi", "ott-esa"]);
+  assert.deepEqual(ids("virgola"), ["confronto-basi", "virgola"]);
+});
+
+test("stato del capitolo: da iniziare, in corso, coperto, da ripassare", () => {
+  assert.equal(chapterOf(newPlayer(), "c1").state, "da-iniziare");
+  const started = { topics: { "istruzioni-robot": stats([1, 1], 2, 0.2) } };
+  assert.equal(chapterOf(started, "c1").state, "in-corso");
+  const covered = { topics: Object.fromEntries(C1.map((id) => [id, stats([1, 0], 2, 0.2)])) };
+  assert.equal(chapterOf(covered, "c1").state, "coperto");
+  const review = { topics: { ...covered.topics, storia: stats([0, 0, 0, 0, 0], 5, 0) } };
+  const r = chapterOf(review, "c1");
+  assert.equal(r.state, "da-ripassare");
+  assert.equal(r.failed, 1);
+  assert.match(r.detail, /1 argomento da ripassare/);
+});
+
+test("superato alla perfezione contro superato non alla perfezione (soglia 90%)", () => {
+  const perfect = { topics: passedAll(C1, 5, 5) };
+  const p = chapterOf(perfect, "c1");
+  assert.deepEqual([p.state, p.complete, p.accuracy], ["perfetto", true, 1]);
+  assert.equal(p.label, "Superato alla perfezione");
+  assert.match(p.detail, /100% di risposte giuste/);
+  // 9 giuste su 10 in ogni argomento: 90% esatto, ancora perfetto
+  assert.equal(chapterOf({ topics: passedAll(C1, 10, 9) }, "c1").state, "perfetto");
+  // 17 su 20 = 85%: tutti superati ma non alla perfezione
+  const non = chapterOf({ topics: passedAll(C1, 20, 17) }, "c1");
+  assert.deepEqual([non.state, non.complete], ["superato", true]);
+  assert.equal(non.label, "Superato, non alla perfezione");
+  assert.match(non.detail, /85% di risposte giuste: puoi migliorare/);
+  // un solo argomento non superato: non è "superato" nemmeno con ottime risposte
+  const almost = chapterOf({ topics: { ...passedAll(C1.slice(1), 6, 6), "istruzioni-robot": stats([1, 1, 1], 3, 1) } }, "c1");
+  assert.equal(almost.state, "coperto");
+  assert.match(almost.detail, /4 su 5 superati/);
+});
+
+test("la precisione del capitolo si migliora giocando: da non perfetto a perfetto", () => {
+  let topics = passedAll(C1, 20, 16); // 80%
+  assert.equal(chapterOf({ topics }, "c1").state, "superato");
+  topics = passedAll(C1, 40, 38); // 95%
+  assert.equal(chapterOf({ topics }, "c1").state, "perfetto");
+});
+
+test("stato dei capitoli nella simulazione: il giocatore bravo li completa tutti, uno incerto no", () => {
+  const strong = G.summarize(simulate(900, 1, 3).player);
+  assert.ok(strong.chapters.every((c) => c.state === "perfetto"), strong.chapters.map((c) => `${c.n}:${c.state}`).join(" "));
+  const weak = G.summarize(simulate(300, 0.1, 5).player);
+  assert.equal(weak.chapters.find((c) => c.id === "ops").state, "da-iniziare");
+  assert.ok(weak.chapters.some((c) => c.state === "da-ripassare"));
+  const mid = G.summarize(simulate(600, 0.8, 11).player);
+  assert.ok(mid.chapters.every((c) => ["perfetto", "superato", "coperto", "in-corso", "da-ripassare"].includes(c.state)));
+  assert.ok(mid.chapters.filter((c) => c.state === "perfetto" || c.state === "superato").length >= 3, mid.chapters.map((c) => `${c.n}:${c.state}`).join(" "));
+});
+
+test("ogni stato ha etichetta e riga di spiegazione", () => {
+  const states = Object.values(G.CHAPTER_STATE);
+  assert.equal(states.length, 6);
+  for (const st of states) assert.ok(G.CHAPTER_LABEL[st], st);
+  assert.equal(new Set(states.map((s) => G.CHAPTER_LABEL[s])).size, 6);
+  const sum = G.summarize(newPlayer());
+  assert.ok(sum.chapters.every((c) => c.detail && c.label && c.state === "da-iniziare"));
 });

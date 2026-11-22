@@ -7,8 +7,6 @@
 .home__title span { color: var(--c-accent); }
 .home__line { margin: 0; }
 .home__rules { margin: 0; color: var(--c-text-muted); font-size: var(--fs-sm); max-width: 28rem; }
-.home__missions { width: 100%; margin-top: var(--sp-3); }
-.home__missions .choice { justify-content: flex-start; text-align: left; }
 .home__sub { color: var(--c-text-muted); font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 400; }
 .home .btn { max-width: 28rem; }
 .home .radio { width: 100%; max-width: 28rem; text-align: left; }
@@ -74,7 +72,6 @@
 .name-error { margin: 0; color: var(--c-danger); font-weight: 700; font-size: var(--fs-sm); }
 .name-error[hidden] { display: none; }
 .home__hello { margin: 0; font-weight: 700; color: var(--c-secondary); }
-.home__done { font-size: var(--fs-xs); font-weight: 700; color: var(--c-success); background: var(--c-success-bg); border-radius: var(--r-pill); padding: 2px var(--sp-2); margin-left: var(--sp-1); }
 
 .profile { width: 100%; max-width: 28rem; text-align: left; border: var(--border-w, 1.5px) solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); padding: 0 var(--sp-3); margin-top: var(--sp-3); }
 .profile > summary { cursor: pointer; font-weight: 700; padding: var(--sp-3) 0; min-height: var(--tap); display: flex; align-items: center; }
@@ -90,39 +87,48 @@
 .ruler { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
 .ruler__w { text-align: center; padding: var(--sp-2) 0; border-radius: var(--r-sm); background: var(--c-surface-2); border: var(--border-w, 1.5px) solid var(--c-border); font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 700; font-size: var(--fs-sm); color: var(--c-text); }
 
-/* ---------- Gioca e basta + I miei progressi ---------- */
-.home__play { max-width: 28rem; min-height: 64px; font-size: var(--fs-lg); }
+/* combinazione: una cifra sotto ogni peso */
+.ruler-form { display: flex; flex-direction: column; gap: var(--sp-3); }
+.ruler__cell { width: 100%; min-width: 0; min-height: var(--tap-lg, 56px); padding: 0; text-align: center; font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800; font-size: var(--fs-lg); color: var(--c-digit); background: var(--c-surface); border: var(--border-w, 1.5px) solid var(--c-border); border-radius: var(--r-md); }
+.ruler__cell:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 1px; border-color: transparent; }
+.ruler__cell:disabled { opacity: 1; }
 
-.board { display: flex; flex-direction: column; gap: var(--sp-3); }
-.board__title { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: var(--fs-xl); line-height: 1; color: var(--c-primary); text-shadow: var(--glow); }
-.board__sum { margin: 0; }
-.board__sub { margin: var(--sp-3) 0 0; font-size: var(--fs-md); text-align: left; width: 100%; max-width: 28rem; }
+/* elenco dei giocatori nella schermata del nome */
+.home__missions { width: 100%; margin-top: var(--sp-3); max-width: 28rem; }
+.home__missions .choice { justify-content: flex-start; text-align: left; }
 
-.chapter { background: var(--c-surface); border: var(--border-w, 1.5px) solid var(--c-border); border-radius: var(--r-lg); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-2); }
-.chapter__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
-.chapter__title { margin: 0; font-size: var(--fs-md); line-height: var(--lh-tight); }
-.chapter__badge { font-size: var(--fs-xs); font-weight: 700; padding: 2px var(--sp-3); border-radius: var(--r-pill); border: var(--border-w, 1.5px) solid var(--c-border); color: var(--c-text-muted); white-space: nowrap; }
-.chapter__badge.is-covered { color: var(--c-secondary); border-color: var(--c-secondary); }
-.chapter__badge.is-complete { color: var(--c-success); border-color: var(--c-success); background: var(--c-success-bg); }
-.chapter__src { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); }
-.chapter__bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--c-surface-2); border: 1px solid var(--c-border); }
-.chapter__bar .is-passed { background: var(--c-success); }
-.chapter__bar .is-touched { background: var(--c-secondary); }
+/* ---------- Elenco ordinato dei capitoli (home) ---------- */
+.course { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 28rem; display: flex; flex-direction: column; gap: var(--sp-2); text-align: left; }
+.course__item { width: 100%; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "n main" "n state"; gap: var(--sp-1) var(--sp-3); align-items: center; padding: var(--sp-3); border-radius: var(--r-md); border: var(--border-w, 1.5px) solid var(--c-border); background: var(--c-surface); color: var(--c-text); text-align: left; cursor: pointer; }
+.course__item:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
+.course__n { grid-area: n; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800; border: 2px solid currentColor; color: var(--c-text-muted); }
+.course__main { grid-area: main; display: flex; flex-direction: column; min-width: 0; }
+.course__title { font-weight: 700; line-height: var(--lh-tight); }
+.course__detail { font-size: var(--fs-xs); color: var(--c-text-muted); }
+.course__state { grid-area: state; display: inline-flex; align-items: center; gap: 6px; justify-self: start; font-size: var(--fs-xs); font-weight: 800; padding: 2px var(--sp-3); border-radius: var(--r-pill); border: var(--border-w, 1.5px) solid currentColor; background: var(--c-surface); }
+.course__state svg { width: 14px; height: 14px; flex: none; }
+.state-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; display: inline-block; flex: none; }
+.state-dot--half { background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.state-dot--dash { border-style: dotted; }
 
-.topics { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); width: 100%; }
-.topic { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-3); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md); background: var(--c-surface-2); border: var(--border-w, 1.5px) solid transparent; text-align: left; }
-.topic__main, .topic > div:first-child { display: flex; flex-direction: column; min-width: 0; flex: 1 1 12rem; }
-.topic__name { font-weight: 700; }
-.topic__score { font-size: var(--fs-xs); color: var(--c-text-muted); }
-.topic--superato { background: var(--c-success-bg); }
-.topic--bocciato { background: var(--c-danger-bg); border-color: var(--c-danger); }
-.topic--toccato { border-color: var(--c-secondary); }
-.topic--non-toccato { border-style: dashed; border-color: var(--c-border); }
-.topic__train { min-height: var(--tap); padding-inline: var(--sp-4); font-size: var(--fs-sm); }
-.topics--summary { max-width: 28rem; }
+.course__state--perfetto { color: var(--c-cash); background: color-mix(in srgb, var(--c-cash) 14%, var(--c-surface)); }
+.course__state--superato { color: var(--c-success); background: var(--c-success-bg); }
+.course__state--da-ripassare { color: var(--c-danger); background: var(--c-danger-bg); }
+.course__state--coperto { color: var(--c-secondary); }
+.course__state--in-corso { color: var(--c-secondary); border-style: dashed; }
+.course__state--da-iniziare { color: var(--c-text-muted); border-style: dashed; }
 
-.chip { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); font-weight: 800; padding: 2px var(--sp-3); border-radius: var(--r-pill); border: var(--border-w, 1.5px) solid currentColor; white-space: nowrap; background: var(--c-surface); }
-.chip--superato { color: var(--c-success); }
-.chip--bocciato { color: var(--c-danger); }
-.chip--toccato { color: var(--c-secondary); }
-.chip--non-toccato { color: var(--c-text-muted); }
+.course__item--perfetto { border-color: var(--c-cash); border-width: 2px; }
+.course__item--perfetto .course__n { color: var(--c-cash); background: color-mix(in srgb, var(--c-cash) 14%, var(--c-surface)); }
+.course__item--superato { border-color: var(--c-success); }
+.course__item--superato .course__n { color: var(--c-success); }
+.course__item--da-ripassare { border-color: var(--c-danger); }
+.course__item--da-ripassare .course__n { color: var(--c-danger); }
+.course__item--coperto, .course__item--in-corso { border-color: var(--c-secondary); }
+.course__item--coperto .course__n, .course__item--in-corso .course__n { color: var(--c-secondary); }
+.course__item--da-iniziare { border-style: dashed; }
+
+/* badge del capitolo nella schermata dei progressi: i nuovi stati */
+.chapter__badge.is-perfect { color: var(--c-cash); border-color: var(--c-cash); background: color-mix(in srgb, var(--c-cash) 14%, var(--c-surface)); }
+.chapter__badge.is-review { color: var(--c-danger); border-color: var(--c-danger); background: var(--c-danger-bg); }
+.chapter__badge.is-started { color: var(--c-secondary); border-style: dashed; border-color: var(--c-secondary); }

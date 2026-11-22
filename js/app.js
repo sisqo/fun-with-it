@@ -58,7 +58,7 @@ const radioCompact = (line) => `<p class="radio radio--compact">${EQ}<span class
 function render(node) {
   app.replaceChildren(node);
   window.scrollTo({ top: 0 });
-  node.querySelector("input.answer__input, .choice, .dial, .btn")?.focus?.({ preventScroll: true });
+  node.querySelector("input.answer__input, input.ruler__cell, .choice, .dial, .btn")?.focus?.({ preventScroll: true });
 }
 
 // ---------- Schermate ----------
@@ -132,12 +132,12 @@ function home(greeting = "") {
       <h1 class="home__title">Neon <span>Bay</span></h1>
       <p class="home__hello" role="status">${esc(greeting || `Ciao, ${player.name}!`)}</p>
       <p class="home__line">Il tuo conto: <b>${money(player.cash)}</b> · Partite completate: <b>${player.missionsDone}</b></p>
-      <button class="btn btn--primary btn--block home__play" id="play" type="button">${started ? "Gioca" : "Inizia a giocare"}</button>
-      <p class="home__rules">${started
-        ? `Argomenti: <b>${c.passed}</b> superati · <b>${c.inProgress}</b> in corso · <b>${c.failed}</b> da ripassare · <b>${c.untouched}</b> ancora da toccare.`
-        : "Si parte con una serie di casseforti per capire come funziona il binario. Poi il gioco sceglie le domande per te."}</p>
+      <button class="btn btn--primary home__play" id="play" type="button">${started ? "Gioca" : "Inizia a giocare"}</button>
+      ${started ? statsHTML(c) : `<p class="home__rules">Si parte con una serie di casseforti per capire come funziona il binario. Poi il gioco sceglie le domande per te.</p>`}
       ${toReview ? `<button class="btn btn--ghost btn--block" id="review" type="button">Ripassa: ${esc(toReview.title)}</button>` : ""}
-      <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi</button>
+      <h2 class="board__sub">I capitoli</h2>
+      ${coursesHTML(sum)}
+      <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi, argomento per argomento</button>
       <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la partita è finita. Tre risposte giuste di fila ne spengono una.</p>
       ${radioFull(DJ_LINES[0])}
       <details class="profile">
@@ -151,7 +151,8 @@ function home(greeting = "") {
       </details>
     </section>`));
   document.getElementById("play").onclick = () => startGame();
-  document.getElementById("progress").onclick = progressScreen;
+  document.getElementById("progress").onclick = () => progressScreen();
+  app.querySelectorAll("[data-chapter]").forEach((b) => (b.onclick = () => progressScreen(b.dataset.chapter)));
   document.getElementById("review")?.addEventListener("click", () => startGame({ force: toReview.id }));
   document.getElementById("switch").onclick = () => { commit(P.signOut(store)); nameScreen(); };
   document.getElementById("reset").onclick = async () => {
@@ -178,7 +179,7 @@ function home(greeting = "") {
 
 // Una partita = 10 domande scelte dal gioco in base ai risultati (o 8 su un solo argomento, per allenarsi).
 function startGame({ force = null } = {}) {
-  game = { force, count: force ? 8 : 10, q: null, last: null, seen: new Set(), touched: new Map(), qWrong: false, recorded: false, index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [], delta: 0, lit: false };
+  game = { force, count: force ? 8 : 10, q: null, last: null, seen: new Set(), touched: new Map(), qWrong: false, qUnits: 0, qOkUnits: 0, recorded: false, index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [], delta: 0, lit: false };
   nextQ();
   showQuestion();
 }
@@ -195,12 +196,15 @@ function recordQuestion() {
   const topic = game.q.topic;
   if (!topic || game.recorded) return;
   game.recorded = true;
-  const before = G.statusOf(P.currentPlayer(store).topics[topic]);
-  const t = game.touched.get(topic) ?? { before, n: 0, ok: 0 };
+  // esito = quota di passaggi giusti (1 per le domande a risposta singola): non conta come sbaglio il passaggio che "scopre l'errore"
+  const frac = game.qUnits ? game.qOkUnits / game.qUnits : game.qWrong ? 0 : 1;
+  const before = G.statusFor(P.currentPlayer(store), topic);
+  const t = game.touched.get(topic) ?? { before, n: 0, ok: 0, res: [] };
   t.n += 1;
-  if (!game.qWrong) t.ok += 1;
+  t.res.push(frac >= P.OK_FRACTION);
+  if (frac >= P.OK_FRACTION) t.ok += 1;
   game.touched.set(topic, t);
-  commit(P.recordResult(store, store.current, topic, !game.qWrong));
+  commit(P.recordResult(store, store.current, topic, frac));
 }
 
 const SPEAKER = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/>${on ? '<path d="M15.5 9a4 4 0 010 6M18 6.5a8 8 0 010 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' : '<path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}</svg>`;
@@ -316,9 +320,13 @@ function showQuestion() {
       <button class="btn btn--primary btn--block" type="button" id="submit">Apri</button></section><div id="fb"></div>`;
   } else {
     const locked = !q.vault ? "" : q.vault.show === "ruler"
-      ? `<div class="q__code">${q.vault.value}<sub>10</sub></div><div class="ruler" role="group" aria-label="Pesi delle ruote, da sinistra a destra">${WEIGHTS.map((w) => `<span class="ruler__w">${w}</span>`).join("")}</div>`
+      ? `<div class="q__code">${q.vault.value}<sub>10</sub></div>
+        <form class="ruler-form" id="form" novalidate><div class="ruler" role="group" aria-label="Pesi delle ruote e cifre della combinazione, da sinistra a destra">
+          ${WEIGHTS.map((w) => `<span class="ruler__w">${w}</span>`).join("")}
+          ${WEIGHTS.map((w) => `<input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" autocomplete="off" aria-label="Cifra sotto il peso ${w}">`).join("")}
+        </div><button class="btn btn--primary btn--block" type="submit">Rispondi</button></form>`
       : vaultHTML({ bits: q.vault.bits, lcd: "?", sum: false, code: false });
-    body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>${locked}${answerForm(q, "La tua risposta")}</section><div id="fb"></div>`;
+    body = `<section class="q"><p class="q__kicker">${kicker}</p><h1 class="q__prompt">${esc(q.prompt)}</h1>${locked}${q.vault?.show === "ruler" ? "" : answerForm(q, "La tua risposta")}</section><div id="fb"></div>`;
   }
 
   const tools = `<div class="mission-tools"><button class="btn btn--ghost" type="button" id="restart">Ricomincia la partita</button><button class="btn btn--ghost" type="button" id="quit">Esci al menu</button></div>`;
@@ -348,6 +356,21 @@ function showQuestion() {
     node.querySelector("#submit").onclick = () => {
       const total = recompute();
       submit(q, total, null, () => vault.classList.toggle("is-open", total === q.value));
+    };
+  } else if (q.vault?.show === "ruler") {
+    const cells = [...node.querySelectorAll(".ruler__cell")];
+    cells.forEach((c, i) => {
+      c.addEventListener("input", () => {
+        c.value = c.value.replace(/[^01]/g, "").slice(-1);
+        if (c.value && cells[i + 1]) cells[i + 1].focus();
+      });
+      c.addEventListener("keydown", (e) => { if (e.key === "Backspace" && !c.value && cells[i - 1]) cells[i - 1].focus(); });
+    });
+    node.querySelector("#form").onsubmit = (e) => {
+      e.preventDefault();
+      const empty = cells.find((c) => c.value === "");
+      if (empty) { empty.focus(); return; }
+      submit(unit, cells.map((c) => c.value).join(""));
     };
   } else {
     node.querySelector("#form").onsubmit = (e) => { e.preventDefault(); submit(unit, node.querySelector("#ans").value); };
@@ -446,6 +469,7 @@ function submit(unit, given, clicked, afterJudge) {
   const moreSteps = isStep && game.step < q.steps.length - 1;
   const last = game.index === game.count - 1;
   if (!verdict.ok || verdict.star) game.qWrong = true;
+  if (!(verdict.discovered && !verdict.star && !verdict.reward)) { game.qUnits += 1; if (verdict.reward) game.qOkUnits += 1; }
   if (!moreSteps || failed) recordQuestion();
 
   root.querySelector(".hud").outerHTML = hudHTML();
@@ -458,23 +482,58 @@ function submit(unit, given, clicked, afterJudge) {
     if (failed) return finish(true);
     if (moreSteps) { game.step += 1; return showQuestion(); }
     if (last) return finish(false);
-    game.index += 1; game.step = 0; game.givens = []; game.marks = []; game.qWrong = false; game.recorded = false;
+    game.index += 1; game.step = 0; game.givens = []; game.marks = []; game.qWrong = false; game.qUnits = 0; game.qOkUnits = 0; game.recorded = false;
     nextQ(); showQuestion();
   };
   nb.focus({ preventScroll: true });
   root.querySelector(".feedback").scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
-const CHIP = { "non-toccato": "○ Non toccato", toccato: "◐ Toccato", superato: "✓ Superato", bocciato: "✕ Bocciato" };
-const chip = (status) => `<span class="chip chip--${status}">${CHIP[status]}</span>`;
+// ---------- Componenti dei progressi (markup di design/components.css) ----------
+
+const WORD = { "non-toccato": "Non toccato", toccato: "Toccato", superato: "Superato", "da-ripassare": "Da ripassare" };
+// Nelle classi del design lo stato "da ripassare" si chiama ancora "bocciato".
+const cls = (status) => (status === G.STATUS.FAILED ? "bocciato" : status);
+const chip = (status, extra = "") => `<span class="chip chip--${cls(status)}${extra}">${WORD[status]}</span>`;
+const RANK = { "non-toccato": 0, "da-ripassare": 1, toccato: 2, superato: 3 };
+
+function statsHTML(c) {
+  const item = (status, n, label) => `<li class="stats__item stats__item--${cls(status)}"><b>${n}</b>${label}</li>`;
+  return `<ul class="stats" aria-label="Argomenti">${item("superato", c.passed, "superati")}${item("toccato", c.inProgress, "in corso")}${item("da-ripassare", c.failed, "da ripassare")}${item("non-toccato", c.untouched, "da toccare")}</ul>`;
+}
+
+// Icone dello stato di un capitolo: forma + testo, mai solo il colore.
+const STATE_ICON = {
+  perfetto: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" fill="currentColor"/></svg>',
+  superato: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  "da-ripassare": '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v7M12 17.5v.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
+  coperto: '<i class="state-dot state-dot--half" aria-hidden="true"></i>',
+  "in-corso": '<i class="state-dot state-dot--ring" aria-hidden="true"></i>',
+  "da-iniziare": '<i class="state-dot state-dot--dash" aria-hidden="true"></i>',
+};
+const chapterTitle = (ch) => (ch.n > 0 ? `${ch.n} · ${ch.title}` : ch.title);
+
+// Elenco ordinato dei capitoli con lo stato di ciascuno: si vede subito dalla home.
+function coursesHTML(sum) {
+  return `<ol class="course" aria-label="Capitoli del corso, in ordine">${sum.chapters.map((ch) => `<li>
+    <button class="course__item course__item--${ch.state}" type="button" data-chapter="${ch.id}" aria-label="${esc(chapterTitle(ch))}: ${esc(ch.label)}. ${esc(ch.detail)}. Apri il dettaglio.">
+      <span class="course__n" aria-hidden="true">${ch.n > 0 ? ch.n : "0"}</span>
+      <span class="course__main"><span class="course__title">${esc(ch.title)}</span><span class="course__detail">${esc(ch.detail)}</span></span>
+      <span class="course__state course__state--${ch.state}">${STATE_ICON[ch.state]}<span>${esc(ch.label)}</span></span>
+    </button></li>`).join("")}</ol>`;
+}
 
 function finish(failed) {
   if (!failed) { commit(P.recordMission(store, store.current, "gioca", game.earned)); FX.bigWin(); } else FX.play("ko");
   const player = P.currentPlayer(store);
-  const rows = [...game.touched.entries()].map(([id, t]) => {
-    const after = G.statusOf(player.topics[id]);
-    const moved = after !== t.before;
-    return `<li class="topic topic--${after}"><div><span class="topic__name">${esc(G.topicById[id]?.title ?? id)}</span><span class="topic__score">${t.ok} su ${t.n} ${t.n === 1 ? "giusta" : "giuste"} in questa partita</span></div><span>${moved && t.before !== G.STATUS.NEW ? `${CHIP[t.before].slice(2)} → ` : ""}${chip(after)}</span></li>`;
+  const entries = [...game.touched.entries()].map(([id, t]) => ({ id, t, after: G.statusFor(player, id) }));
+  const delta = (e) => Math.sign(RANK[e.after] - RANK[e.t.before]); // 1 salito, 0 invariato, -1 sceso
+  const ordered = [...entries.filter((e) => delta(e) > 0), ...entries.filter((e) => delta(e) === 0), ...entries.filter((e) => delta(e) < 0)];
+  const rows = ordered.map((e) => {
+    const d = delta(e);
+    const pips = `<span class="pips" role="img" aria-label="${e.t.ok} su ${e.t.n} ${e.t.n === 1 ? "giusta" : "giuste"}">${e.t.res.map((ok) => `<i class="${ok ? "is-ok" : "is-ko"}"></i>`).join("")}</span>`;
+    const change = d !== 0 ? `${chip(e.t.before, " chip--was")}<span class="topic__arrow" aria-label="diventa">→</span>${chip(e.after)}` : chip(e.after);
+    return `<li class="topic topic--${cls(e.after)}${d > 0 ? " is-up" : d < 0 ? " is-down" : ""}"><div class="topic__main"><span class="topic__name">${esc(G.topicById[e.id]?.title ?? e.id)}</span>${pips}</div><span class="topic__change">${change}</span></li>`;
   }).join("");
   render(el(`
     <section class="home">
@@ -489,13 +548,13 @@ function finish(failed) {
       <button class="btn btn--ghost btn--block" id="menu" type="button">Menu</button>
     </section>`));
   document.getElementById("again").onclick = () => startGame({ force: game.force });
-  document.getElementById("progress").onclick = progressScreen;
+  document.getElementById("progress").onclick = () => progressScreen();
   document.getElementById("menu").onclick = () => home();
 }
 
-// ---------- I miei progressi: capitoli coperti e argomenti toccati, superati, bocciati ----------
+// ---------- I miei progressi: capitoli coperti e argomenti toccati, superati, da ripassare ----------
 
-function progressScreen() {
+function progressScreen(focusChapter = null) {
   const player = P.currentPlayer(store);
   if (!player) return nameScreen();
   const sum = G.summarize(player);
@@ -503,26 +562,31 @@ function progressScreen() {
   const title = (id) => G.topicById[id]?.title ?? id;
   const chapters = sum.chapters.map((ch) => {
     const pct = (n) => Math.round((n / ch.total) * 100);
-    const badge = ch.complete ? "Capitolo superato" : ch.covered ? "Capitolo coperto" : ch.touched ? `${ch.touched} su ${ch.total} toccati` : "Da iniziare";
+    const inProgress = ch.touched - ch.passed - ch.failed;
+    const BADGE = { perfetto: " is-perfect", superato: " is-complete", "da-ripassare": " is-review", coperto: " is-covered", "in-corso": " is-started", "da-iniziare": "" };
+    const badge = `<span class="chapter__badge${BADGE[ch.state]}">${STATE_ICON[ch.state].startsWith("<svg") ? "" : ""}${esc(ch.label)}</span>`;
     const items = ch.topics.map((r) => {
-      const needs = G.topicById[r.id].needs.filter((n) => (player.topics[n]?.attempts ?? 0) < 3 || G.statusOf(player.topics[n]) === G.STATUS.FAILED).map(title);
+      const needs = G.blockingNeeds(G.topicById[r.id], player.topics ?? {}).map(title);
       const can = r.unlocked || r.attempts > 0;
-      return `<li class="topic topic--${r.status}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${r.attempts ? `${r.correct} su ${r.attempts} ${r.attempts === 1 ? "giusta" : "giuste"}` : can ? "Mai provato" : `Si apre dopo: ${esc(needs.join(", "))}`}</span></div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}</li>`;
+      const score = r.attempts ? `${r.correct} su ${r.attempts} ${r.attempts === 1 ? "giusta" : "giuste"}` : can ? "Mai provato" : `Si apre dopo: ${esc(needs.join(", "))}`;
+      return `<li class="topic topic--${cls(r.status)}${can ? "" : " is-locked"}"><div class="topic__main"><span class="topic__name">${esc(r.title)}</span><span class="topic__score">${score}</span></div>${chip(r.status)}${can ? `<button class="btn btn--ghost topic__train" type="button" data-train="${r.id}" aria-label="Allenati su ${esc(r.title)}">Allenati</button>` : ""}</li>`;
     }).join("");
-    return `<article class="chapter"><header class="chapter__head"><h2 class="chapter__title">${esc(ch.title)}</h2><span class="chapter__badge${ch.complete ? " is-complete" : ch.covered ? " is-covered" : ""}">${badge}</span></header>
+    return `<article class="chapter" id="chapter-${ch.id}"><header class="chapter__head"><h2 class="chapter__title">${esc(chapterTitle(ch))}</h2>${badge}</header>
       <p class="chapter__src">${esc(ch.source)}</p>
-      <div class="chapter__bar" role="img" aria-label="${ch.passed} argomenti superati e ${ch.touched - ch.passed} in corso su ${ch.total}"><i class="is-passed" style="width:${pct(ch.passed)}%"></i><i class="is-touched" style="width:${pct(ch.touched - ch.passed)}%"></i></div>
+      <div class="chapter__bar" role="img" aria-label="${ch.passed} superati, ${inProgress} in corso, ${ch.failed} da ripassare su ${ch.total}"><i class="is-passed" style="width:${pct(ch.passed)}%"></i><i class="is-touched" style="width:${pct(inProgress)}%"></i><i class="is-failed" style="width:${pct(ch.failed)}%"></i></div>
+      <p class="chapter__count"><b>${ch.touched}</b> toccati su ${ch.total} · <b>${ch.passed}</b> ${ch.passed === 1 ? "superato" : "superati"}</p>
       <ul class="topics">${items}</ul></article>`;
   }).join("");
   render(el(`
     <section class="board">
       <h1 class="board__title">I miei progressi</h1>
-      <p class="board__sum"><b>${c.passed}</b> superati · <b>${c.inProgress}</b> in corso · <b>${c.failed}</b> da ripassare · <b>${c.untouched}</b> ancora da toccare, su ${c.total} argomenti.</p>
-      <p class="home__rules">Superato: almeno 4 domande e 4 giuste su 5 (le ultime). Bocciato: meno della metà giuste nelle ultime 5. Un argomento può cambiare stato quando ci si riprova.</p>
+      ${statsHTML(c)}
+      <p class="home__rules">Superato: almeno 4 giuste nelle ultime 5, con numeri da compito. Da ripassare: meno della metà giuste nelle ultime 5 (dopo almeno 5 domande). Negli esercizi a passaggi conta quanti passaggi hai fatto giusti. Puoi sempre migliorare: lo stato cambia quando ci riprovi.</p>
       ${chapters}
       <button class="btn btn--primary btn--block" id="back" type="button">Torna a giocare</button>
     </section>`));
   document.getElementById("back").onclick = () => home();
+  if (focusChapter) document.getElementById(`chapter-${focusChapter}`)?.scrollIntoView({ block: "start" });
   app.querySelectorAll("[data-train]").forEach((b) => (b.onclick = () => startGame({ force: b.dataset.train })));
 }
 

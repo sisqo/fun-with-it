@@ -61,7 +61,7 @@ export function vaultCode(rng, n) {
     kind: "text",
     base: 2,
     vault: { show: "ruler", value: n },
-    prompt: `Il display della cassaforte segna ${n}. Scrivi la combinazione in binario: per ogni peso metti 1 se serve per fare ${n}, 0 se non serve. Gli zeri iniziali puoi ometterli.`,
+    prompt: `Il display della cassaforte segna ${n}. Scrivi la combinazione in binario, una cifra sotto ogni peso. Parti da sinistra: se il peso ci sta in quello che resta, scrivi 1 e toglilo; se non ci sta, scrivi 0.`,
     answer: E.toBin(n),
     explain: [`Ruote da 128 a 1: ${nibbles(bits8(n))}`, `Senza zeri iniziali: ${E.toBin(n)}`, `Valore: ${onWeights(n).join(" + ")} = ${n}`],
     radio: pick(rng, RADIO_CODE),

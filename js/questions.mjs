@@ -86,7 +86,7 @@ export function bitsFor(rng, t = 1) {
 }
 
 // Domande di teoria (con battuta): il testo è scritto a mano, le risposte no.
-const THEORY = [
+export const THEORY = [
   {
     prompt: "Perché i computer digitali usano solo 0 e 1?",
     options: [

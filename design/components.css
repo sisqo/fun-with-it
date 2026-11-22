@@ -41,7 +41,7 @@ body {
 }
 .btn:active { transform: scale(.97); }
 .btn--primary { background: var(--c-primary); color: var(--c-on-primary); box-shadow: var(--glow); }
-.btn--ghost { background: transparent; color: var(--c-text); border: var(--border-w) solid var(--c-border); }
+.btn--ghost { background: transparent; color: var(--c-text); border: var(--border-w) solid color-mix(in srgb, var(--c-text-muted) 70%, var(--c-surface)); }
 .btn--block { width: 100%; }
 .btn[disabled], .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 
@@ -554,6 +554,176 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 /* Fermata di partenza ("Parti da qui"): piccola, un'insegna sola */
 .stop--start .stop__card { background: var(--c-surface-2); }
 @keyframes ping { from { transform: scale(.85); opacity: .9 } to { transform: scale(1.35); opacity: 0 } }
+
+/* =========================================================================
+   PROGRESSI — "gioca e basta": niente menu a capitoli, si tiene traccia degli argomenti.
+   I nomi delle classi sono quelli del prototipo di David (.board, .chapter, .topic, .chip):
+   il markup che c'è funziona già; le aggiunte (.stats, .metro, .pips, .topic__change) sono opzionali.
+   ========================================================================= */
+
+/* ---------- Home: il tasto Gioca ---------- */
+.home__play {
+  width: 100%; max-width: 28rem; min-height: 64px;
+  font-family: var(--font-sign); font-weight: 400; font-size: var(--fs-lg); letter-spacing: .06em;
+  box-shadow: var(--glow), var(--shadow-1);
+}
+.home__play::after { content: "▸"; font-family: var(--font-ui); font-size: 1.2em; }
+
+/* ---------- Stato di un argomento: chip ---------- */
+/* Quattro stati, mai solo colore: simbolo + parola + riempimento + tipo di bordo.
+   ✓ Superato = pieno verde · ◐ Toccato = bordo viola · ✕ Bocciato = tinta rossa · ○ Non toccato = tratteggio */
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; flex: none;
+  min-height: 26px; padding: 2px var(--sp-3); border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: 800; white-space: nowrap;
+  border: var(--border-w) solid currentColor; background: var(--c-surface);
+}
+/* L'icona la disegna la CSS (::before): ◐ e ○ non esistono nei font scelti e su molti telefoni
+   escono minuscoli o diversi. Nel testo del chip va solo la parola: "Superato", "Toccato"… */
+.chip::before { content: ""; width: 12px; height: 12px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 11px; line-height: 1; }
+.chip--superato::before { content: "✓"; width: auto; height: auto; font-weight: 900; }
+.chip--bocciato::before { content: "✕"; width: auto; height: auto; font-weight: 900; }
+.chip--toccato::before { border: 2px solid currentColor; background: linear-gradient(90deg, currentColor 50%, transparent 50%); box-sizing: border-box; }
+.chip--non-toccato::before { border: 2px solid currentColor; box-sizing: border-box; }
+.chip--superato { background: var(--c-success); border-color: var(--c-success); color: var(--c-surface); }
+.chip--toccato { color: var(--c-secondary); }
+.chip--bocciato { color: var(--c-danger); background: var(--c-danger-bg); }
+.chip--non-toccato { color: var(--c-text-muted); border-style: dashed; }
+.chip--was { opacity: 1; filter: saturate(.6); font-weight: 700; } /* lo stato "prima" nel riepilogo */
+
+/* ---------- Riepilogo numerico (home e progressi) ---------- */
+/* <ul class="stats"><li class="stats__item stats__item--superato"><b>4</b> superati</li>…</ul>
+   Alternativa più visiva alla riga "Argomenti: N superati · …". */
+.stats { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
+.stats__item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--sp-2) 4px;
+  border-radius: var(--r-md); border: var(--border-w) solid var(--c-border); background: var(--c-surface);
+  font-size: var(--fs-xs); color: var(--c-text-muted); text-align: center; line-height: 1.2;
+}
+.stats__item b { font-family: var(--font-mono); font-feature-settings: var(--num-features); font-size: var(--fs-xl); line-height: 1; color: var(--c-text); }
+.stats__item--superato b { color: var(--c-success); }
+.stats__item--toccato b { color: var(--c-secondary); }
+.stats__item--bocciato b { color: var(--c-danger); }
+.stats__item--bocciato { border-color: var(--c-danger); }
+.stats__item--non-toccato { border-style: dashed; }
+
+/* ---------- La linea dei capitoli (visualizzazione, non menu) ---------- */
+/* La metro della mappa, orizzontale e compatta: una fermata per capitolo, non si tocca.
+   <ol class="metro" aria-label="Capitoli: 2 superati, 1 coperto, …">
+     <li class="metro__stop is-complete|is-covered|is-started|is-new">
+       <span class="metro__node" aria-hidden="true">✓</span><span class="metro__label">Algoritmi</span></li> … </ol>
+   5 fermate stanno anche a 320px (etichette brevi, max ~12 caratteri, vanno a capo). */
+/* etichette alternate sotto/sopra il binario (come le mappe della metro): ognuna ha lo spazio di due colonne */
+.metro { list-style: none; margin: 0; padding: 2.9em 0; width: 100%; display: grid; grid-template-columns: repeat(var(--stops, 5), 1fr); font-size: var(--fs-xs); }
+.metro__stop { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.metro__stop::before { /* binario verso la fermata precedente */
+  content: ""; position: absolute; top: 16px; right: 50%; width: 100%; height: 4px; margin-top: -2px;
+  background: var(--c-secondary); z-index: 0;
+}
+.metro__stop:first-child::before { display: none; }
+.metro__stop.is-complete::before { background: var(--c-success); }
+.metro__stop.is-new::before { background: repeating-linear-gradient(to right, var(--c-text-muted) 0 5px, transparent 5px 10px); }
+.metro__node {
+  position: relative; z-index: 1; width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 800; font-size: var(--fs-sm);
+  background: var(--c-surface); border: 3px solid var(--c-secondary); color: var(--c-secondary);
+}
+.metro__stop.is-complete .metro__node { background: var(--c-success); border-color: var(--c-success); color: var(--c-surface); }
+.metro__stop.is-covered .metro__node { background: var(--c-secondary); color: var(--c-surface); }
+.metro__stop.is-new .metro__node { border-style: dashed; border-color: var(--c-text-muted); color: var(--c-text-muted); }
+.metro__stop.is-hub .metro__node { width: 40px; height: 40px; margin-top: -4px; margin-bottom: -4px; box-shadow: var(--glow); } /* Operazioni */
+.metro__label {
+  position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  width: 190%; text-align: center; line-height: 1.2; color: var(--c-text-muted);
+}
+.metro__stop:nth-child(even) .metro__label { top: auto; bottom: calc(100% + 4px); }
+.metro__stop:first-child .metro__label { left: 0; transform: none; text-align: left; width: 150%; }
+.metro__stop:last-child .metro__label { left: auto; right: 0; transform: none; text-align: right; width: 150%; }
+.metro__stop.is-hub .metro__label { top: calc(100% + 8px); }
+.metro__stop.is-hub:nth-child(even) .metro__label { top: auto; bottom: calc(100% + 8px); }
+.metro__stop.is-complete .metro__label, .metro__stop.is-covered .metro__label { color: var(--c-text); font-weight: 700; }
+
+/* ---------- Schermata "I miei progressi" ---------- */
+.board { display: flex; flex-direction: column; gap: var(--sp-4); }
+.board__title { margin: 0; font-family: var(--font-sign); font-weight: 400; font-size: var(--fs-xl); line-height: 1; color: var(--c-primary); text-shadow: var(--glow); }
+.board__sum { margin: 0; color: var(--c-text-muted); }
+.board__sum b { color: var(--c-text); font-family: var(--font-mono); font-feature-settings: var(--num-features); }
+.board__sub { margin: var(--sp-2) 0 0; font-size: var(--fs-md); }
+
+/* capitolo */
+.chapter {
+  background: var(--c-surface); border: var(--border-w) solid var(--c-border); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1); padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3);
+}
+.chapter__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.chapter__title { margin: 0; font-size: var(--fs-lg); line-height: var(--lh-tight); }
+.chapter__badge {
+  font-size: var(--fs-xs); font-weight: 800; padding: 2px var(--sp-3); border-radius: var(--r-pill);
+  border: var(--border-w) dashed var(--c-text-muted); color: var(--c-text-muted); white-space: nowrap;
+}
+.chapter__badge.is-covered { border-style: solid; border-color: var(--c-secondary); color: var(--c-secondary); }
+.chapter__badge.is-complete { border-style: solid; border-color: var(--c-success); background: var(--c-success); color: var(--c-surface); }
+.chapter__badge.is-complete::before { content: "✓ "; }
+.chapter__src { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); }
+
+/* barra: superati (pieno verde) + in corso (viola a righe) + da ripassare (rosso a puntini).
+   I tre riempimenti sono diversi anche senza colore. Segmenti: <i class="is-passed|is-touched|is-failed" style="width:%">. */
+.chapter__bar {
+  display: flex; height: 12px; border-radius: 6px; overflow: hidden;
+  background: var(--c-surface-2); border: 1px solid var(--c-border);
+}
+.chapter__bar > i { display: block; height: 100%; transition: width var(--dur-slow) var(--ease-out); }
+.chapter__bar .is-passed { background: var(--c-success); }
+.chapter__bar .is-touched { background: repeating-linear-gradient(135deg, var(--c-secondary) 0 4px, color-mix(in srgb, var(--c-secondary) 55%, var(--c-surface)) 4px 8px); }
+.chapter__bar .is-failed { background: radial-gradient(circle, var(--c-danger) 1.6px, color-mix(in srgb, var(--c-danger) 30%, var(--c-surface)) 2px) 0 0 / 6px 6px; }
+.chapter__bar > i + i { box-shadow: inset 2px 0 0 var(--c-surface); } /* filo tra i segmenti */
+.chapter__count { margin: 0; font-size: var(--fs-xs); color: var(--c-text-muted); }
+.chapter__count b { color: var(--c-text); font-family: var(--font-mono); font-feature-settings: var(--num-features); }
+
+/* argomento */
+.topics { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); width: 100%; }
+.topic {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3); border-radius: var(--r-md);
+  background: var(--c-surface-2); border: var(--border-w) solid transparent; text-align: left;
+}
+.topic__main, .topic > div:first-child { display: flex; flex-direction: column; min-width: 0; flex: 1 1 11rem; }
+.topic__name { font-weight: 700; line-height: var(--lh-tight); }
+.topic__score { font-size: var(--fs-xs); color: var(--c-text-muted); }
+.topic__train { min-height: var(--tap); padding-inline: var(--sp-4); font-size: var(--fs-sm); }
+.topic--superato { background: var(--c-success-bg); }
+.topic--toccato { border-color: var(--c-secondary); background: var(--c-surface); }
+.topic--bocciato { background: var(--c-danger-bg); border-color: var(--c-danger); }
+.topic--bocciato .topic__train { background: var(--c-primary); color: var(--c-on-primary); border-color: transparent; } /* il ripasso è l'azione da fare */
+.topic--non-toccato { border-style: dashed; border-color: var(--c-border); background: transparent; }
+/* bloccato ("Si apre dopo: …"): aggiungi .is-locked al <li> */
+.topic.is-locked .topic__name { color: var(--c-text-muted); }
+@media (max-width: 400px) {
+  .topic { padding: var(--sp-2); gap: var(--sp-2); }
+  .topic__train { padding-inline: var(--sp-3); }
+  .chip { padding-inline: var(--sp-2); }
+}
+.topic.is-locked .topic__score { font-style: italic; }
+
+/* ---------- Riepilogo di fine partita ---------- */
+/* <li class="topic topic--superato is-up">
+     <div class="topic__main"><span class="topic__name">…</span>
+       <span class="pips" role="img" aria-label="3 su 4 giuste"><i class="is-ok"></i><i class="is-ok"></i><i class="is-ko"></i><i class="is-ok"></i></span></div>
+     <span class="topic__change"><span class="chip chip--toccato chip--was">◐ Toccato</span>
+       <span class="topic__arrow" aria-label="diventa">→</span><span class="chip chip--superato">✓ Superato</span></span></li> */
+.topics--summary { max-width: 28rem; }
+.pips { display: inline-flex; gap: 4px; margin-top: 4px; align-items: center; }
+.pips i { width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 9px; font-weight: 900; }
+.pips .is-ok { background: var(--c-success); color: var(--c-surface); }
+.pips .is-ok::before { content: "✓"; }
+.pips .is-ko { border: 2px solid var(--c-danger); color: var(--c-danger); }
+.pips .is-ko::before { content: "✕"; }
+.topic__change { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.topic__arrow { color: var(--c-text-muted); font-weight: 800; }
+/* salito o sceso di stato in questa partita */
+.topic.is-up { box-shadow: 0 0 0 2px var(--c-success); }
+.topic.is-up .topic__change > .chip:last-child { animation: star-in var(--dur-slow) var(--ease-pop); }
+.topic.is-down { box-shadow: 0 0 0 2px var(--c-danger); }
 
 /* ---------- Mascotte ---------- */
 .mascot { display: block; width: 100%; height: auto; overflow: visible; }

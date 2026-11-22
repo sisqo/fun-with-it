@@ -2,7 +2,7 @@
 // Ogni domanda ha la risposta giusta in PRIMA posizione: le opzioni vengono mescolate quando si costruisce la missione.
 // Le battute stanno in `radio` (DJ Nibble), mai sul ragazzo.
 
-import { shuffle } from "./questions.mjs";
+import { shuffle, THEORY } from "./questions.mjs";
 
 export const LESSONS = {
   1: {
@@ -28,6 +28,24 @@ export const LESSONS = {
         radio: "Parlare italiano a un circuito è come recitare poesie a un tostapane.",
       },
       {
+        prompt: "Quale di queste istruzioni per il robot è AMBIGUA?",
+        options: ["«Versa l'acqua nel bicchiere»", "«Svita il tappo ruotando in senso antiorario»", "«Prendi il bicchiere dalla bottiglia, capovolgilo e posalo sulla cattedra»"],
+        explain: ["«Versa l'acqua nel bicchiere» sottintende troppi passaggi: prendere la bottiglia, svitare il tappo, inclinarla… Le altre due sono precise e ordinate."],
+        radio: "Il robot sa fare tutto, tranne indovinare cosa intendevi.",
+      },
+      {
+        prompt: "Quale di queste istruzioni è precisa, ordinata e non ambigua?",
+        options: ["«Prendi la bottiglia con una mano e con l'altra svita il tappo ruotando in senso antiorario»", "«Fai in modo che il bicchiere si riempia e poi portalo alla bocca»", "«Versa l'acqua nel bicchiere e poi bevi quello che ti serve»"],
+        explain: ["L'esempio della scheda: indica quale mano usare, cosa fare e in che verso. Le altre lasciano al robot troppi passaggi da inventare."],
+        radio: "Più dettagli per il robot, meno sorprese per il tappeto.",
+      },
+      {
+        prompt: "In quale linguaggio devono essere espresse le istruzioni per un circuito digitale?",
+        options: ["Con un alfabeto di due soli simboli, che chiamiamo 0 e 1", "Con le lettere dell'alfabeto italiano, esattamente come le scriviamo noi", "Con i dieci simboli del sistema decimale, da 0 a 9"],
+        explain: ["Un circuito digitale distingue due stati logici: ha a disposizione un alfabeto di soli due simboli, 0 e 1."],
+        radio: "Due simboli per dire tutto: il computer non ha mai sentito parlare di punteggiatura.",
+      },
+      {
         prompt: "Che cos'è un algoritmo?",
         options: ["Una sequenza di passi chiari che, eseguiti alla lettera, risolve un problema", "Un linguaggio con cui si scrivono i programmi per il computer", "Un programma già scritto che il computer esegue e salva in memoria"],
         explain: ["Un algoritmo è una sequenza di istruzioni (step) che, se eseguite alla lettera, permettono di risolvere un dato problema."],
@@ -38,6 +56,24 @@ export const LESSONS = {
         options: ["Dati", "Informazioni", "Algoritmi"],
         explain: ["I dati sono numeri o sequenze di caratteri. «2010» e «Paola» presi da soli non dicono nulla di utile."],
         radio: "Un dato da solo è come un calzino spaiato: serve la coppia.",
+      },
+      {
+        prompt: "Quale frase trasforma i dati «marzo» e «21» in un'informazione?",
+        options: ["«Il 21 marzo comincia la primavera»", "«21 marzo», scritto in stampatello maiuscolo", "«marzo, 21», in ordine alfabetico"],
+        explain: ["Un'informazione è una relazione tra dati che aumenta la conoscenza: «21» e «marzo» insieme diventano una data con un significato."],
+        radio: "Due dati messi in fila non fanno ancora una notizia. Serve un legame.",
+      },
+      {
+        prompt: "Quale di questi è un DATO e non un'informazione?",
+        options: ["«1999»", "«Marco ha 16 anni»", "«Il corso dura 4 anni»"],
+        explain: ["«1999» è solo un numero: da solo non dice nulla. Le altre due frasi mettono in relazione dei dati e quindi sono informazioni."],
+        radio: "1999 da solo è un numero. Con una data di nascita attaccata diventa una storia.",
+      },
+      {
+        prompt: "Che cosa significa elaborare dati e informazioni?",
+        options: ["Compiere operazioni su di essi per archiviarli, organizzarli o trasformarli in altri dati o informazioni", "Cancellare i dati inutili per liberare spazio sulla memoria del dispositivo", "Trasformare qualsiasi informazione in un numero scritto in binario"],
+        explain: ["Elaborare significa compiere operazioni sui dati e sulle informazioni: archiviarli, organizzarli o trasformarli in altri dati o informazioni."],
+        radio: "Elaborare: il verbo preferito di ogni computer dopo 'caricare'.",
       },
       {
         prompt: "«Paola è nata nel 2010, quindi so quanti anni ha»: che cos'è?",
@@ -261,6 +297,12 @@ export const LESSONS = {
 // Quartiere 1: elenco esplicito per inizio del testo. Quartiere 2: bit-byte, salvo le domande sul numero di valori. Quartiere 3: sistemi-posizionali.
 const TOPIC_BY_PROMPT = [
   ["Quali caratteristiche devono avere le istruzioni", "istruzioni-robot"],
+  ["Quale di queste istruzioni per il robot è AMBIGUA", "istruzioni-robot"],
+  ["Quale di queste istruzioni è precisa", "istruzioni-robot"],
+  ["In quale linguaggio devono essere espresse", "istruzioni-robot"],
+  ["Quale frase trasforma i dati", "dati-informazioni"],
+  ["Quale di questi è un DATO", "dati-informazioni"],
+  ["Che cosa significa elaborare dati", "dati-informazioni"],
   ["Perché al robot non basta", "istruzioni-robot"],
   ["Istruzioni corrette bastano", "istruzioni-robot"],
   ["Che cos'è un algoritmo", "algoritmo-pensiero"],
@@ -289,9 +331,18 @@ for (const [key, lesson] of Object.entries(LESSONS)) {
   }
 }
 
+// Le prime domande di teoria (Leibniz, Boole, Shannon, ENIAC, perché 0 e 1, base, kB…) vivono ancora in questions.mjs.
+// Qui ogni voce è assegnata a un argomento oppure segnata come doppione di una domanda dei quartieri.
+// L'indice è la posizione in THEORY. Un test controlla che nessuna resti fuori.
+export const LEGACY_THEORY = {
+  0: "bit-byte", 3: "bit-valori", 4: "storia", 5: "storia", 6: "storia", 7: "storia", 8: "sistemi-posizionali", 9: "sistemi-posizionali", 10: "bit-byte",
+  1: null, 2: null, 11: null, 12: null, // doppioni di domande già presenti in LESSONS (byte, sistemi posizionali, bit, computers)
+};
+export const EXTRA_QUESTIONS = THEORY.map((q, i) => (LEGACY_THEORY[i] ? { prompt: q.prompt, options: q.options, explain: q.explain, radio: q.radio, topic: LEGACY_THEORY[i] } : null)).filter(Boolean);
+
 // Domande di un argomento, già nel formato delle domande a scelta multipla (opzioni mescolate).
 export function lessonQuestionsFor(rng, topic, exclude = new Set()) {
-  const all = Object.values(LESSONS).flatMap((l) => l.questions).filter((q) => q.topic === topic);
+  const all = [...Object.values(LESSONS).flatMap((l) => l.questions), ...EXTRA_QUESTIONS].filter((q) => q.topic === topic);
   const fresh = all.filter((q) => !exclude.has(q.prompt));
   const pool = fresh.length ? fresh : all;
   if (!pool.length) return null;

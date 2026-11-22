@@ -293,6 +293,88 @@ Il colore è sempre accompagnato da sigla e numero.
 | 10 | arancio |
 | 16 | rosa |
 
+### Progressi ("gioca e basta")
+
+Il gioco sceglie le domande; le schermate mostrano soltanto dove si è arrivati. I nomi delle
+classi sono quelli del prototipo (`.board`, `.chapter`, `.topic`, `.chip`): il tuo markup
+funziona già. Togli le regole omonime da `css/style.css`, che altrimenti vincono perché si
+caricano dopo.
+
+**Chip di stato (`.chip--superato|toccato|bocciato|non-toccato`)**
+
+Ogni stato si riconosce anche senza colore, da quattro segnali: icona, parola, riempimento e
+tipo di bordo.
+
+| Stato | Icona | Riempimento e bordo |
+|---|---|---|
+| Superato | ✓ | pieno verde |
+| Toccato | cerchio mezzo pieno | bordo viola |
+| Bocciato | ✕ | tinta rossa |
+| Non toccato | cerchio vuoto | bordo tratteggiato |
+
+**L'icona la disegna la CSS.** Nel chip scrivi solo la parola (`Superato`, `Toccato`,
+`Bocciato`, `Non toccato`). I simboli ◐ e ○ non esistono nei font scelti: sui telefoni escono
+minuscoli o diversi. Attenzione al tuo `CHIP[...].slice(2)`: con le sole parole va tolto.
+
+**Capitolo (`.chapter`)**
+- `.chapter__head` con il titolo e `.chapter__badge`: niente classe se non è iniziato
+  (tratteggio), `.is-covered` per "Coperto" (bordo viola), `.is-complete` per "Superato"
+  (pieno verde con ✓).
+- `.chapter__bar` contiene fino a tre `<i>` con `style="width:%"`: `.is-passed` (pieno
+  verde), `.is-touched` (viola a righe), `.is-failed` (rosso a puntini). I tre riempimenti si
+  distinguono anche in bianco e nero. Il segmento `.is-failed` è nuovo: conviene mostrare
+  quanti argomenti sono da ripassare.
+- `.chapter__count` (facoltativo): "**4** toccati su 5 · **1** superato".
+
+**Argomento (`.topic.topic--<stato>`)**
+- Contiene il nome, il punteggio, il chip e `Allenati`.
+- Sui **bocciati** `Allenati` è pieno, nel colore primario: è l'azione da fare.
+- Sugli argomenti bloccati aggiungi `.is-locked` al `<li>`: nome in muted e "Si apre dopo: …"
+  in corsivo.
+- Su telefono il chip e il bottone stanno sulla stessa riga.
+
+**Riepilogo numerico (`ul.stats`)**: quattro riquadri con il numero grande e l'etichetta
+(superati, in corso, da ripassare, da toccare). Sta bene in home sotto "Gioca" e in cima ai
+progressi; è un'alternativa più visiva alla riga di testo. Il riquadro "da ripassare" ha il
+bordo rosso, "da toccare" il bordo tratteggiato.
+
+**Linea dei capitoli (`ol.metro`)**: è la metropolitana della mappa, orizzontale e compatta.
+Ha una fermata per capitolo e **non si tocca**: si guarda e basta.
+- Stati della fermata:
+  - `.is-complete`: ✓ verde;
+  - `.is-covered`: numero su viola pieno;
+  - `.is-started`: numero col bordo viola;
+  - `.is-new`: tratteggio, con il binario tratteggiato.
+- `.is-hub` va su Operazioni: nodo più grande.
+- Le etichette si alternano sotto e sopra il binario, così ognuna ha lo spazio di due colonne
+  e a 320px non si spezzano. Tienile corte (circa 12 caratteri): Algoritmi, Codifica,
+  Operazioni, Ottale / esa, Virgola.
+- Metti un `aria-label` riassuntivo sull'`<ol>`.
+- Starebbe bene sia in home sia in cima a "I miei progressi".
+
+**Home**: `.home__play` è il tasto grande in insegna, con ▸. Sotto vanno `.stats` (o la riga
+di testo) e, se c'è un bocciato, `Ripassa: …` come `.btn--ghost.btn--block`.
+
+**Riepilogo di fine partita (`.topics--summary`)**
+
+```html
+<li class="topic topic--superato is-up">
+  <div class="topic__main"><span class="topic__name">Addizione in binario</span>
+    <span class="pips" role="img" aria-label="3 su 4 giuste"><i class="is-ok"></i><i class="is-ok"></i><i class="is-ko"></i><i class="is-ok"></i></span></div>
+  <span class="topic__change"><span class="chip chip--toccato chip--was">Toccato</span>
+    <span class="topic__arrow" aria-label="diventa">→</span><span class="chip chip--superato">Superato</span></span>
+</li>
+```
+
+- **Pallini delle risposte.** `.pips` mostra un pallino per risposta: pieno con ✓ se giusta,
+  vuoto con ✕ se sbagliata. Sostituisce "3 su 4 giuste", che resta nell'`aria-label`.
+- **Cambio di stato.** `.topic__change` mostra lo stato di prima (`.chip--was`, più spento),
+  la freccia e lo stato di dopo. Se lo stato non cambia, solo il chip.
+- **Salito o sceso.** `.is-up` sul `<li>` aggiunge un contorno verde e fa entrare il chip
+  nuovo con un piccolo salto; `.is-down` aggiunge un contorno rosso.
+- **Ordine.** Prima quelli saliti, poi gli invariati, poi quelli scesi: si chiude con quello
+  da sistemare.
+
 ### Radio in auto (`.radio`)
 
 **Radio Overflow, 101.1010 FM.** La frequenza è un indovinello: 101.1010₂ = 5,625₁₀, una
@@ -335,6 +417,10 @@ computer, sulla città e sul DJ stesso. Per esempio: "Anche i computer sbagliano
 più in fretta."
 
 ### Mappa dei quartieri (`.map`)
+
+> **Dopo la svolta "gioca e basta" non è più il menu.** Il gioco sceglie le domande. L'idea
+> della metro vive in `ol.metro` (vedi Progressi). La `.map` qui sotto resta disponibile come
+> vista estesa dei capitoli, con le card come `<div>` invece di `<button>`.
 
 È la schermata di scelta, disegnata come una linea della metro al neon. Ogni quartiere è una
 fermata con la sua card. Funziona in una colonna sola, la stessa su telefono e computer, e si

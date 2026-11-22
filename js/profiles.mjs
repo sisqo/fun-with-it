@@ -10,6 +10,7 @@ export const MAX_PLAYERS = 12;
 export const STORE_KEY = "neonbay";
 export const WINDOW = 5; // gli ultimi esiti che contano per dire se un argomento è superato o bocciato
 export const MAX_TOPICS = 60;
+export const OK_FRACTION = 0.75; // una domanda a passaggi conta "giusta" se almeno il 75% dei passaggi è giusto
 
 export const emptyStore = () => ({ v: 2, current: null, players: [] });
 
@@ -50,16 +51,18 @@ function safeTopics(t) {
   return out;
 }
 
-// Aggiorna le statistiche di un argomento dopo una domanda (ok = tutta giusta, senza errori).
-export function nextStats(st, ok, now = Date.now()) {
+// Aggiorna le statistiche di un argomento dopo una domanda.
+// outcome: true/false oppure la frazione di passaggi giusti (0..1) per gli esercizi a passaggi.
+// Lo stato guarda se la domanda è "giusta" (>= 75%); la difficoltà sale e scende in proporzione,
+// e sale di più (+0,2) alla terza risposta giusta di fila.
+export function nextStats(st, outcome, now = Date.now()) {
   const s = st ?? { attempts: 0, correct: 0, window: [], level: 0, lastAt: 0 };
-  return {
-    attempts: s.attempts + 1,
-    correct: s.correct + (ok ? 1 : 0),
-    window: [...s.window, ok ? 1 : 0].slice(-WINDOW),
-    level: clamp01(s.level + (ok ? 0.12 : -0.18)),
-    lastAt: now,
-  };
+  const frac = outcome === true ? 1 : outcome === false ? 0 : clamp01(Number(outcome));
+  const ok = frac >= OK_FRACTION;
+  const window = [...s.window, ok ? 1 : 0].slice(-WINDOW);
+  const streak3 = window.length >= 3 && window.slice(-3).every((x) => x === 1);
+  const delta = frac * (streak3 ? 0.2 : 0.12) - (1 - frac) * 0.18;
+  return { attempts: s.attempts + 1, correct: s.correct + (ok ? 1 : 0), window, level: clamp01(s.level + delta), lastAt: now };
 }
 
 // Legge il testo salvato (anche corrotto o in formato vecchio) e restituisce sempre uno store valido.
@@ -134,7 +137,7 @@ export function recordMission(store, key, missionKey, earned, now = Date.now()) 
   }));
 }
 
-// Registra l'esito di una domanda su un argomento.
+// Registra l'esito di una domanda su un argomento (ok: booleano o frazione di passaggi giusti).
 export function recordResult(store, key, topic, ok, now = Date.now()) {
   if (!/^[a-z0-9-]{1,32}$/.test(topic)) return store;
   return replacePlayer(store, key, (p) => ({ ...p, topics: { ...p.topics, [topic]: nextStats(p.topics[topic], ok, now) }, updatedAt: now }));
