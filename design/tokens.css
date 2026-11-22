@@ -1,0 +1,217 @@
+/* =========================================================================
+   Neon Bay — design token
+   Tema scuro = "notte sulla baia" (default se il sistema è scuro)
+   Tema chiaro = "alba sulla baia"
+   Primitive → semantici. Nei componenti usa SOLO i semantici (--c-*, --sp-*, ...).
+   Forzare un tema: <html data-theme="light|dark">.
+   ========================================================================= */
+
+:root {
+  /* ---------- Tipografia ---------- */
+  /* Insegne/titoli: Bungee (insegna al neon, solo maiuscole, usala poco).
+     Testo UI: Atkinson Hyperlegible (1 / l / I ben distinti).
+     Cifre e codici: JetBrains Mono con zero barrato. */
+  --font-sign: "Bungee", "Arial Black", Impact, system-ui, sans-serif;
+  --font-ui: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --num-features: "zero" 1, "tnum" 1; /* da usare con font-feature-settings */
+
+  /* Scala tipografica fluida (360px → 1024px) */
+  --fs-xs: 0.8125rem;                                  /* 13px, solo etichette */
+  --fs-sm: 0.9375rem;                                  /* 15px */
+  --fs-md: 1.0625rem;                                  /* 17px, testo base */
+  --fs-lg: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);     /* domanda */
+  --fs-xl: clamp(1.6rem, 1.3rem + 1.4vw, 2.25rem);     /* titoli */
+  --fs-num: clamp(2rem, 1.5rem + 2.4vw, 3rem);         /* numeri grandi, display cassaforte */
+  --lh-tight: 1.15;
+  --lh-body: 1.5;
+
+  /* ---------- Spazi, raggi, misure ---------- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+  --gutter: 16px;            /* margine laterale su telefono */
+  --maxw: 34rem;             /* colonna di gioco: comoda anche su desktop */
+  --r-sm: 8px; --r-md: 14px; --r-lg: 22px; --r-pill: 999px;
+  --tap: 44px;               /* minimo assoluto per qualsiasi cosa si tocchi */
+  --tap-lg: 56px;            /* bottoni principali (pollice) */
+  --border-w: 2px;
+
+  /* ---------- Movimento (leggero: gira su telefono) ---------- */
+  --dur-fast: 120ms;
+  --dur-med: 220ms;
+  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-pop: cubic-bezier(.3, 1.5, .5, 1);
+
+  /* ---------- Primitive: notte ---------- */
+  --night-950: #0d0820;
+  --night-900: #140d2b;
+  --night-800: #1e1540;
+  --night-700: #2a1f55;
+  --night-600: #3d2f73;
+  --night-300: #b8acd9;
+  --night-100: #f4efff;
+
+  --neon-pink: #ff4fa3;
+  --neon-orange: #ff9a3c;
+  --neon-violet: #a985ff;
+  --neon-cyan: #3ee6ff;
+  --neon-mint: #4ff0a8;
+  --neon-red: #ff6b7a;
+  --neon-gold: #ffd166;
+
+  /* ---------- Primitive: alba ---------- */
+  --dawn-50: #fff7f2;
+  --dawn-100: #ffeee5;
+  --dawn-200: #f6d9cf;
+  --dawn-900: #241540;
+  --dawn-600: #64547e;
+
+  --ink-pink: #b8165f;
+  --ink-orange: #a34700;
+  --ink-violet: #6236c9;
+  --ink-cyan: #00707f;
+  --ink-mint: #0f7a48;
+  --ink-red: #c0262f;
+  --ink-gold: #7d5a00;
+
+  /* ---------- Semantici (default = chiaro "alba") ---------- */
+  color-scheme: light;
+  --c-bg: var(--dawn-50);
+  --c-bg-sky: linear-gradient(180deg, #ffe3d6 0%, #fff1e8 45%, var(--dawn-50) 100%);
+  --c-surface: #ffffff;
+  --c-surface-2: var(--dawn-100);
+  --c-border: var(--dawn-200);
+  --c-text: var(--dawn-900);
+  --c-text-muted: var(--dawn-600);
+
+  --c-primary: var(--ink-pink);        /* azione principale, link, focus */
+  --c-on-primary: #ffffff;
+  --c-secondary: var(--ink-violet);
+  --c-accent: var(--ink-orange);
+  --c-digit: var(--ink-cyan);          /* cifre, codici, display */
+
+  --c-success: var(--ink-mint);
+  --c-success-bg: #e3f7ec;
+  --c-danger: var(--ink-red);
+  --c-danger-bg: #fde7e8;
+
+  --c-cash: var(--ink-gold);           /* contanti ($) */
+  --c-wanted: var(--ink-red);          /* stella ricercato accesa */
+  --c-wanted-off: var(--c-text-muted); /* stella spenta: solo contorno */
+
+  --c-focus: var(--ink-violet);
+  --glow: none;                        /* di giorno niente neon */
+  --shadow-1: 0 1px 2px rgb(36 21 64 / .08), 0 4px 14px rgb(36 21 64 / .08);
+
+  /* Basi numeriche: ogni base ha il suo colore (bordo/puntino/pedice, mai unico segnale) */
+  --c-base-2: var(--ink-cyan);
+  --c-base-8: var(--ink-violet);
+  --c-base-10: var(--ink-orange);
+  --c-base-16: var(--ink-pink);
+  --c-carry: var(--ink-orange);        /* riporti e prestiti nell'operazione in colonna */
+  --c-column: color-mix(in srgb, var(--c-text) 5%, transparent);   /* righe alterne colonne */
+  --c-column-cur: color-mix(in srgb, var(--c-secondary) 16%, transparent);
+
+  /* Cassaforte */
+  --c-vault: #2a1f55;                  /* il corpo della cassaforte resta scuro in entrambi i temi */
+  --c-vault-edge: #140d2b;
+  --c-vault-text: var(--night-100);
+  --c-vault-muted: var(--night-300);
+  --c-dial-off: #3d2f73;
+  --c-dial-on: var(--neon-gold);
+  --c-on-dial-on: #1a1030;
+  --c-lcd: #0d0820;
+  --c-lcd-text: var(--neon-cyan);
+
+  /* Mascotte (vedi mascot/_build.py) */
+  --mascot-ink: #1a1030;
+  --mascot-body: #ece6f7;
+  --mascot-shade: #c4b7e2;
+  --mascot-screen: #170f30;
+  --mascot-face: #3ee6ff;
+  --mascot-led: #ff4fa3;
+  --mascot-led-off: #7d7396;
+  --mascot-water: #3ee6ff;
+  --mascot-gold: #ffd166;
+}
+
+/* ---------- Tema scuro "notte" ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --c-bg: var(--night-900);
+    --c-bg-sky: linear-gradient(180deg, #2b1050 0%, #1a0f38 40%, var(--night-900) 100%);
+    --c-surface: var(--night-800);
+    --c-surface-2: var(--night-700);
+    --c-border: var(--night-600);
+    --c-text: var(--night-100);
+    --c-text-muted: var(--night-300);
+
+    --c-primary: var(--neon-pink);
+    --c-on-primary: #1a0614;
+    --c-secondary: var(--neon-violet);
+    --c-accent: var(--neon-orange);
+    --c-digit: var(--neon-cyan);
+
+    --c-success: var(--neon-mint);
+    --c-success-bg: #123a33;
+    --c-danger: var(--neon-red);
+    --c-danger-bg: #3d1630;
+
+    --c-cash: var(--neon-gold);
+    --c-wanted: var(--neon-red);
+    --c-wanted-off: var(--night-300);
+
+    --c-focus: var(--neon-cyan);
+    --glow: 0 0 12px color-mix(in srgb, currentColor 55%, transparent);
+    --shadow-1: 0 1px 0 rgb(255 255 255 / .04) inset, 0 6px 20px rgb(0 0 0 / .35);
+    --c-base-2: var(--neon-cyan);
+    --c-base-8: var(--neon-violet);
+    --c-base-10: var(--neon-orange);
+    --c-base-16: var(--neon-pink);
+    --c-carry: var(--neon-orange);
+    --c-column: color-mix(in srgb, var(--c-text) 6%, transparent);
+    --c-column-cur: color-mix(in srgb, var(--c-secondary) 24%, transparent);
+    --c-vault: #2a1f55;
+    --c-vault-edge: #0d0820;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: var(--night-900);
+  --c-bg-sky: linear-gradient(180deg, #2b1050 0%, #1a0f38 40%, var(--night-900) 100%);
+  --c-surface: var(--night-800);
+  --c-surface-2: var(--night-700);
+  --c-border: var(--night-600);
+  --c-text: var(--night-100);
+  --c-text-muted: var(--night-300);
+  --c-primary: var(--neon-pink);
+  --c-on-primary: #1a0614;
+  --c-secondary: var(--neon-violet);
+  --c-accent: var(--neon-orange);
+  --c-digit: var(--neon-cyan);
+  --c-success: var(--neon-mint);
+  --c-success-bg: #123a33;
+  --c-danger: var(--neon-red);
+  --c-danger-bg: #3d1630;
+  --c-cash: var(--neon-gold);
+  --c-wanted: var(--neon-red);
+  --c-wanted-off: var(--night-300);
+  --c-focus: var(--neon-cyan);
+  --glow: 0 0 12px color-mix(in srgb, currentColor 55%, transparent);
+  --shadow-1: 0 1px 0 rgb(255 255 255 / .04) inset, 0 6px 20px rgb(0 0 0 / .35);
+  --c-base-2: var(--neon-cyan);
+  --c-base-8: var(--neon-violet);
+  --c-base-10: var(--neon-orange);
+  --c-base-16: var(--neon-pink);
+  --c-carry: var(--neon-orange);
+  --c-column: color-mix(in srgb, var(--c-text) 6%, transparent);
+  --c-column-cur: color-mix(in srgb, var(--c-secondary) 24%, transparent);
+  --c-vault: #2a1f55;
+  --c-vault-edge: #0d0820;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 0ms; --dur-med: 0ms; --dur-slow: 0ms; }
+}

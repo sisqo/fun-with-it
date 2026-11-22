@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Neon Bay — design preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bungee&family=JetBrains+Mono:wght@500;700;800&display=swap" />
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="components.css" />
+  <style>
+    /* solo per questa pagina di anteprima */
+    .pv-section { width: 100%; max-width: 72rem; margin-inline: auto; padding: var(--sp-5) var(--gutter); }
+    .pv-section > h2 { font-family: var(--font-sign); font-weight: 400; font-size: var(--fs-lg); margin: 0 0 var(--sp-3); color: var(--c-primary); }
+    .pv-sign { font-family: var(--font-sign); font-size: var(--fs-xl); margin: 0; line-height: 1; color: var(--c-primary); text-shadow: var(--glow); }
+    .pv-sign span { color: var(--c-accent); }
+    .pv-top { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; justify-content: space-between; }
+    .pv-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-2); }
+    .pv-sw { border-radius: var(--r-md); border: var(--border-w) solid var(--c-border); background: var(--c-surface); overflow: hidden; font-size: var(--fs-xs); }
+    .pv-sw i { display: block; height: 44px; }
+    .pv-sw b, .pv-sw code { display: block; padding: 2px var(--sp-2); }
+    .pv-sw code { color: var(--c-text-muted); font-family: var(--font-mono); }
+    .pv-mascots { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: var(--sp-3); }
+    .pv-mascots figure { margin: 0; text-align: center; font-size: var(--fs-sm); color: var(--c-text-muted); }
+    .pv-mascots img { width: 100%; max-width: 130px; height: auto; }
+    .pv-screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: var(--sp-5); align-items: start; }
+    .pv-phone { border: 2px solid var(--c-border); border-radius: 28px; overflow: hidden; background: var(--c-bg-sky), var(--c-bg); }
+    .pv-phone .screen { padding-bottom: 0; }
+    .pv-caption { font-size: var(--fs-sm); color: var(--c-text-muted); margin: var(--sp-2) 0 0; }
+  </style>
+</head>
+<body>
+
+<header class="pv-section pv-top">
+  <p class="pv-sign">Neon <span>Bay</span></p>
+  <button class="btn btn--ghost" id="theme" type="button" aria-label="Cambia tema">Tema: auto</button>
+</header>
+
+<!-- ======================= PALETTE ======================= -->
+<section class="pv-section">
+  <h2>Palette semantica</h2>
+  <div class="pv-swatches" id="swatches"></div>
+</section>
+
+<!-- ======================= MASCOTTE ======================= -->
+<section class="pv-section">
+  <h2>R0b, l'informatore</h2>
+  <div class="pv-mascots">
+    <figure><img src="mascot/r0b-neutro.svg" alt=""><figcaption>neutro</figcaption></figure>
+    <figure><img src="mascot/r0b-esulta.svg" alt=""><figcaption>esulta</figcaption></figure>
+    <figure><img src="mascot/r0b-triste.svg" alt=""><figcaption>triste</figcaption></figure>
+    <figure><img src="mascot/r0b-perplesso.svg" alt=""><figcaption>perplesso</figcaption></figure>
+    <figure><img src="mascot/r0b-sete.svg" alt=""><figcaption>ha sete</figcaption></figure>
+    <figure><img src="mascot/r0b-podio.svg" alt=""><figcaption>sul podio</figcaption></figure>
+  </div>
+</section>
+
+<!-- ======================= SCHERMATE ======================= -->
+<section class="pv-section">
+  <h2>Schermate · Quartiere 4</h2>
+  <div class="pv-screens">
+
+    <!-- Schermata A: scelta multipla, risposta giusta -->
+    <div>
+      <div class="pv-phone">
+        <main class="screen">
+          <div class="hud">
+            <ul class="wanted" data-level="1" role="img" aria-label="Ricercato: 1 stella su 5">
+              <li><svg class="wanted__star is-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+              <li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+              <li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+              <li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+              <li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+            </ul>
+            <span class="cash" aria-label="Contanti: 1250 dollari">$ 1.250 <span class="cash__delta">+50</span></span>
+          </div>
+          <div class="progress" aria-label="Domanda 3 di 8">
+            <i class="progress__dot is-done"></i><i class="progress__dot is-done"></i><i class="progress__dot is-current"></i><i class="progress__dot"></i><i class="progress__dot"></i><i class="progress__dot"></i><i class="progress__dot"></i><i class="progress__dot"></i>
+          </div>
+
+          <section class="q">
+            <p class="q__kicker">Missione 4.3 · Il tastierino del molo</p>
+            <h1 class="q__prompt">Il guardiano ha scritto il codice in decimale. Quale combinazione binaria apre il cancello?</h1>
+            <div class="q__code">77<sub>10</sub></div>
+            <ul class="choices">
+              <li><button class="choice" type="button">1001101
+                <svg class="choice__mark choice__mark--ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg class="choice__mark choice__mark--ko" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></li>
+              <li><button class="choice" type="button">1011001
+                <svg class="choice__mark choice__mark--ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg class="choice__mark choice__mark--ko" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></li>
+              <li><button class="choice" type="button">1100101
+                <svg class="choice__mark choice__mark--ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg class="choice__mark choice__mark--ko" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></li>
+              <li><button class="choice" type="button">111011
+                <svg class="choice__mark choice__mark--ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg class="choice__mark choice__mark--ko" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></li>
+            </ul>
+          </section>
+
+          <div class="feedback feedback--ok" role="status" hidden id="fb-a">
+            <img class="feedback__mascot" src="mascot/r0b-esulta.svg" alt="">
+            <p class="feedback__title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>Cancello aperto!</p>
+            <p class="feedback__text"><span class="num">64+8+4+1 = 77</span>. Pulito. Nessuno ha visto niente.</p>
+            <button class="btn btn--block" type="button">Avanti</button>
+          </div>
+        </main>
+      </div>
+      <p class="pv-caption">A · Scelta multipla. Tocca una risposta per vedere il feedback giusto/sbagliato.</p>
+    </div>
+
+    <!-- Schermata B: risposta numerica + cassaforte, risposta sbagliata -->
+    <div>
+      <div class="pv-phone">
+        <main class="screen">
+          <div class="hud">
+            <ul class="wanted" data-level="3" role="img" aria-label="Ricercato: 3 stelle su 5">
+              <li><svg class="wanted__star is-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+              <li><svg class="wanted__star is-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+              <li><svg class="wanted__star is-on is-new" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+              <li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+              <li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+            </ul>
+            <span class="cash" aria-label="Contanti: 1250 dollari">$ 1.250</span>
+          </div>
+
+          <section class="q">
+            <p class="q__kicker">Missione 4.5 · Cassaforte del casinò</p>
+            <h1 class="q__prompt">Gira le ruote finché il display segna <span class="num">200</span>, poi scrivi la combinazione.</h1>
+
+            <div class="vault" id="vault" data-target="200">
+              <div class="vault__head">
+                <span class="vault__label">Cassaforte</span>
+                <output class="vault__lcd" id="lcd" aria-live="polite">0</output>
+              </div>
+              <ul class="vault__dials" id="dials"></ul>
+              <p class="vault__sum" id="sum" aria-hidden="true"></p>
+            </div>
+
+            <form class="answer is-wrong" onsubmit="return false">
+              <label class="sr-only" for="ans">Combinazione in binario</label>
+              <input class="answer__input" id="ans" inputmode="numeric" autocomplete="off" pattern="[01]*" placeholder="es. 10110" value="11001010">
+              <button class="btn btn--primary" type="submit">Apri</button>
+            </form>
+          </section>
+
+          <div class="feedback feedback--ko" role="status">
+            <img class="feedback__mascot" src="mascot/r0b-triste.svg" alt="">
+            <p class="feedback__title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Allarme! +1 stella</p>
+            <p class="feedback__text"><span class="num">11001010</span> fa <span class="num">202</span>: c'è un 2 di troppo. Spegni la ruota del 2 e riprova.</p>
+            <button class="btn btn--block" type="button">Riprova</button>
+          </div>
+        </main>
+      </div>
+      <p class="pv-caption">B · Risposta numerica e cassaforte (2×4 su telefono, 1×8 se c'è spazio). Tocca le ruote.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ======================= OPERAZIONI ======================= -->
+<section class="pv-section">
+  <h2>Basi</h2>
+  <p style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px">
+    <span class="base base--2">BIN <b>2</b></span>
+    <span class="base base--8">OTT <b>8</b></span>
+    <span class="base base--10">DEC <b>10</b></span>
+    <span class="base base--16">HEX <b>16</b></span>
+  </p>
+  <p style="margin:0">Nel testo: <span class="n n--10">59<sub>10</sub></span> = <span class="n n--2">111011<sub>2</sub></span> = <span class="n n--8">73<sub>8</sub></span> = <span class="n n--16">3B<sub>16</sub></span></p>
+</section>
+
+<section class="pv-section">
+  <h2>Operazioni · esercizio guidato</h2>
+  <div class="pv-screens">
+
+    <!-- Schermata C: passaggi + colonna -->
+    <div>
+      <div class="pv-phone">
+        <main class="screen">
+          <div class="hud">
+            <ul class="wanted" data-level="0" role="img" aria-label="Ricercato: 0 stelle su 5">
+              <li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li><li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li><li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li><li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li><li><svg class="wanted__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></li>
+            </ul>
+            <span class="cash" aria-label="Contanti: 1400 dollari">$ 1.400</span>
+          </div>
+          <article class="card">
+            <h1 class="op-title">
+              <span class="op-title__name">Addizione</span>
+              <span><span class="n n--10">59<sub>10</sub></span> + <span class="n n--10">37<sub>10</sub></span></span>
+              <span class="base base--2">in BIN <b>2</b></span>
+            </h1>
+            <ol class="steps">
+              <li class="step is-done"><span class="step__label"><span class="n n--10">59<sub>10</sub></span> in binario</span><span class="step__result">111011</span></li>
+              <li class="step is-done"><span class="step__label"><span class="n n--10">37<sub>10</sub></span> in binario</span><span class="step__result">100101</span></li>
+              <li class="step is-current"><span class="step__label">Somma in colonna. Colonna 4: <span class="n">1 + 0</span> + riporto <span class="n">1</span></span><span class="step__result" aria-hidden="true">?</span>
+                <div style="grid-column:1/-1"><div class="colop-wrap"><div class="colop" style="--cols:7;--col:4" role="img" aria-label="Addizione in colonna: 111011 più 100101. Fatte le prime 3 colonne: 000. Tocca alla quarta, con riporto 1."><i class="colop__focus" aria-hidden="true"></i><span class="colop__carry"></span><span class="colop__carry"></span><span class="colop__carry"></span><span class="colop__carry"></span><span class="colop__carry">1</span><span class="colop__carry">1</span><span class="colop__carry">1</span><span class="colop__carry"></span><span></span><span></span><span class="colop__dig">1</span><span class="colop__dig">1</span><span class="colop__dig">1</span><span class="colop__dig">0</span><span class="colop__dig">1</span><span class="colop__dig">1</span><span class="colop__op">+</span><span></span><span class="colop__dig">1</span><span class="colop__dig">0</span><span class="colop__dig">0</span><span class="colop__dig">1</span><span class="colop__dig">0</span><span class="colop__dig">1</span><i class="colop__rule" aria-hidden="true"></i><span></span><span class="colop__res is-blank"></span><span class="colop__res is-blank"></span><span class="colop__res is-blank"></span><span class="colop__res is-blank"></span><span class="colop__res">0</span><span class="colop__res">0</span><span class="colop__res">0</span></div></div></div>
+                <form class="answer" onsubmit="return false">
+                  <label class="sr-only" for="ans-c">Cifra della colonna 4 e riporto</label>
+                  <input class="answer__input" id="ans-c" inputmode="numeric" autocomplete="off" placeholder="0 o 1">
+                  <button class="btn btn--primary" type="submit">OK</button>
+                </form>
+              </li>
+              <li class="step"><span class="step__label">Verifica in base 10</span><span class="step__result"></span></li>
+            </ol>
+          </article>
+        </main>
+      </div>
+      <p class="pv-caption">C · Esercizio guidato: passaggi fatti in verde con il risultato a destra, passaggio corrente evidenziato con la colonna attiva.</p>
+    </div>
+
+    <!-- Schermata D: errore + soluzione passo-passo -->
+    <div>
+      <div class="pv-phone">
+        <main class="screen">
+          <article class="card">
+            <h1 class="op-title">
+              <span class="op-title__name">Addizione</span>
+              <span><span class="n n--2">111011<sub>2</sub></span> + <span class="n n--2">100101<sub>2</sub></span></span>
+            </h1>
+            <form class="answer is-wrong" onsubmit="return false">
+              <label class="sr-only" for="ans-d">Risultato in binario</label>
+              <input class="answer__input" id="ans-d" inputmode="numeric" autocomplete="off" value="1011110">
+              <button class="btn btn--primary" type="submit">Apri</button>
+            </form>
+          </article>
+          <div class="feedback feedback--ko" role="status">
+            <img class="feedback__mascot" src="mascot/r0b-perplesso.svg" alt="">
+            <p class="feedback__title"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Quasi. Un riporto è scappato</p>
+            <p class="feedback__text">Hai scritto <span class="num">1011110</span>, cioè <span class="num">94</span>. Ne mancano <span class="num">2</span>: succede quando un riporto resta a terra.</p>
+            <details class="solution" open>
+              <summary>Rifacciamolo insieme</summary>
+              <div class="colop-wrap"><div class="colop" style="--cols:7" role="img" aria-label="111011 più 100101 uguale 1100000"><span class="colop__carry"></span><span class="colop__carry">1</span><span class="colop__carry">1</span><span class="colop__carry">1</span><span class="colop__carry">1</span><span class="colop__carry">1</span><span class="colop__carry">1</span><span class="colop__carry"></span><span></span><span></span><span class="colop__dig">1</span><span class="colop__dig">1</span><span class="colop__dig">1</span><span class="colop__dig">0</span><span class="colop__dig">1</span><span class="colop__dig">1</span><span class="colop__op">+</span><span></span><span class="colop__dig">1</span><span class="colop__dig">0</span><span class="colop__dig">0</span><span class="colop__dig">1</span><span class="colop__dig">0</span><span class="colop__dig">1</span><i class="colop__rule" aria-hidden="true"></i><span></span><span class="colop__res">1</span><span class="colop__res">1</span><span class="colop__res">0</span><span class="colop__res">0</span><span class="colop__res">0</span><span class="colop__res">0</span><span class="colop__res">0</span></div></div>
+              <ol>
+                <li>Colonna 1: <span class="num">1 + 1 = 10</span>, scrivi <span class="num">0</span>, riporti <span class="num">1</span>.</li>
+                <li>Colonne 2–5: ogni volta <span class="num">1 + 1 = 10</span> (contando il riporto), scrivi <span class="num">0</span>, riporti <span class="num">1</span>.</li>
+                <li>Colonna 6: <span class="num">1 + 1 + 1 = 11</span>, scrivi <span class="num">1</span>, riporti <span class="num">1</span>.</li>
+                <li>Il riporto finale scende davanti: <span class="n n--2">1100000<sub>2</sub></span> = <span class="n n--10">96<sub>10</sub></span>. ✓</li>
+              </ol>
+            </details>
+            <p class="feedback__tip">+1 stella ricercato. Tre risposte giuste di fila e si spegne.</p>
+            <button class="btn btn--block" type="button">Ci riprovo</button>
+          </div>
+        </main>
+      </div>
+      <p class="pv-caption">D · Errore con soluzione passo-passo: riquadro neutro, tono da complice, non da punizione.</p>
+    </div>
+
+  </div>
+</section>
+
+<section class="pv-section">
+  <h2>Varianti · colonna e indizi</h2>
+  <div class="pv-screens">
+    <article class="card">
+      <h3 class="op-title"><span class="op-title__name">Sottrazione · prestito a catena</span><span><span class="n n--2">1000<sub>2</sub></span> − <span class="n n--2">11<sub>2</sub></span></span></h3>
+      <div class="colop-wrap"><div class="colop" style="--cols:4" role="img" aria-label="1000 meno 11 uguale 101, con prestito a catena dalla quarta colonna"><span class="colop__carry"></span><span class="colop__carry"></span><span class="colop__carry is-borrow is-chain is-chain-start">10</span><span class="colop__carry is-borrow is-chain">10</span><span class="colop__carry is-borrow is-chain is-chain-end">10</span><span></span><span class="colop__dig is-lent">1</span><span class="colop__dig is-lent">0</span><span class="colop__dig is-lent">0</span><span class="colop__dig">0</span><span class="colop__op">−</span><span></span><span></span><span class="colop__dig">1</span><span class="colop__dig">1</span><i class="colop__rule" aria-hidden="true"></i><span></span><span></span><span class="colop__res">1</span><span class="colop__res">0</span><span class="colop__res">1</span></div></div>
+      <p class="pv-caption" style="margin:0">Le cifre barrate hanno prestato; "10" sopra è quanto vale la cifra che riceve. La pillola arancio collega la catena.</p>
+    </article>
+    <article class="card">
+      <h3 class="op-title"><span class="op-title__name">Moltiplicazione</span><span><span class="n n--2">101<sub>2</sub></span> × <span class="n n--2">11<sub>2</sub></span></span></h3>
+      <div class="colop-wrap"><div class="colop" style="--cols:4" role="img" aria-label="101 per 11 uguale 1111"><span></span><span></span><span class="colop__dig">1</span><span class="colop__dig">0</span><span class="colop__dig">1</span><span class="colop__op">×</span><span></span><span></span><span class="colop__dig">1</span><span class="colop__dig">1</span><i class="colop__rule is-thin" aria-hidden="true"></i><span></span><span></span><span class="colop__dig is-partial">1</span><span class="colop__dig is-partial">0</span><span class="colop__dig is-partial">1</span><span class="colop__op">+</span><span class="colop__dig is-partial">1</span><span class="colop__dig is-partial">0</span><span class="colop__dig is-partial">1</span><span class="colop__dig is-shift"></span><i class="colop__rule" aria-hidden="true"></i><span></span><span class="colop__res">1</span><span class="colop__res">1</span><span class="colop__res">1</span><span class="colop__res">1</span></div></div>
+      <p class="pv-caption" style="margin:0">Prodotti parziali tenui, il puntino segna lo spostamento, poi la somma.</p>
+    </article>
+    <article class="card">
+      <h3 class="op-title"><span class="op-title__name">Verifica</span><span>Il risultato in base 10</span></h3>
+      <div class="feedback feedback--inline feedback--hint" role="status">
+        <img class="feedback__mascot" src="mascot/r0b-perplesso.svg" alt="">
+        <p class="feedback__title"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>La verifica non torna</p>
+        <p class="feedback__text">Il tuo <span class="n n--2">1011110<sub>2</sub></span> fa <span class="n n--10">94<sub>10</sub></span>, ma <span class="num">59 + 37 = 96</span>. Indizio: controlla i riporti.</p>
+        <ol class="feedback__explain">
+          <li>Converti il tuo risultato: 64 + 16 + 8 + 4 + 2 = 94.</li>
+          <li>Somma in decimale: 59 + 37 = 96.</li>
+          <li>Differenza 2: è la colonna del 2 che ha perso un riporto.</li>
+        </ol>
+        <button class="btn btn--block" type="button">Torno alla colonna</button>
+      </div>
+    </article>
+  </div>
+</section>
+
+<script>
+  // --- solo demo: la logica vera è di David ---
+  const swatches = ["bg","surface","surface-2","border","text","text-muted","primary","secondary","accent","digit","success","danger","cash","wanted","focus","vault","dial-on","lcd-text"];
+  const sw = document.getElementById("swatches");
+  swatches.forEach(n => sw.insertAdjacentHTML("beforeend",
+    `<div class="pv-sw"><i style="background:var(--c-${n})"></i><b>--c-${n}</b><code></code></div>`));
+  const paintCodes = () => sw.querySelectorAll(".pv-sw").forEach((el, i) =>
+    el.querySelector("code").textContent = getComputedStyle(document.documentElement).getPropertyValue(`--c-${swatches[i]}`).trim());
+  paintCodes();
+
+  // tema
+  const modes = ["auto","light","dark"]; let m = 0;
+  document.getElementById("theme").onclick = e => {
+    m = (m + 1) % 3;
+    if (modes[m] === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = modes[m];
+    e.currentTarget.textContent = "Tema: " + modes[m]; paintCodes();
+  };
+
+  // scelta multipla
+  document.querySelectorAll(".choices").forEach(list => list.addEventListener("click", e => {
+    const b = e.target.closest(".choice"); if (!b) return;
+    list.querySelectorAll(".choice").forEach(c => c.classList.remove("is-correct","is-wrong"));
+    const ok = b.textContent.trim().startsWith("1001101");
+    b.classList.add(ok ? "is-correct" : "is-wrong");
+    if (!ok) list.querySelector(".choice").classList.add("is-correct");
+    const fb = document.getElementById("fb-a"); fb.hidden = !ok;
+  }));
+
+  // cassaforte
+  const dials = document.getElementById("dials"), lcd = document.getElementById("lcd"), sum = document.getElementById("sum");
+  [128,64,32,16,8,4,2,1].forEach((w, i) => dials.insertAdjacentHTML("beforeend",
+    `<li><button class="dial" type="button" aria-pressed="${[1,1,0,0,1,0,1,0][i] ? "true" : "false"}" data-w="${w}" aria-label="Ruota ${w}">
+      <span class="dial__weight">${w}</span>
+      <span class="dial__wheel" aria-hidden="true"><span class="dial__track"><span>0</span><span>1</span></span></span>
+    </button></li>`));
+  const update = () => {
+    const on = [...dials.querySelectorAll('[aria-pressed="true"]')].map(d => +d.dataset.w);
+    const total = on.reduce((a, b) => a + b, 0);
+    lcd.textContent = total;
+    sum.textContent = on.length ? on.join(" + ") + " = " + total : "tutte a zero";
+    document.getElementById("vault").classList.toggle("is-open", total === 200);
+  };
+  dials.addEventListener("click", e => {
+    const d = e.target.closest(".dial"); if (!d) return;
+    d.setAttribute("aria-pressed", d.getAttribute("aria-pressed") === "true" ? "false" : "true"); update();
+  });
+  update();
+</script>
+</body>
+</html>
