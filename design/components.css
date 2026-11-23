@@ -169,11 +169,16 @@ body {
   font-size: var(--fs-lg); font-weight: 700; min-width: 5ch; text-align: right;
   text-shadow: 0 0 8px color-mix(in srgb, var(--c-lcd-text) 60%, transparent);
 }
-/* 2 file da 4 (= 2 nibble) sotto i 26rem di contenitore, 1 fila da 8 sopra */
-.vault__dials { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+/* Sempre 8 ruote in UNA fila (l'allineamento dei pesi 128…1 è la parte educativa): su telefono si stringono, non vanno a capo. */
+.vault__dials { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 3px; margin: 0; padding: 0; list-style: none; }
+.vault__dials > :nth-child(5) { margin-left: 4px; } /* respiro tra i due nibble */
 @container (min-width: 26rem) {
-  .vault__dials { grid-template-columns: repeat(8, 1fr); gap: 6px; }
-  .vault__dials > :nth-child(5) { margin-left: var(--sp-2); } /* respiro tra i due nibble */
+  .vault__dials { gap: 6px; }
+  .vault__dials > :nth-child(5) { margin-left: var(--sp-2); }
+}
+@container (max-width: 22rem) {
+  .dial__wheel { font-size: 1.25rem; }
+  .dial__weight { font-size: 10px; }
 }
 .dial {
   width: 100%; min-height: 76px; padding: 6px 0 8px;
@@ -856,26 +861,25 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 
 /* ---------- Combinazione a 8 cifre sotto i pesi (.ruler-form) ---------- */
 /* Markup di David: .ruler con 8 span.ruler__w poi 8 input.ruler__cell.
-   8 caselle in fila su 320px sarebbero larghe ~32px (sotto i 44 di tap): sotto i 26rem
-   vanno in 2 file da 4 (un nibble per fila, come la cassaforte), ogni peso sopra la sua cifra. */
+   Sempre 8 caselle in una sola fila, ogni peso sopra la sua cifra: su telefono le caselle si restringono. */
 .ruler-form { container-type: inline-size; display: flex; flex-direction: column; gap: var(--sp-3); }
-.ruler { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px var(--sp-2); }
-.ruler__w:nth-of-type(-n+4) { grid-row: 1; }
-.ruler__cell:nth-of-type(-n+4) { grid-row: 2; }
-.ruler__w:nth-of-type(n+5) { grid-row: 3; margin-top: var(--sp-2); }
-.ruler__cell:nth-of-type(n+5) { grid-row: 4; }
+.ruler { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px 3px; }
+.ruler__w { grid-row: 1; }
+.ruler__cell { grid-row: 2; }
+.ruler > :nth-of-type(5) { margin-left: 4px; } /* respiro tra i nibble */
 @container (min-width: 26rem) {
-  .ruler { grid-template-columns: repeat(8, 1fr); gap: 4px 6px; }
-  .ruler__w { grid-row: 1 !important; margin-top: 0 !important; }
-  .ruler__cell { grid-row: 2 !important; }
-  .ruler > :nth-of-type(5) { margin-left: var(--sp-2); } /* respiro tra i nibble */
+  .ruler { gap: 4px 6px; }
+  .ruler > :nth-of-type(5) { margin-left: var(--sp-2); }
+}
+@container (max-width: 22rem) {
+  .ruler__w { font-size: 10px; }
 }
 .ruler__w {
   text-align: center; padding: 2px 0; font-family: var(--font-mono); font-feature-settings: var(--num-features);
   font-weight: 700; font-size: var(--fs-xs); color: var(--c-text-muted);
 }
 .ruler__cell {
-  width: 100%; min-width: var(--tap); min-height: var(--tap-lg); padding: 0; text-align: center;
+  width: 100%; min-width: 0; min-height: var(--tap-lg); padding: 0; text-align: center;
   font-family: var(--font-mono); font-feature-settings: var(--num-features); font-weight: 800;
   font-size: max(16px, var(--fs-lg)); color: var(--c-digit);
   background: var(--c-surface); border: var(--border-w) solid var(--c-border); border-radius: var(--r-md);
@@ -1381,7 +1385,7 @@ dialog.confirm::backdrop { background: rgb(13 8 32 / .65); }
 }
 .post__head { display: flex; align-items: center; gap: var(--sp-3); padding-right: var(--sp-4); }
 .post__who { margin: 0; line-height: 1.25; min-width: 0; }
-.post__who span { display: block; font-size: var(--fs-xs); color: var(--c-text-muted); }
+.post__who > span:not(.post__type) { display: block; font-size: var(--fs-xs); color: var(--c-text-muted); }
 .post__type { /* etichetta del tipo: icona + parola */
   display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 0 6px; border-radius: var(--r-pill);
   font-size: 11px; font-weight: 800; color: var(--kind); border: 1.5px solid var(--kind); vertical-align: 1px;

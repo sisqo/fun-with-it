@@ -641,6 +641,57 @@ soli.
   pillola oro con un puntino che pulsa piano, e il tasto prende il bordo oro. Il testo del
   tasto resta su una riga; se non c'è posto, va a capo il segno.
 
+### Avvisi e Bacheca (`.notice`, `.feed`)
+
+C'è un solo evento ("hai sbloccato…", "trofeo", "serie di 5", "capitolo superato") e due
+formati:
+- **`.notice`**: l'avviso a comparsa in alto, che si chiude da solo;
+- **`.feed`, "La Bacheca"**: lo storico degli eventi come un feed social finto. Il nome è
+  originale; i post sono di R0b e di DJ Nibble.
+
+**Tipi.** Modificatore `--trophy`, `--unlock`, `--streak`, `--chapter`, `--shop` o `--radio`
+su `.notice` / `.post`. Il colore del tipo va sul bordo sinistro e sull'icona tonda
+`.kind-icon`. Il tipo si legge comunque anche senza colore: dall'icona e dal titolo
+nell'avviso, dall'etichetta `.post__type` ("★ Trofeo", "✓ Capitolo", "Radio") nel post.
+
+| Tipo | Colore |
+|---|---|
+| trofeo | oro |
+| sblocco | viola |
+| serie | arancio |
+| capitolo | verde |
+| negozio | contanti |
+| radio | ciano |
+
+**Avviso**
+- Va in un contenitore fisso `<div class="notices" aria-live="polite">`, uno per pagina; gli
+  avvisi si impilano.
+- `.notice.notice--x[role=status]` contiene:
+  - `.kind-icon`;
+  - `.notice__body` con `.notice__title` e `.notice__text` (oggetti in `<b>`);
+  - un `a.notice__action` facoltativo ("Vai");
+  - `button.notice__close` da 44px.
+- **Animazione.** Entra dall'alto con un piccolo rimbalzo; per l'uscita aggiungi
+  `.is-leaving` e togli il nodo a fine animazione.
+- **Durata.** Circa 4 secondi, che non partono finché il dito è sopra.
+- **Sostituisce** l'attuale `.fx-toast` per tutto ciò che ha un testo. Il `.fx-toast` va
+  bene per i brevi "Serie di 3!".
+
+**Bacheca**
+- `.feed` contiene `h1.feed__title` e `ol.feed__list`; i giorni sono `li > p.feed__day`
+  ("Oggi", "Ieri").
+- Ogni post è `li.post.post--x`, con `.is-unread` per i nuovi (bordo del tipo + puntino rosa)
+  e dentro:
+  - `.post__head`: la `.kind-icon` (dentro può andare **R0b inline**, inquadrato sulla testa
+    come avatar, con la sua skin) e `.post__who` (`<b>nome</b>`, `.post__type`,
+    `<span>@handle · 2 min</span>`);
+  - `.post__text`, scritto con la voce di R0b o del DJ, ironico e mai sul ragazzo;
+  - `.post__media`, facoltativo: trofeo, medaglione del capitolo, anteprima della skin;
+  - `.post__foot`, con `button.post__like[aria-pressed]` ("♥ 12") e "DJ Nibble e altri 11".
+- **Mi piace finti.** Sono finti e innocui: servono solo a dare il tono da social.
+- **Ingresso dalla home.** `button.icon-btn` con la campanella e `span.icon-btn__count`
+  (non letti). Nell'`aria-label` metti il numero: "Bacheca, 2 nuovi".
+
 ### Radio in auto (`.radio`)
 
 **Radio Overflow, 101.1010 FM.** La frequenza è un indovinello: 101.1010₂ = 5,625₁₀, una
@@ -798,6 +849,5 @@ Ora è un componente di supporto.
 
 Nell'ordine di David:
 
-1. Notifiche-badge stile feed.
-2. Menu "smartphone".
-3. Negozio: le auto nel garage (skin e sfondi sono fatti).
+1. Menu "smartphone".
+2. Negozio: le auto nel garage (skin e sfondi sono fatti).
