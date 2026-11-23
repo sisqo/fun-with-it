@@ -5,6 +5,7 @@ import * as G from "./progress.mjs";
 import * as T from "./teach.mjs";
 import * as Boss from "./boss.mjs";
 import * as X from "./exam.mjs";
+import * as C from "./collection.mjs";
 import * as S from "./shop.mjs";
 import * as Economy from "./economy.mjs";
 import * as FX from "./fx.mjs";
@@ -38,6 +39,17 @@ function mascot(name, cls = "", style = "") {
 }
 const ICON_KEY = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M12.5 12H21M18 12v3.5M21 12v2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
 const ICON_CUP = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0zM12 14v4M8 20h8M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+// Logo originale di Neon Bay: sole al tramonto a strisce, due palme e l'insegna al neon.
+const LOGO = `<svg class="logo" viewBox="0 0 320 130" role="img" aria-label="Neon Bay"><defs>
+  <linearGradient id="lg-sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc233"/><stop offset=".55" stop-color="#ff6a3d"/><stop offset="1" stop-color="#ff3d8b"/></linearGradient>
+  <mask id="lg-cut"><rect width="320" height="130" fill="#fff"/><rect y="58" width="320" height="3" fill="#000"/><rect y="68" width="320" height="4" fill="#000"/><rect y="79" width="320" height="5" fill="#000"/></mask></defs>
+  <circle cx="160" cy="62" r="52" fill="url(#lg-sun)" mask="url(#lg-cut)"/>
+  <g fill="#1a0b3d"><path d="M40 118c2-30 4-50 8-72l5 1c-3 22-5 42-6 71z"/><path d="M48 46c-12-2-24 4-30 14 10-5 20-6 30-3zM48 46c10-8 24-8 34-2-10-1-22 1-34 6zM48 46c-4-10-2-20 6-28-2 10-1 18 3 27zM48 46c-12-8-16-18-14-26 4 8 10 14 16 24z"/>
+  <path d="M272 118c-1-26-3-44-7-62l-5 1c3 18 5 36 6 61z"/><path d="M265 56c10-2 22 3 28 12-9-4-18-5-28-2zM265 56c-9-7-21-7-31-1 9-1 20 1 31 5zM265 56c4-9 2-18-5-25 2 9 1 16-3 24z"/></g>
+  <text x="160" y="96" text-anchor="middle" font-family="var(--font-sign, Impact, sans-serif)" font-size="44" letter-spacing="3" fill="#1a0b3d" stroke="#1a0b3d" stroke-width="9" stroke-linejoin="round">NEON BAY</text>
+  <text x="160" y="96" text-anchor="middle" font-family="var(--font-sign, Impact, sans-serif)" font-size="44" letter-spacing="3" fill="#19e6f0" stroke="#ff3d8b" stroke-width="1.5" paint-order="stroke" style="filter:drop-shadow(0 0 6px #19e6f0)">NEON BAY</text>
+  <path d="M20 118h280" stroke="#ff3d8b" stroke-width="3" stroke-linecap="round"/><text x="160" y="127" text-anchor="middle" font-size="9" letter-spacing="5" fill="currentColor" opacity=".7" font-family="var(--font-ui, sans-serif)">IMPARA IL BINARIO</text></svg>`;
 
 const save = {
   read() {
@@ -94,10 +106,27 @@ function applyLook() {
   if (look.bg === S.FREE.bg) delete document.documentElement.dataset.bg; else document.documentElement.dataset.bg = look.bg;
 }
 
+// Su ogni schermata (tranne la home e il nome) c'è in alto un link per tornare alla home. Durante una partita, un esame o un caveau
+// il link passa dal pulsante di uscita della schermata, che chiede conferma.
 function render(node) {
+  const homeLink = !node.classList.contains("home--root");
   refreshScreen = null;
   applyLook();
-  app.replaceChildren(node);
+  if (homeLink) {
+    const bar = el(`<nav class="homebar" aria-label="Navigazione"><button class="homebar__link" type="button" id="to-home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7M6 10v10h4v-6h4v6h4V10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Home</button></nav>`);
+    bar.querySelector("button").onclick = async () => {
+      // partita iniziata, esame o caveau in corso: si perde quello che è in sospeso, quindi si chiede
+      const inGame = !!document.getElementById("restart") && game?.totalUnits > 0;
+      const inExam = !!node.querySelector(".exam__top");
+      const inBoss = !!node.querySelector(".boss");
+      if (inGame || inExam || inBoss) {
+        const what = inExam ? "L'esame non viene registrato." : inBoss ? "Il tentativo di questo caveau va perso." : "I contanti di questa partita andranno persi.";
+        if (!(await confirmDialog({ title: "Tornare alla home?", text: `${what} I risultati già registrati restano.`, ok: "Sì, torna alla home", cancel: "Resta qui" }))) return;
+      }
+      home();
+    };
+    app.replaceChildren(bar, node);
+  } else app.replaceChildren(node);
   window.scrollTo({ top: 0 });
   node.querySelector("input.answer__input, input.ruler__cell, .choice, .dial, .btn")?.focus?.({ preventScroll: true });
 }
@@ -124,9 +153,9 @@ function confirmDialog({ title, text, ok = "Conferma", cancel = "Annulla", dange
 function nameScreen(message = "") {
   const others = store.players;
   render(el(`
-    <section class="home">
+    <section class="home home--root">
+      <h1 class="home__logo"><span class="sr-only">Neon Bay</span>${LOGO}</h1>
       ${mascot("neutro", "home__mascot")}
-      <h1 class="home__title">Neon <span>Bay</span></h1>
       <p class="home__line"><b>Come ti chiami?</b></p>
       <p class="home__rules">Scrivi un nome: ci salviamo partita e progressi. Restano solo su questo dispositivo.</p>
       <form class="answer name-form" id="name-form" novalidate>
@@ -172,9 +201,9 @@ function home(greeting = "") {
   // il primo capitolo non ancora superato è il consiglio per il prossimo passo
   const next = sum.chapters.find((ch) => !ch.complete);
   render(el(`
-    <section class="home">
+    <section class="home home--root">
+      <h1 class="home__logo"><span class="sr-only">Neon Bay</span>${LOGO}</h1>
       ${mascot("neutro", "home__mascot")}
-      <h1 class="home__title">Neon <span>Bay</span></h1>
       <p class="home__hello" role="status">${esc(greeting || `Ciao, ${player.name}!`)}</p>
       <p class="home__line">Il tuo conto: <b>${money(player.cash)}</b> · Partite completate: <b>${player.missionsDone}</b></p>
       ${started ? statsHTML(c) : ""}
@@ -182,6 +211,7 @@ function home(greeting = "") {
       <p class="home__rules">${started ? (next ? `Consigliato: <b>${esc(chapterTitle(next))}</b>.` : "Hai superato tutti i capitoli!") : "Ogni capitolo comincia con una breve teoria, poi arrivano le domande. Si parte dal riscaldamento con le casseforti."}</p>
       ${coursesHTML(sum, next?.id)}
       <button class="btn btn--primary btn--block" id="exam-open" type="button">Esame finale${player.exams.length ? ` · ultimo voto ${X.formatGrade(player.exams.at(-1).grade)}` : ""}</button>
+      <button class="btn btn--ghost btn--block" id="garage-open" type="button">Garage e armadio · ${C.unlockedIds(sum.chapters, player.exams).length}/${C.ITEMS.length}</button>
       <button class="btn btn--ghost btn--block" id="shop-open" type="button">Negozio · ${money(player.cash)}${shopNews ? ` <span class="btn__badge">${shopNews} novità</span>` : ""}</button>
       <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi, argomento per argomento</button>
       <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la partita è finita. Tre risposte giuste di fila ne spengono una.</p>
@@ -199,6 +229,7 @@ function home(greeting = "") {
     </section>`));
   refreshScreen = () => home(greeting);
   document.getElementById("shop-open").onclick = () => enterShop();
+  document.getElementById("garage-open").onclick = () => garageScreen();
   document.getElementById("exam-open").onclick = () => examIntro();
   document.getElementById("progress").onclick = () => progressScreen();
   app.querySelectorAll("[data-chapter]").forEach((b) => (b.onclick = () => chapterScreen(b.dataset.chapter)));
@@ -229,6 +260,7 @@ function home(greeting = "") {
 function startGame({ force = null, chapter = null, theory = false } = {}) {
   const ch = chapter ?? (force ? G.topicById[force]?.chapter : null);
   game = { force, chapter: ch, count: force ? 8 : 10, q: null, last: null, seen: new Set(), touched: new Map(), qWrong: false, qUnits: 0, qOkUnits: 0, recorded: false, index: 0, step: 0, stars: 0, streak: 0, earned: 0, rightCount: 0, totalUnits: 0, answered: false, givens: [], marks: [], delta: 0, lit: false };
+  game.unlockBefore = unlockedNow();
   game.chBefore = Object.fromEntries(G.summarize(P.currentPlayer(store)).chapters.map((c) => [c.id, { state: c.state, vault: c.vault }]));
   nextQ();
   // Un capitolo nuovo comincia con la breve teoria degli argomenti da cui parte; poi le domande.
@@ -650,14 +682,14 @@ function submit(unit, given, clicked, afterJudge) {
   }
   afterJudge?.();
   revealVault(q, verdict.ok);
-  if (q.view?.kind === "order") revealOrder(app.firstElementChild, q, given);
+  if (q.view?.kind === "order") revealOrder(app.lastElementChild, q, given);
   const cashBefore = me().cash + game.earned - (verdict.reward ? game.delta : 0);
   const starOff = verdict.reward && game.streak % 3 === 0 && game.stars < starsBefore;
   if (verdict.reward) FX.celebrate({ streak: game.streak, starOff });
   else if (verdict.star) FX.alarm(true);
   else FX.alarm(false);
 
-  const root = app.firstElementChild;
+  const root = app.lastElementChild;
   root.querySelectorAll("input, .dial, #submit, .choice, #form .btn, .order__item, #order-go, #order-reset").forEach((n) => (n.disabled = true));
   const form = root.querySelector("#form");
   if (form) form.classList.add(verdict.ok ? "is-correct" : verdict.discovered && !verdict.star ? "is-hint" : "is-wrong");
@@ -752,6 +784,8 @@ function finish(failed) {
   justPerfect.clear();
   const newlyPerfect = G.summarize(player).chapters.filter((c) => c.state === "perfetto" && game.chBefore?.[c.id]?.state !== "perfetto");
   newlyPerfect.forEach((c) => justPerfect.add(c.id));
+  const loot = C.newlyUnlocked(game.unlockBefore ?? [], unlockedNow());
+  announceUnlocks(loot);
   if (newlyPerfect.length) FX.toast(`${newlyPerfect.length === 1 ? "Capitolo" : "Capitoli"} ${newlyPerfect.map((c) => c.n).join(", ")}: superato alla perfezione!`);
   const entries = [...game.touched.entries()].map(([id, t]) => ({ id, t, after: G.statusFor(player, id) }));
   const delta = (e) => Math.sign(RANK[e.after] - RANK[e.t.before]); // 1 salito, 0 invariato, -1 sceso
@@ -770,6 +804,7 @@ function finish(failed) {
       <p class="home__rules">Risposte giuste: ${game.rightCount} su ${game.totalUnits}${failed ? "" : ` · Il tuo conto: ${money(me().cash)}`}</p>
       ${newlyPerfect.length ? `<p class="home__hello" role="status">★ ${newlyPerfect.map((c) => esc(c.title)).join(" · ")}: superato alla perfezione!</p>` : ""}
       ${G.summarize(player).chapters.filter((c) => c.vault === "ready" && game.chBefore?.[c.id]?.vault !== "ready").map((c) => `<section class="chapter-vault chapter-vault--ready"><span class="chapter-vault__icon">${ASSETS.door}</span><p class="chapter-vault__title">Il caveau ${c.n > 0 ? `del capitolo ${c.n}` : "del riscaldamento"} si è aperto: lo tenti?</p><p class="chapter-vault__text">Tre passaggi, niente stelle: se non riesce, riprovi quando vuoi.</p><button class="btn btn--block" type="button" data-boss="${c.id}">Tenta il caveau</button></section>`).join("")}
+      ${unlockedHTML(loot)}
       ${rows ? `<h2 class="board__sub">Argomenti toccati in questa partita</h2><ul class="topics topics--summary">${rows}</ul>` : ""}
       ${radioFull()}
       <button class="btn btn--primary btn--block" id="again" type="button">${failed ? "Riprova" : game.force ? "Allenati ancora" : "Altre domande del capitolo"}</button>
@@ -778,6 +813,7 @@ function finish(failed) {
       <button class="btn btn--ghost btn--block" id="menu" type="button">Tutti i capitoli</button>
     </section>`));
   document.getElementById("again").onclick = () => startGame({ force: game.force, chapter: game.chapter });
+  wireGarage();
   app.querySelectorAll("[data-boss]").forEach((b) => (b.onclick = () => startBoss(b.dataset.boss)));
   document.getElementById("to-chapter")?.addEventListener("click", () => chapterScreen(game.chapter));
   document.getElementById("progress").onclick = () => progressScreen();
@@ -945,7 +981,7 @@ function bossTaskHTML(q, i) {
 function showBossStep() {
   const q = boss.steps[boss.i].q;
   render(el(`<div>${bossShell({ step: boss.i + 1, title: boss.name, task: bossTaskHTML(q, boss.i) })}</div>`));
-  const root = app.firstElementChild;
+  const root = app.lastElementChild;
   root.querySelector("#boss-quit").onclick = () => chapterScreen(boss.chapter);
   const answer = (given, clicked) => bossAnswer(q, given, clicked);
 
@@ -982,7 +1018,7 @@ function showBossStep() {
 }
 
 function bossAnswer(q, given, clicked) {
-  const root = app.firstElementChild;
+  const root = app.lastElementChild;
   if (root.dataset.done) return;
   root.dataset.done = "1";
   const ok = Boss.bossCheck(q, given);
@@ -1162,7 +1198,7 @@ function examIntro() {
 }
 
 function startExam() {
-  exam = { items: X.buildExam(Math.random), i: 0, results: [], givens: [] };
+  exam = { items: X.buildExam(Math.random), i: 0, results: [], givens: [], unlockBefore: unlockedNow() };
   examQuestion();
 }
 
@@ -1241,6 +1277,8 @@ const examLabel = (q) => (q.view?.kind === "order" ? `Ordina dal più piccolo al
 function examResult() {
   const r = X.gradeExam(exam.items, exam.results);
   commit(P.recordExam(store, store.current, r));
+  const loot = C.newlyUnlocked(exam.unlockBefore, unlockedNow());
+  announceUnlocks(loot);
   r.passed ? FX.bigWin() : FX.play("ko");
   const wrong = exam.items.map((it, i) => ({ it, i })).filter(({ i }) => !exam.results[i]);
   const given = (v) => (v === "" || v == null ? "(vuota)" : String(v));
@@ -1258,15 +1296,49 @@ function examResult() {
       <p class="home__rules">${r.allChaptersPassed ? "Tutte le lezioni risultano superate." : `Lezioni da ripassare: <b>${reviewList.map((c) => esc(c.title)).join(" · ")}</b>.`}${r.passed && !r.allChaptersPassed ? " Il voto basta, ma queste non sono ancora solide." : ""}</p>
       <h2 class="board__sub">Capitolo per capitolo</h2>
       <ul class="exam-chs">${chRows}</ul>
+      ${unlockedHTML(loot)}
       ${wrong.length ? `<h2 class="board__sub">Gli errori, spiegati</h2><ul class="exam-revs">${review}</ul>` : ""}
       ${radioFull(examRadio(r.grade))}
       ${reviewList.map((c) => `<button class="btn btn--ghost btn--block" type="button" data-review="${c.id}">Ripassa: ${esc(c.title)}</button>`).join("")}
       <button class="btn btn--primary btn--block" id="exam-again" type="button">Rifai l'esame</button>
       <button class="btn btn--ghost btn--block" id="exam-menu" type="button">Tutti i capitoli</button>
     </section>`));
+  wireGarage();
   app.querySelectorAll("[data-review]").forEach((b) => (b.onclick = () => chapterScreen(b.dataset.review)));
   document.getElementById("exam-again").onclick = () => startExam();
   document.getElementById("exam-menu").onclick = () => home();
+}
+
+// ---------- Garage e armadio: gli oggetti si sbloccano superando i capitoli e l'esame ----------
+
+const unlockedNow = () => { const p = P.currentPlayer(store); return C.unlockedIds(G.summarize(p).chapters, p.exams); };
+
+// Riquadro "Sbloccato!" per gli oggetti nuovi (fine partita, esame). Vuoto se non c'è niente di nuovo.
+function unlockedHTML(items) {
+  if (!items.length) return "";
+  return `<section class="unlocked" aria-live="polite"><h2 class="board__sub">${items.length === 1 ? "Hai sbloccato un oggetto!" : `Hai sbloccato ${items.length} oggetti!`}</h2>
+    <ul class="unlocked__list">${items.map((i) => `<li class="loot loot--new"><span class="loot__art">${C.artFor(i)}</span><span class="loot__body"><b>${esc(i.name)}</b><span class="loot__type">${C.TYPES[i.type]}</span><span class="loot__joke">${esc(i.joke)}</span></span></li>`).join("")}</ul>
+    <button class="btn btn--ghost btn--block" type="button" data-garage>Vai al garage e armadio</button></section>`;
+}
+const announceUnlocks = (items) => { if (items.length) { FX.play("coin"); FX.toast(`Sbloccato: ${items.map((i) => i.name).join(", ")}!`); } };
+const wireGarage = () => app.querySelectorAll("[data-garage]").forEach((b) => (b.onclick = () => garageScreen()));
+
+function garageScreen() {
+  const player = P.currentPlayer(store);
+  if (!player) return nameScreen();
+  const chapters = G.summarize(player).chapters;
+  const open = new Set(C.unlockedIds(chapters, player.exams));
+  const group = (type) => `<h2 class="board__sub">${C.TYPES[type]}</h2><ul class="loot-grid">${C.ITEMS.filter((i) => i.type === type).map((i) => open.has(i.id)
+    ? `<li class="loot"><span class="loot__art">${C.artFor(i)}</span><span class="loot__body"><b>${esc(i.name)}</b><span class="loot__joke">${esc(i.joke)}</span></span></li>`
+    : `<li class="loot loot--locked"><span class="loot__art" aria-hidden="true">${C.artFor({ ...i, color: "currentColor" })}</span><span class="loot__body"><b>???</b><span class="loot__joke">${esc(C.howToUnlock(i, chapters))}</span></span></li>`).join("")}</ul>`;
+  render(el(`
+    <section class="home garage">
+      <h1 class="home__title">Garage e <span>armadio</span></h1>
+      <p class="home__line">Sbloccati: <b>${open.size}</b> su ${C.ITEMS.length}. Si guadagnano studiando: un oggetto per ogni capitolo superato, due con l'esame finale.</p>
+      ${group("car")}${group("outfit")}${group("tattoo")}
+      <button class="btn btn--ghost btn--block" id="garage-back" type="button">Torna ai capitoli</button>
+    </section>`));
+  document.getElementById("garage-back").onclick = () => home();
 }
 
 home(); // subito: la prima schermata non aspetta le immagini del caveau

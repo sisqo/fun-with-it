@@ -129,3 +129,25 @@
 .exam-rev summary { cursor: pointer; font-weight: 700; }
 .exam-rev__n { display: inline-grid; place-items: center; min-width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--c-danger); color: var(--c-surface); font-size: var(--fs-xs); margin-right: var(--sp-1); }
 .exam-rev p, .exam-rev ul { margin: var(--sp-1) 0 0; }
+
+/* ---------- Logo, link alla home, garage e armadio ---------- */
+.homebar { display: flex; max-width: 40rem; margin: 0 auto var(--sp-2); }
+.homebar__link { display: inline-flex; align-items: center; gap: var(--sp-1); min-height: var(--tap); padding: 0 var(--sp-3); background: transparent; border: 2px solid var(--c-border); border-radius: 999px; color: var(--c-text); font: inherit; font-weight: 700; cursor: pointer; }
+.homebar__link svg { width: 20px; height: 20px; }
+.homebar__link:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.homebar__link:focus-visible { outline: 3px solid var(--c-focus); outline-offset: 2px; }
+.home__logo { margin: 0; width: min(100%, 22rem); color: var(--c-text); }
+.logo { display: block; width: 100%; height: auto; }
+.loot-grid, .unlocked__list { list-style: none; margin: 0 0 var(--sp-3); padding: 0; display: grid; gap: var(--sp-2); width: 100%; max-width: 28rem; }
+.loot { display: flex; align-items: center; gap: var(--sp-3); text-align: left; padding: var(--sp-2) var(--sp-3); border: 2px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); }
+.loot__art { flex: 0 0 76px; display: grid; place-items: center; color: var(--c-text-muted); }
+.loot__art svg { width: 76px; height: 56px; }
+.loot__body { display: grid; gap: 2px; min-width: 0; }
+.loot__type { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .08em; color: var(--c-text-muted); }
+.loot__joke { font-size: var(--fs-sm); color: var(--c-text-muted); }
+.loot--locked { border-style: dashed; opacity: .75; }
+.loot--locked .loot__art { filter: grayscale(1) opacity(.5); }
+.loot--new { border-color: var(--c-success); animation: loot-pop var(--dur-slow, .4s) var(--ease-pop, ease-out); }
+@keyframes loot-pop { from { transform: scale(.92); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .loot--new { animation: none; } }
+.unlocked { width: 100%; display: grid; justify-items: center; }
