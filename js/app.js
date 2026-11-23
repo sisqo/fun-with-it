@@ -108,9 +108,9 @@ async function login(name) {
   if (pulled.status === "offline") { syncState = "offline"; return { ...r, offline: true }; }
   syncState = "ok";
   const rec = Sync.reconcile(had && (had.updatedAt > 0 || had.missionsDone || Object.keys(had.topics).length) ? had : null, pulled.status === "ok" ? pulled.player : null);
-  if (rec.source === "remote") { adopt(rec.player); return { ...r, restored: true, player: rec.player }; }
+  if (rec.source !== "local" && rec.source !== "none") adopt(rec.player);
   if (rec.pushLocal) queuePush(r.player.key);
-  return r;
+  return rec.source === "remote" || rec.source === "merged" ? { ...r, restored: true, player: rec.player } : r;
 }
 const commitRaw = (next) => { store = next; save.write(P.serialize(store)); };
 // In background (apertura, ritorno sulla pagina): se online c'è di meglio, lo recupera; se il dispositivo è più avanti, lo carica.
@@ -123,8 +123,9 @@ async function syncCurrent() {
   syncState = "ok";
   const local = P.currentPlayer(store);
   const rec = Sync.reconcile(local, pulled.status === "ok" ? pulled.player : null);
-  if (rec.source === "remote" && refreshScreen) { adopt(rec.player); refreshScreen(); } // solo dove si può ridisegnare senza interrompere una partita
-  else if (rec.pushLocal) queuePush(local.key);
+  // le copie online più avanti o da unire si prendono solo dove si può ridisegnare senza interrompere una partita
+  if (rec.source !== "local" && rec.source !== "none" && refreshScreen) { adopt(rec.player); refreshScreen(); if (rec.pushLocal) queuePush(local.key); }
+  else if (rec.source === "local" && rec.pushLocal) queuePush(local.key);
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushPush(); else syncCurrent(); });
 window.addEventListener("pagehide", flushPush);
