@@ -70,19 +70,19 @@ export function vaultCode(rng, n) {
   };
 }
 
-// La serie di riscaldamento: si parte da UNA ruota alla volta e si sale fino a 8 ruote.
+// La serie di riscaldamento: si parte da numeri piccoli ma non banali (4, 9, 12) e si sale fino a 8 ruote.
 export function buildWarmupMission(rng) {
   const plan = [
-    vaultBuild(rng, 1, "Ogni ruota ha un peso. Ruota accesa = 1: aggiunge il suo peso. Ruota spenta = 0: non aggiunge niente. Per fare 1 accendi solo la ruota con il peso 1 (la più a destra)."),
-    vaultBuild(rng, 2, "I pesi raddoppiano a ogni ruota: 1, 2, 4, 8… Per fare 2 basta la ruota del 2."),
-    vaultBuild(rng, 3, "Per fare 3 non c'è una ruota sola: ne servono due insieme, 1 + 2."),
-    vaultRead(rng, rint(rng, 3, 7)),
-    vaultBuild(rng, rint(rng, 4, 7), "Guarda il codice binario sotto il display: ogni ruota accesa è un 1."),
-    vaultCode(rng, rint(rng, 5, 15)),
-    vaultBuild(rng, rint(rng, 8, 15)),
-    vaultRead(rng, rint(rng, 9, 31)),
-    vaultBuild(rng, rint(rng, 16, 63)),
-    vaultCode(rng, rint(rng, 64, 255)),
+    vaultBuild(rng, 4, "Ogni ruota ha un peso, e i pesi raddoppiano: 1, 2, 4, 8… Ruota accesa = 1: aggiunge il suo peso. Spenta = 0: non aggiunge niente. Per fare 4 basta accendere la ruota con il peso 4."),
+    vaultBuild(rng, 9, "Nessuna ruota vale 9, quindi ne servono due: scomponi 9 in pesi che conosci (8 + 1)."),
+    vaultBuild(rng, 12, "Anche qui due ruote insieme: prendi il peso più grande che ci sta in 12, poi vedi cosa manca."),
+    vaultRead(rng, rint(rng, 10, 20)),
+    vaultBuild(rng, rint(rng, 13, 31), "Guarda il codice binario sotto il display: ogni ruota accesa è un 1."),
+    vaultCode(rng, rint(rng, 16, 40)),
+    vaultBuild(rng, rint(rng, 32, 63)),
+    vaultRead(rng, rint(rng, 40, 100)),
+    vaultBuild(rng, rint(rng, 64, 127)),
+    vaultCode(rng, rint(rng, 128, 255)),
   ];
   return plan.map((q, i) => ({ id: i + 1, ...q }));
 }

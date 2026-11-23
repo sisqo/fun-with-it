@@ -121,7 +121,7 @@ test("riscaldamento: le prime 6 domande sono sempre casseforti, in ordine di dif
       qs.push(q);
       player = { topics: { cassaforte: P.nextStats(player.topics.cassaforte, true) } };
     }
-    assert.deepEqual(qs.slice(0, 3).map((q) => q.value), [1, 2, 3]);
+    assert.deepEqual(qs.slice(0, 3).map((q) => q.value), [4, 9, 12]);
     assert.equal(qs[3].vault.show, "read");
     assert.equal(qs[5].vault.show, "ruler");
   }
@@ -756,9 +756,9 @@ test("capitolo scelto: un giocatore bravo supera il capitolo, uno che sbaglia re
   assert.deepEqual(Object.keys(weak.topics), ["addizione"], "se l'addizione va male le altre restano chiuse");
 });
 
-test("capitolo di riscaldamento: segue il piano delle casseforti dall'uno in poi", () => {
+test("capitolo di riscaldamento: segue il piano delle casseforti da 4, 9, 12 in poi", () => {
   const { history } = playChapter("warm", 10, 1, 9);
-  assert.deepEqual(history.slice(0, 3).map((q) => q.value), [1, 2, 3]);
+  assert.deepEqual(history.slice(0, 3).map((q) => q.value), [4, 9, 12]);
   assert.ok(history.every((q) => q.topic === "cassaforte"));
   assert.equal(history[3].vault.show, "read");
   assert.equal(history[5].vault.show, "ruler");

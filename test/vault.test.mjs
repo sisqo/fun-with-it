@@ -24,16 +24,17 @@ test("bits8, onWeights e nibbles coerenti per tutti i valori 0-255", () => {
   assert.equal(V.nibbles("01000101"), "0100 0101");
 });
 
-test("la serie: 10 domande, parte da una ruota alla volta e sale", () => {
+test("la serie: 10 domande, parte da 4, 9, 12 (niente 1, 2, 3) e sale", () => {
   for (let s = 1; s <= 500; s++) {
     const m = V.buildWarmupMission(mulberry(s));
     assert.equal(m.length, 10);
-    assert.deepEqual(m.slice(0, 3).map((q) => q.value), [1, 2, 3]);
+    assert.deepEqual(m.slice(0, 3).map((q) => q.value), [4, 9, 12]);
     assert.ok(m.slice(0, 3).every((q) => q.kind === "safe" && q.hint));
     // difficoltà crescente: i valori in gioco non scendono di molto e l'ultimo è a 8 ruote
     const vals = m.map((q) => q.kind === "safe" ? q.value : Number(q.vault.show === "read" ? q.answer : E.fromBin(q.answer)));
-    assert.ok(vals[9] >= 64 && vals[8] >= 16 && vals[6] >= 8 && vals[0] === 1);
-    assert.ok(vals[3] <= 7 && vals[5] <= 15);
+    assert.ok(vals[9] >= 64 && vals[8] >= 16 && vals[6] >= 8 && vals[0] === 4);
+    assert.ok(vals[3] >= 10 && vals[3] <= 20 && vals[5] <= 40);
+    assert.ok(vals.every((v) => v >= 4), "niente 1, 2, 3");
     for (const q of m) assert.ok(q.explain.length && q.radio && q.prompt);
   }
 });
