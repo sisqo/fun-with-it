@@ -4,6 +4,7 @@ import { judgeStep } from "./operations.mjs";
 import * as G from "./progress.mjs";
 import * as T from "./teach.mjs";
 import * as Boss from "./boss.mjs";
+import * as X from "./exam.mjs";
 import * as S from "./shop.mjs";
 import * as Economy from "./economy.mjs";
 import * as FX from "./fx.mjs";
@@ -180,6 +181,7 @@ function home(greeting = "") {
       <h2 class="board__sub">Scegli un capitolo</h2>
       <p class="home__rules">${started ? (next ? `Consigliato: <b>${esc(chapterTitle(next))}</b>.` : "Hai superato tutti i capitoli!") : "Ogni capitolo comincia con una breve teoria, poi arrivano le domande. Si parte dal riscaldamento con le casseforti."}</p>
       ${coursesHTML(sum, next?.id)}
+      <button class="btn btn--primary btn--block" id="exam-open" type="button">Esame finale${player.exams.length ? ` · ultimo voto ${X.formatGrade(player.exams.at(-1).grade)}` : ""}</button>
       <button class="btn btn--ghost btn--block" id="shop-open" type="button">Negozio · ${money(player.cash)}${shopNews ? ` <span class="btn__badge">${shopNews} novità</span>` : ""}</button>
       <button class="btn btn--ghost btn--block" id="progress" type="button">I miei progressi, argomento per argomento</button>
       <p class="home__rules">Ogni errore accende una stella di ricercato. A cinque stelle la partita è finita. Tre risposte giuste di fila ne spengono una.</p>
@@ -197,6 +199,7 @@ function home(greeting = "") {
     </section>`));
   refreshScreen = () => home(greeting);
   document.getElementById("shop-open").onclick = () => enterShop();
+  document.getElementById("exam-open").onclick = () => examIntro();
   document.getElementById("progress").onclick = () => progressScreen();
   app.querySelectorAll("[data-chapter]").forEach((b) => (b.onclick = () => chapterScreen(b.dataset.chapter)));
   document.getElementById("switch").onclick = () => { commit(P.signOut(store)); nameScreen(); };
@@ -1118,6 +1121,152 @@ function trophiesHTML(player) {
     const at = player.trophies?.[c.id];
     return `<li><figure class="trophy${at ? "" : " is-empty"}">${ASSETS.cup}<figcaption><b>Caveau ${c.n}</b>${at ? G.formatDay(at) : "da aprire"}</figcaption></figure></li>`;
   }).join("")}</ul>`;
+}
+
+
+// ---------- Esame finale: una prova unica, senza suggerimenti né correzioni, con un voto in decimi ----------
+
+let exam = null;
+window.__exam = () => exam; // per provare l'esame dal browser
+const EXAM_RADIO = [
+  [9, "Dieci e lode in arrivo? Il caveau ti saluta in piedi."],
+  [7, "Roba da bravi: si vede che il binario non ti fa più paura."],
+  [6, "Sufficiente: la porta si apre, ma cigola. Ripassa i capitoli segnati."],
+  [0, "Il caveau non si è aperto. Non è una tragedia: è un elenco di cose da ripassare."],
+];
+const examRadio = (grade) => EXAM_RADIO.find(([min]) => grade >= min)[1];
+
+function examIntro() {
+  const player = P.currentPlayer(store);
+  const last = player.exams.at(-1);
+  const best = player.exams.reduce((m, e) => Math.max(m, e.grade), 0);
+  const perCh = G.CHAPTERS.map((c) => ({ c, n: { warm: 3, c1: 3, c2: 3, conv: 4, ops: 5, basi: 3, virgola: 3 }[c.id] }));
+  render(el(`
+    <section class="home exam">
+      ${mascot("neutro", "home__mascot")}
+      <h1 class="home__title">Esame <span>finale</span></h1>
+      <p class="home__line">24 domande su tutti i capitoli, e alla fine un voto in decimi.</p>
+      <ul class="rules">
+        <li>Niente suggerimenti e nessuna correzione mentre rispondi: si vede tutto alla fine.</li>
+        <li>Ogni domanda vale 1 punto, tutto o niente. Con 6 sei <b>sufficiente</b>.</li>
+        <li>Un capitolo è superato con almeno il 60% di risposte giuste.</li>
+        <li>Se esci prima della fine, l'esame non viene registrato.</li>
+      </ul>
+      <p class="home__rules">${perCh.map(({ c, n }) => `${esc(c.title)}: ${n}`).join(" · ")}</p>
+      ${last ? `<p class="home__hello" role="status">Ultimo voto: <b>${X.formatGrade(last.grade)}</b> · il migliore: <b>${X.formatGrade(best)}</b> · esami fatti: ${player.exams.length}</p>` : ""}
+      <button class="btn btn--primary btn--block" id="exam-go" type="button">${last ? "Rifai l'esame" : "Inizia l'esame"}</button>
+      <button class="btn btn--ghost btn--block" id="exam-back" type="button">Torna ai capitoli</button>
+    </section>`));
+  document.getElementById("exam-go").onclick = () => startExam();
+  document.getElementById("exam-back").onclick = () => home();
+}
+
+function startExam() {
+  exam = { items: X.buildExam(Math.random), i: 0, results: [], givens: [] };
+  examQuestion();
+}
+
+function examBody(q, kicker) {
+  const head = `<p class="q__kicker">${kicker}</p>`;
+  if (q.kind === "choice") {
+    const stack = q.options.some((o) => o.length > 14) ? " choices--stack" : "";
+    return `<section class="q">${head}<h1 class="q__prompt">${esc(q.prompt)}</h1><ul class="choices${stack}">${q.options.map((o) => `<li><button class="choice" type="button" data-v="${esc(o)}">${esc(o)}</button></li>`).join("")}</ul></section>`;
+  }
+  if (q.kind === "safe") {
+    return `<section class="q">${head}<h1 class="q__prompt">${esc(q.prompt)}</h1>${vaultHTML()}<button class="btn btn--primary btn--block" type="button" id="submit">Rispondi</button></section>`;
+  }
+  const locked = !q.vault ? "" : q.vault.show === "ruler"
+    ? `<div class="q__code">${q.vault.value}<sub>10</sub></div>
+      <form class="ruler-form" id="form" novalidate><div class="ruler" role="group" aria-label="Pesi delle ruote e cifre della combinazione, da sinistra a destra">
+        ${WEIGHTS.map((w) => `<span class="ruler__w">${w}</span>`).join("")}
+        ${WEIGHTS.map((w) => `<input class="ruler__cell" inputmode="numeric" maxlength="1" pattern="[01]" placeholder=" " autocomplete="off" aria-label="Cifra sotto il peso ${w}">`).join("")}
+      </div><button class="btn btn--primary btn--block" type="submit">Rispondi</button></form>`
+    : vaultHTML({ bits: q.vault.bits, lcd: "?", sum: false, code: false });
+  const entry = q.vault?.show === "ruler" ? "" : q.view?.kind === "order" ? orderHTML(q) : answerForm(q, "La tua risposta");
+  return `<section class="q">${head}<h1 class="q__prompt">${esc(viewTitle(q))}</h1>${viewHTML(q)}${locked}${entry}</section>`;
+}
+
+function examQuestion() {
+  const it = exam.items[exam.i], q = it.q, total = exam.items.length;
+  const ch = G.CHAPTERS.find((c) => c.id === it.chapter);
+  const node = el(`<div class="exam" data-prompt="${esc(q.prompt)}">
+    <div class="exam__top"><span class="exam__count">Domanda <b>${exam.i + 1}</b> di ${total}</span><div class="exam__bar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${exam.i}"><i style="width:${(exam.i / total) * 100}%"></i></div></div>
+    ${examBody(q, `Esame · ${esc(ch.title)}`)}
+    <div class="mission-tools"><button class="btn btn--ghost" type="button" id="quit">Abbandona l'esame</button></div></div>`);
+  render(node);
+  node.querySelector("#quit").onclick = async () => {
+    const yes = await confirmDialog({ title: "Abbandonare l'esame?", text: "Le risposte date finora si perdono e l'esame non viene registrato.", ok: "Sì, abbandona", cancel: "Continua", danger: true });
+    if (yes) examIntro();
+  };
+  if (q.kind === "choice") {
+    node.querySelectorAll(".choice").forEach((b) => (b.onclick = () => examAnswer(b.dataset.v)));
+  } else if (q.kind === "safe") {
+    const lcd = node.querySelector("#lcd"), sum = node.querySelector("#sum"), code = node.querySelector("#code b");
+    const recompute = () => {
+      const on = [...node.querySelectorAll('.dial[aria-pressed="true"]')].map((d) => Number(d.dataset.w));
+      const t = on.reduce((a, b) => a + b, 0);
+      lcd.textContent = t;
+      sum.textContent = on.length ? `${on.join(" + ")} = ${t}` : "tutte a zero";
+      if (code) code.textContent = nibbles(bits8(t));
+      return t;
+    };
+    node.querySelectorAll(".dial").forEach((d) => (d.onclick = () => { d.setAttribute("aria-pressed", d.getAttribute("aria-pressed") !== "true"); recompute(); }));
+    node.querySelector("#submit").onclick = () => examAnswer(recompute());
+  } else if (q.view?.kind === "order") {
+    wireOrder(node, (given) => examAnswer(given));
+  } else if (q.vault?.show === "ruler") {
+    const cells = [...node.querySelectorAll(".ruler__cell")];
+    cells.forEach((c, i) => {
+      c.addEventListener("input", () => { c.value = c.value.replace(/[^01]/g, "").slice(-1); if (c.value && cells[i + 1]) cells[i + 1].focus(); });
+      c.addEventListener("keydown", (e) => { if (e.key === "Backspace" && !c.value && cells[i - 1]) cells[i - 1].focus(); });
+    });
+    node.querySelector("#form").onsubmit = (e) => { e.preventDefault(); const empty = cells.find((c) => c.value === ""); if (empty) { empty.focus(); return; } examAnswer(cells.map((c) => c.value).join("")); };
+  } else {
+    node.querySelector("#form").onsubmit = (e) => { e.preventDefault(); examAnswer(node.querySelector("#ans").value); };
+  }
+}
+
+// Nessun verdetto durante l'esame: si registra la risposta e si passa alla successiva.
+function examAnswer(given) {
+  const it = exam.items[exam.i];
+  exam.results.push(!!checkAnswer(it.q, given));
+  exam.givens.push(given);
+  exam.i += 1;
+  if (exam.i < exam.items.length) examQuestion(); else examResult();
+}
+
+// Testo breve per rivedere una domanda: l'ordinamento diventa «Ordina: 97 (base 10), 56 (base 16)…».
+const examLabel = (q) => (q.view?.kind === "order" ? `Ordina dal più piccolo al più grande: ${q.view.items.map((i) => `${i.value} (base ${i.base})`).join(", ")}` : q.prompt);
+
+function examResult() {
+  const r = X.gradeExam(exam.items, exam.results);
+  commit(P.recordExam(store, store.current, r));
+  r.passed ? FX.bigWin() : FX.play("ko");
+  const wrong = exam.items.map((it, i) => ({ it, i })).filter(({ i }) => !exam.results[i]);
+  const given = (v) => (v === "" || v == null ? "(vuota)" : String(v));
+  const review = wrong.map(({ it, i }) => `<li class="exam-rev"><details><summary><span class="exam-rev__n">${it.id}</span> ${esc(examLabel(it.q))}</summary>
+      <p><b>La tua risposta:</b> ${esc(given(exam.givens[i]))}</p><p><b>Giusta:</b> ${esc(Boss.bossShown(it.q))}</p>
+      <ul>${it.q.explain.map((l) => `<li>${esc(l)}</li>`).join("")}</ul></details></li>`).join("");
+  const chRows = r.chapters.map((c) => `<li class="exam-ch exam-ch--${c.state}"><span class="exam-ch__name">${esc(c.title)}</span><span class="exam-ch__score">${c.correct}/${c.total}</span><span class="chip chip--${c.state === "da-ripassare" ? "bocciato" : "superato"}">${c.state === "perfetto" ? "Perfetto" : c.state === "superato" ? "Superato" : "Da ripassare"}</span></li>`).join("");
+  const reviewList = r.chapters.filter((c) => !c.passed);
+  render(el(`
+    <section class="home exam">
+      ${mascot(r.passed ? "podio" : "triste", "home__mascot")}
+      <h1 class="home__title">${r.passed ? "Esame <span>superato</span>" : "Esame <span>da rifare</span>"}</h1>
+      <div class="exam-grade${r.passed ? " is-pass" : " is-fail"}" role="status" aria-label="Voto ${X.formatGrade(r.grade)} su 10, ${r.verdict}"><b>${X.formatGrade(r.grade)}</b><span>/10</span><em>${esc(r.verdict)}</em></div>
+      <p class="home__line">${r.correct} risposte giuste su ${r.total}.</p>
+      <p class="home__rules">${r.allChaptersPassed ? "Tutte le lezioni risultano superate." : `Lezioni da ripassare: <b>${reviewList.map((c) => esc(c.title)).join(" · ")}</b>.`}${r.passed && !r.allChaptersPassed ? " Il voto basta, ma queste non sono ancora solide." : ""}</p>
+      <h2 class="board__sub">Capitolo per capitolo</h2>
+      <ul class="exam-chs">${chRows}</ul>
+      ${wrong.length ? `<h2 class="board__sub">Gli errori, spiegati</h2><ul class="exam-revs">${review}</ul>` : ""}
+      ${radioFull(examRadio(r.grade))}
+      ${reviewList.map((c) => `<button class="btn btn--ghost btn--block" type="button" data-review="${c.id}">Ripassa: ${esc(c.title)}</button>`).join("")}
+      <button class="btn btn--primary btn--block" id="exam-again" type="button">Rifai l'esame</button>
+      <button class="btn btn--ghost btn--block" id="exam-menu" type="button">Tutti i capitoli</button>
+    </section>`));
+  app.querySelectorAll("[data-review]").forEach((b) => (b.onclick = () => chapterScreen(b.dataset.review)));
+  document.getElementById("exam-again").onclick = () => startExam();
+  document.getElementById("exam-menu").onclick = () => home();
 }
 
 home(); // subito: la prima schermata non aspetta le immagini del caveau

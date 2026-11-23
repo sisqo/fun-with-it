@@ -73,6 +73,26 @@ function safeTrophies(t) {
   return out;
 }
 
+// Esami finali sostenuti: gli ultimi MAX_EXAMS, dal più vecchio. { at, grade (0-10, mezzi punti), correct, total, chapters: { id: [giuste, totali] } }
+export const MAX_EXAMS = 10;
+function safeExams(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const e of list) {
+    if (!e || typeof e !== "object") continue;
+    const total = Math.min(100, num(e.total)), correct = Math.min(total, num(e.correct));
+    if (!total) continue;
+    const chapters = {};
+    if (e.chapters && typeof e.chapters === "object") {
+      for (const [id, v] of Object.entries(e.chapters)) {
+        if (/^[a-z0-9]{1,12}$/.test(id) && Array.isArray(v)) { const t = Math.min(100, num(v[1])); if (t) chapters[id] = [Math.min(t, num(v[0])), t]; }
+      }
+    }
+    out.push({ at: Math.max(1, ts(e.at)), grade: Math.min(10, Math.max(0, Math.round(Number(e.grade) * 2) / 2 || 0)), correct, total, chapters });
+  }
+  return out.slice(-MAX_EXAMS);
+}
+
 // Oggetti comprati nel negozio ("skin:menta", "bg:molo") e aspetto scelto. Il listino sta in shop.mjs: qui solo la forma.
 export const DEFAULT_LOOK = { skin: "classico", bg: "tramonto" };
 const ITEM_ID = /^(skin|bg):[a-z]{2,12}$/;
@@ -101,7 +121,7 @@ export function parseStore(raw) {
       if (!n.ok || seen.has(n.key)) continue;
       seen.add(n.key);
       store.players.push({
-        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics), trophies: safeTrophies(p.trophies), vaultsOpened: safeTrophies(p.vaultsOpened), owned: safeOwned(p.owned), look: safeLook(p.look), shopSeen: safeOwned(p.shopSeen),
+        key: n.key, name: n.name, cash: num(p.cash), missionsDone: num(p.missionsDone), done: safeDone(p.done), topics: safeTopics(p.topics), trophies: safeTrophies(p.trophies), vaultsOpened: safeTrophies(p.vaultsOpened), owned: safeOwned(p.owned), look: safeLook(p.look), shopSeen: safeOwned(p.shopSeen), exams: safeExams(p.exams),
         createdAt: ts(p.createdAt), updatedAt: ts(p.updatedAt),
       });
       if (store.players.length >= MAX_PLAYERS) break;
@@ -128,7 +148,7 @@ export function enter(store, rawName, now = Date.now()) {
   if (existing) return { ok: true, isNew: false, store: { ...store, current: existing.key }, player: existing };
   if (store.players.length >= MAX_PLAYERS) return { ok: false, error: `Ci sono già ${MAX_PLAYERS} giocatori: elimina un profilo prima di aggiungerne uno.`, store };
   const inherited = store.legacy && store.players.length === 0 ? store.legacy : { cash: 0, missionsDone: 0 };
-  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], look: { ...DEFAULT_LOOK }, shopSeen: [], createdAt: now, updatedAt: now };
+  const player = { key: n.key, name: n.name, cash: inherited.cash, missionsDone: inherited.missionsDone, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], look: { ...DEFAULT_LOOK }, shopSeen: [], exams: [], createdAt: now, updatedAt: now };
   const next = { ...store, current: player.key, players: [...store.players, player] };
   delete next.legacy;
   return { ok: true, isNew: true, store: next, player };
@@ -136,7 +156,7 @@ export function enter(store, rawName, now = Date.now()) {
 
 // Azzera i progressi di un giocatore (conto, missioni completate), tenendo il nome.
 export function resetPlayer(store, key, now = Date.now()) {
-  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], look: { ...DEFAULT_LOOK }, shopSeen: [], updatedAt: now }));
+  return replacePlayer(store, key, (p) => ({ ...p, cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], look: { ...DEFAULT_LOOK }, shopSeen: [], exams: [], updatedAt: now }));
 }
 
 // Elimina del tutto un giocatore.
@@ -219,4 +239,12 @@ export function setShopSeen(store, key, ids) {
   const next = safeOwned(ids);
   if (!p || (p.shopSeen.length === next.length && p.shopSeen.every((x, i) => x === next[i]))) return store;
   return replacePlayer(store, key, (x) => ({ ...x, shopSeen: next }));
+}
+
+// Registra un esame finito: result = { grade, correct, total, chapters: [{ id, correct, total }] }.
+export function recordExam(store, key, result, now = Date.now()) {
+  const chapters = Object.fromEntries((result.chapters ?? []).map((c) => [c.id, [c.correct, c.total]]));
+  const [exam] = safeExams([{ at: now, grade: result.grade, correct: result.correct, total: result.total, chapters }]);
+  if (!exam) return store;
+  return replacePlayer(store, key, (p) => ({ ...p, exams: [...p.exams, exam].slice(-MAX_EXAMS), updatedAt: now }));
 }

@@ -21,7 +21,7 @@ test("enter: crea un giocatore nuovo e lo seleziona", () => {
   assert.equal(r.ok, true);
   assert.equal(r.isNew, true);
   assert.equal(r.store.current, "neri");
-  assert.deepEqual(r.player, { key: "neri", name: "Neri", cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], shopSeen: [], look: { skin: "classico", bg: "tramonto" }, createdAt: 1000, updatedAt: 1000 });
+  assert.deepEqual(r.player, { key: "neri", name: "Neri", cash: 0, missionsDone: 0, done: {}, topics: {}, trophies: {}, vaultsOpened: {}, owned: [], shopSeen: [], exams: [], look: { skin: "classico", bg: "tramonto" }, createdAt: 1000, updatedAt: 1000 });
 });
 
 test("enter con lo stesso nome (anche con altre maiuscole) riprende il giocatore", () => {

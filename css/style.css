@@ -107,3 +107,25 @@
 .qview__to { margin: 0; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .qview__word { font-weight: 400; color: var(--c-text-muted); }
 
+
+/* ---------- Esame finale ---------- */
+.exam__top { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.exam__count { font-size: var(--fs-sm); color: var(--c-text-muted); white-space: nowrap; }
+.exam__bar { flex: 1; height: 8px; border-radius: 999px; background: var(--c-border); overflow: hidden; }
+.exam__bar i { display: block; height: 100%; background: var(--c-primary); border-radius: inherit; transition: width var(--dur-med); }
+.rules { text-align: left; margin: 0 0 var(--sp-3); padding-left: 1.2em; display: grid; gap: var(--sp-1); }
+.exam-grade { display: flex; align-items: baseline; justify-content: center; gap: var(--sp-2); flex-wrap: wrap; margin: var(--sp-3) 0; }
+.exam-grade b { font-size: 4.5rem; line-height: 1; font-family: var(--font-mono); }
+.exam-grade span { font-size: var(--fs-lg); color: var(--c-text-muted); }
+.exam-grade em { flex-basis: 100%; text-align: center; font-style: normal; font-weight: 800; font-size: var(--fs-lg); }
+.exam-grade.is-pass b, .exam-grade.is-pass em { color: var(--c-success); }
+.exam-grade.is-fail b, .exam-grade.is-fail em { color: var(--c-danger); }
+.exam-chs, .exam-revs { list-style: none; margin: 0 0 var(--sp-3); padding: 0; display: grid; gap: var(--sp-2); text-align: left; }
+.exam-ch { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 2px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); }
+.exam-ch--da-ripassare { border-color: var(--c-danger); }
+.exam-ch__name { flex: 1; font-weight: 700; }
+.exam-ch__score { font-family: var(--font-mono); font-weight: 800; }
+.exam-rev { border: 2px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); padding: var(--sp-2) var(--sp-3); }
+.exam-rev summary { cursor: pointer; font-weight: 700; }
+.exam-rev__n { display: inline-grid; place-items: center; min-width: 1.6em; height: 1.6em; border-radius: 50%; background: var(--c-danger); color: var(--c-surface); font-size: var(--fs-xs); margin-right: var(--sp-1); }
+.exam-rev p, .exam-rev ul { margin: var(--sp-1) 0 0; }
