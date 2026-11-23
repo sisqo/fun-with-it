@@ -6,6 +6,7 @@ import * as T from "./teach.mjs";
 import * as Boss from "./boss.mjs";
 import * as X from "./exam.mjs";
 import * as C from "./collection.mjs";
+import * as Sync from "./sync.mjs";
 import * as S from "./shop.mjs";
 import * as Economy from "./economy.mjs";
 import * as FX from "./fx.mjs";
@@ -62,7 +63,71 @@ const save = {
 
 // Giocatori e progressi: restano solo su questo dispositivo.
 let store = P.parseStore(save.read());
-const commit = (next) => { store = next; save.write(P.serialize(store)); };
+// Ogni modifica al giocatore aggiorna updatedAt (serve a capire quale copia è più recente) e programma il salvataggio online.
+const commit = (next) => {
+  const key = next.current ?? store.current;
+  const before = store.players.find((p) => p.key === key), after = next.players.find((p) => p.key === key);
+  if (before && after && before !== after) next = { ...next, players: next.players.map((p) => (p === after ? { ...p, updatedAt: Date.now() } : p)) };
+  store = next;
+  save.write(P.serialize(store));
+  if (before && after && before !== after) queuePush(key);
+};
+
+// ---------- Salvataggio online: il nome è il login ----------
+let syncState = "idle"; // idle | ok | offline
+const pendingPush = new Set();
+let pushTimer = null;
+function queuePush(key) {
+  pendingPush.add(key);
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(flushPush, 1200);
+}
+async function flushPush() {
+  clearTimeout(pushTimer);
+  for (const key of [...pendingPush]) {
+    const player = store.players.find((p) => p.key === key);
+    pendingPush.delete(key);
+    if (!player) continue;
+    const ok = await Sync.push(player);
+    syncState = ok ? "ok" : "offline";
+    if (!ok) pendingPush.add(key); // riprova alla prossima modifica o quando si torna sulla pagina
+  }
+}
+// Prende la copia online al posto di quella locale (senza considerarla una modifica da ricaricare).
+function adopt(player) {
+  store = { ...store, players: store.players.some((p) => p.key === player.key) ? store.players.map((p) => (p.key === player.key ? player : p)) : [...store.players, player] };
+  save.write(P.serialize(store));
+}
+// Entra con un nome: se online c'è un salvataggio più recente di quello del dispositivo lo recupera.
+async function login(name) {
+  const r = P.enter(store, name);
+  if (!r.ok) return r;
+  const had = r.isNew ? null : r.player;
+  commitRaw(r.store);
+  const pulled = await Sync.pull(r.player.name);
+  if (pulled.status === "offline") { syncState = "offline"; return { ...r, offline: true }; }
+  syncState = "ok";
+  const rec = Sync.reconcile(had && (had.updatedAt > 0 || had.missionsDone || Object.keys(had.topics).length) ? had : null, pulled.status === "ok" ? pulled.player : null);
+  if (rec.source === "remote") { adopt(rec.player); return { ...r, restored: true, player: rec.player }; }
+  if (rec.pushLocal) queuePush(r.player.key);
+  return r;
+}
+const commitRaw = (next) => { store = next; save.write(P.serialize(store)); };
+// In background (apertura, ritorno sulla pagina): se online c'è di meglio, lo recupera; se il dispositivo è più avanti, lo carica.
+async function syncCurrent() {
+  const player = P.currentPlayer(store);
+  if (!player) return;
+  if (pendingPush.size) await flushPush();
+  const pulled = await Sync.pull(player.name);
+  if (pulled.status === "offline") { syncState = "offline"; return; }
+  syncState = "ok";
+  const local = P.currentPlayer(store);
+  const rec = Sync.reconcile(local, pulled.status === "ok" ? pulled.player : null);
+  if (rec.source === "remote" && refreshScreen) { adopt(rec.player); refreshScreen(); } // solo dove si può ridisegnare senza interrompere una partita
+  else if (rec.pushLocal) queuePush(local.key);
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushPush(); else syncCurrent(); });
+window.addEventListener("pagehide", flushPush);
 const me = () => P.currentPlayer(store) ?? { name: "", cash: 0, missionsDone: 0, done: {} };
 let game = null;
 // Lezioni già mostrate in questa sessione (per giocatore): non si ripetono se si ricomincia una partita non iniziata.
@@ -157,7 +222,7 @@ function nameScreen(message = "") {
       <h1 class="home__logo"><span class="sr-only">Neon Bay</span>${LOGO}</h1>
       ${mascot("neutro", "home__mascot")}
       <p class="home__line"><b>Come ti chiami?</b></p>
-      <p class="home__rules">Scrivi un nome: ci salviamo partita e progressi. Restano solo su questo dispositivo.</p>
+      <p class="home__rules">Scrivi il tuo nome: è il tuo accesso. Partita e progressi si salvano online, così li ritrovi da qualsiasi dispositivo scrivendo lo stesso nome.</p>
       <form class="answer name-form" id="name-form" novalidate>
         <label class="sr-only" for="name">Il tuo nome</label>
         <input class="answer__input answer__input--text" id="name" name="name" maxlength="20" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="es. Neri" aria-describedby="name-error">
@@ -168,23 +233,22 @@ function nameScreen(message = "") {
       <ul class="choices choices--stack home__missions">${others.map((p) => `<li><button class="choice" type="button" data-player="${esc(p.key)}"><span><b>${esc(p.name)}</b><br><span class="home__sub">${money(p.cash)} · ${p.missionsDone} ${p.missionsDone === 1 ? "missione" : "missioni"}</span></span></button></li>`).join("")}</ul>` : ""}
     </section>`));
   const input = document.getElementById("name");
-  document.getElementById("name-form").onsubmit = (e) => {
-    e.preventDefault();
-    const r = P.enter(store, input.value);
+  const go = document.getElementById("name-go");
+  const enterAs = async (name) => {
+    if (go) { go.disabled = true; go.textContent = "Cerco i tuoi progressi…"; }
+    const r = await login(name);
     if (!r.ok) {
+      if (go) { go.disabled = false; go.textContent = "Inizia"; }
       const err = document.getElementById("name-error");
       err.textContent = r.error; err.hidden = false;
       input.setAttribute("aria-invalid", "true");
       input.focus();
       return;
     }
-    commit(r.store);
-    home(r.isNew ? `Piacere, ${r.player.name}!` : `Ciao di nuovo, ${r.player.name}!`);
+    home(r.restored ? `Bentornato, ${r.player.name}! Ho ritrovato i tuoi progressi.` : r.offline && !r.isNew ? `Ciao di nuovo, ${r.player.name}! Sei offline: uso i progressi di questo dispositivo.` : r.isNew ? `Piacere, ${r.player.name}!` : `Ciao di nuovo, ${r.player.name}!`);
   };
-  app.querySelectorAll("[data-player]").forEach((b) => (b.onclick = () => {
-    const r = P.enter(store, store.players.find((p) => p.key === b.dataset.player)?.name ?? "");
-    if (r.ok) { commit(r.store); home(`Ciao di nuovo, ${r.player.name}!`); }
-  }));
+  document.getElementById("name-form").onsubmit = (e) => { e.preventDefault(); enterAs(input.value); };
+  app.querySelectorAll("[data-player]").forEach((b) => (b.onclick = () => enterAs(store.players.find((p) => p.key === b.dataset.player)?.name ?? "")));
 }
 
 // ---------- Home ----------
@@ -218,7 +282,7 @@ function home(greeting = "") {
       ${radioFull(DJ_LINES[0])}
       <details class="profile">
         <summary>Profilo e salvataggio</summary>
-        <p class="profile__text">Giocatore: <b>${esc(player.name)}</b>. Conto ${money(player.cash)}, ${player.missionsDone} ${player.missionsDone === 1 ? "partita completata" : "partite completate"}. Partita e progressi sono salvati su questo dispositivo.</p>
+        <p class="profile__text">Giocatore: <b>${esc(player.name)}</b>. Conto ${money(player.cash)}, ${player.missionsDone} ${player.missionsDone === 1 ? "partita completata" : "partite completate"}. Partita e progressi sono salvati su questo dispositivo e online: per ritrovarli da un altro dispositivo basta scrivere lo stesso nome. <span class="sync-note" id="sync-note">${syncState === "ok" ? "Salvataggio online attivo." : syncState === "offline" ? "Salvataggio online non raggiungibile: i progressi restano su questo dispositivo." : ""}</span></p>
         ${trophiesHTML(player)}
         <div class="profile__actions">
           <button class="btn btn--ghost" type="button" id="switch">Cambia giocatore</button>
@@ -247,11 +311,13 @@ function home(greeting = "") {
   document.getElementById("delete").onclick = async () => {
     const yes = await confirmDialog({
       title: `Eliminare ${player.name}?`,
-      text: "Il giocatore e tutti i suoi progressi spariscono da questo dispositivo. Non si può annullare.",
+      text: "Il giocatore e tutti i suoi progressi spariscono, anche dal salvataggio online. Non si può annullare.",
       ok: "Sì, elimina", danger: true,
     });
     if (!yes) return;
     commit(P.deletePlayer(store, player.key));
+    pendingPush.delete(player.key);
+    Sync.remove(player.name);
     nameScreen();
   };
 }
@@ -1343,3 +1409,4 @@ function garageScreen() {
 
 home(); // subito: la prima schermata non aspetta le immagini del caveau
 loadAssets().then(() => refreshScreen?.());
+syncCurrent();
